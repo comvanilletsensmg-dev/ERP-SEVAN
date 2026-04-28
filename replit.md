@@ -21,6 +21,16 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 An ERP system for a vanilla export company in Madagascar. Full workflow: ACHAT → LOT → STOCK → VENTE → COMPTABILITÉ.
 
+### Modules
+
+- **HR**: Employees, payroll, leaves, attendance, bonuses, candidates, onboarding
+- **Accounting (PCG 2005)**: Journal, invoices, bank, fixed assets, balance sheet, income statement, TVA
+- **Logistics Advanced**: Suppliers, purchases, lots, clients, sales, payments, stock movements
+  - **Intelligence IA** (`/logistics/intelligence`): AI price prediction (30-day moving average + linear trend), price history CRUD, cost vs price charts, opportunity/drop alerts
+  - **Lot Costs** (`POST /api/lots/:id/costs`): Calculate totalCost = purchaseCost + processCost + transportCost; auto-posts journal entry (Débit 602 / Crédit 401) for transport
+- **RBAC**: 4 roles — SUPER_ADMIN / ACCOUNTANT / LOGISTICS_MANAGER / HR_MANAGER
+- **User management**: `/admin/users` (SUPER_ADMIN only)
+
 **Default admin login:**
 - Email: `admin@vanillaMadagascar.mg`
 - Password: `admin123`

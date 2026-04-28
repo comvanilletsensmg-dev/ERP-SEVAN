@@ -29,6 +29,7 @@ import AccountingBank from "@/pages/accounting/Bank";
 import AccountingAssets from "@/pages/accounting/Assets";
 import AccountingReports from "@/pages/accounting/Reports";
 import UsersAdmin from "@/pages/admin/Users";
+import LogisticsIntelligence from "@/pages/logistics/Intelligence";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ function Router() {
       <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
+      <Route path="/logistics/intelligence" component={() => <ProtectedRoute component={LogisticsIntelligence} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,0 +1,253 @@
+Tu es un développeur full-stack senior expert CRM/ERP.
+
+Objectif :
+Créer un module COMMERCIAL complet pour un ERP d’export de vanille :
+- CRM (leads → clients)
+- pipeline de ventes
+- devis → commande → facture
+- suivi paiements
+- dashboard commercial (leads + ventes)
+- intégration avec lots (stock) et comptabilité
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind
+- Auth : JWT (RBAC déjà en place)
+- Charts : Recharts
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Lead {
+  id        String   @id @default(uuid())
+  company   String
+  contact   String?
+  email     String?
+  phone     String?
+  country   String
+  source    String?   // Kompass, site, manuel
+  score     Int       @default(0)
+  status    String    // new, contacted, qualified, lost
+  createdAt DateTime  @default(now())
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  country   String
+  email     String?
+  phone     String?
+  currency  String   // USD, EUR
+  createdAt DateTime @default(now())
+}
+
+model Deal {
+  id          String   @id @default(uuid())
+  leadId      String?
+  clientId    String?
+  stage       String   // prospect, negotiation, won, lost
+  value       Float
+  currency    String
+  probability Int      @default(50)
+  createdAt   DateTime @default(now())
+}
+
+model Quote {
+  id        String   @id @default(uuid())
+  clientId  String
+  total     Float
+  currency  String
+  status    String   // draft, sent, accepted
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  clientId  String
+  total     Float
+  currency  String
+  status    String   // confirmed, shipped
+  createdAt DateTime @default(now())
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  lotId     String
+  quantity  Float
+  price     Float
+}
+
+model SalesActivity {
+  id        String   @id @default(uuid())
+  type      String   // call, email, meeting
+  note      String
+  leadId    String?
+  clientId  String?
+  createdAt DateTime @default(now())
+}
+
+-----------------------------------
+2. WORKFLOW COMMERCIAL
+-----------------------------------
+
+Lead → Deal → Quote → Order → Invoice → Payment
+
+LOGIQUE :
+
+- Lead qualifié → créer Deal
+- Deal gagné → créer Client + Order
+- Order → déclenche facture (module compta)
+- Payment → suivi paiement
+
+-----------------------------------
+3. ENDPOINTS BACKEND
+-----------------------------------
+
+LEADS
+POST /api/sales/leads
+GET /api/sales/leads
+PUT /api/sales/leads/:id
+
+DEALS
+POST /api/sales/deals
+PUT /api/sales/deals/:id
+
+QUOTES
+POST /api/sales/quotes
+PUT /api/sales/quotes/:id
+
+ORDERS
+POST /api/sales/orders
+GET /api/sales/orders
+
+ACTIVITIES
+POST /api/sales/activities
+GET /api/sales/activities
+
+-----------------------------------
+4. SCORING LEADS (IA SIMPLE)
+-----------------------------------
+
+Créer fonction scoreLead(lead) :
+
+score = 0
+
+if country in ["USA", "France", "Germany"] → +30
+if source == "Kompass" → +20
+if activité contient "food/import" → +30
+
+lead.score = score
+
+-----------------------------------
+5. INTÉGRATION AVEC STOCK
+-----------------------------------
+
+Lors création Order :
+
+- vérifier stock (lot)
+- décrémenter stock
+- créer StockMovement (OUT)
+
+-----------------------------------
+6. INTÉGRATION COMPTABLE
+-----------------------------------
+
+Lors validation Order :
+
+- créer facture
+- écriture comptable :
+  débit 411
+  crédit 701
+
+-----------------------------------
+7. DASHBOARD COMMERCIAL
+-----------------------------------
+
+GET /api/sales/dashboard
+
+Retour :
+
+{
+  "leads": 120,
+  "qualifiedLeads": 40,
+  "dealsWon": 15,
+  "revenue": 25000,
+  "conversionRate": 12
+}
+
+-----------------------------------
+8. UI REACT
+-----------------------------------
+
+Pages :
+
+/sales/dashboard
+/sales/leads
+/sales/deals
+/sales/quotes
+/sales/orders
+/sales/clients
+
+-----------------------------------
+9. DASHBOARD UI (PREMIUM)
+-----------------------------------
+
+KPI :
+
+- nombre leads
+- taux conversion
+- chiffre d’affaires
+- deals gagnés
+
+Graph :
+
+- pipeline (kanban)
+- évolution ventes
+- conversion funnel
+
+-----------------------------------
+10. PIPELINE VISUEL
+-----------------------------------
+
+Kanban :
+
+- New
+- Contacted
+- Negotiation
+- Won
+- Lost
+
+-----------------------------------
+11. ACTIVITÉS COMMERCIALES
+-----------------------------------
+
+- appels
+- emails
+- rendez-vous
+
+Historique complet
+
+-----------------------------------
+12. CONTRAINTES
+-----------------------------------
+
+- empêcher vente si stock insuffisant
+- validation avant facturation
+- logs activité
+
+-----------------------------------
+13. LIVRABLE
+-----------------------------------
+
+- CRM complet
+- pipeline ventes
+- dashboard commercial
+- intégration stock + compta
+
+Commence par :
+1. modèles Prisma
+2. leads + deals
+3. dashboard

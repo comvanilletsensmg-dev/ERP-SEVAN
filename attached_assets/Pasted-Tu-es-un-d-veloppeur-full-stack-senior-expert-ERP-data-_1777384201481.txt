@@ -1,0 +1,165 @@
+Tu es un développeur full-stack senior expert ERP + data.
+
+Objectif :
+Créer un module LOGISTIQUE AVANCÉ avec :
+- gestion stock + lots
+- calcul coût réel par lot (lié comptabilité PCG 2005)
+- IA de prévision prix vanille
+- dashboard intelligent
+
+Stack :
+- Node.js + Express
+- Prisma + PostgreSQL
+- React + Tailwind
+- IA : simple modèle statistique (régression / moyenne mobile)
+
+-----------------------------------
+1. MODÈLES PRISMA (AJOUTS)
+-----------------------------------
+
+model LotCost {
+  id            String   @id @default(uuid())
+  lotId         String
+  purchaseCost  Float
+  processCost   Float
+  transportCost Float
+  totalCost     Float
+  costPerKg     Float
+
+  lot Lot @relation(fields: [lotId], references: [id])
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  date      DateTime
+  price     Float
+  market    String   // local, export
+}
+
+model PricePrediction {
+  id        String   @id @default(uuid())
+  date      DateTime
+  predicted Float
+}
+
+-----------------------------------
+2. CALCUL COÛT RÉEL PAR LOT
+-----------------------------------
+
+Créer service :
+
+calculateLotCost(lotId)
+
+LOGIQUE :
+
+purchaseCost = prix achat
+processCost = coût transformation
+transportCost = coût logistique
+
+totalCost = purchaseCost + processCost + transportCost
+
+costPerKg = totalCost / weightCurrent
+
+Sauvegarder dans LotCost
+
+-----------------------------------
+3. INTÉGRATION COMPTABLE
+-----------------------------------
+
+Quand coût calculé :
+
+Créer écriture :
+
+- débit 35 (stock produit fini)
+- crédit 31 (matière brute)
+
+Pour transport :
+- débit 6xx
+- crédit 401
+
+-----------------------------------
+4. IA PRÉVISION PRIX VANILLE
+-----------------------------------
+
+Créer service :
+
+predictVanillaPrice()
+
+LOGIQUE SIMPLE (MVP) :
+
+- récupérer PriceHistory
+- calcul moyenne mobile (30 jours)
+- ajouter tendance
+
+Exemple :
+
+avg = moyenne(prix 30 derniers jours)
+trend = (dernier prix - ancien prix)
+
+predicted = avg + trend
+
+Sauvegarder dans PricePrediction
+
+-----------------------------------
+5. ENDPOINTS IA
+-----------------------------------
+
+POST /api/ai/price-history
+GET /api/ai/prediction
+
+-----------------------------------
+6. DASHBOARD AVANCÉ
+-----------------------------------
+
+GET /api/logistics/dashboard
+
+Ajouter :
+
+{
+  "avgCostPerKg": 50000,
+  "predictedPrice": 65000,
+  "marginEstimate": 15000
+}
+
+-----------------------------------
+7. UI DASHBOARD (AJOUTS)
+-----------------------------------
+
+Afficher :
+
+- coût moyen/kg
+- prix prévisionnel
+- marge estimée
+
+Graph :
+- évolution prix
+- coût vs prix
+
+-----------------------------------
+8. RÈGLES MÉTIER
+-----------------------------------
+
+- recalcul coût à chaque transformation
+- bloquer vente si marge négative (option)
+- mise à jour automatique
+
+-----------------------------------
+9. BONUS IA
+-----------------------------------
+
+- alertes :
+  - prix baisse
+  - prix opportunité
+
+-----------------------------------
+10. LIVRABLE
+-----------------------------------
+
+- module complet logistique + IA + coût
+- API fonctionnelle
+- dashboard enrichi
+
+Commence par :
+1. LotCost
+2. calcul coût
+3. IA prédiction

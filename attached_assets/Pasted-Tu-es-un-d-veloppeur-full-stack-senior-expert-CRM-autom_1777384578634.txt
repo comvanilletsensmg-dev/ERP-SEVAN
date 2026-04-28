@@ -1,0 +1,209 @@
+Tu es un développeur full-stack senior expert CRM + automatisation + IA.
+
+Objectif :
+Créer un module COMMERCIAL avancé pour un ERP avec :
+- CRM complet (leads → ventes)
+- emails automatiques + templates
+- relances clients automatiques
+- scoring IA avancé
+- intégration Kompass (scraping + enrichissement)
+- dashboard commercial SaaS
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind
+- Emails : Nodemailer
+- Scraping : Puppeteer / Playwright
+- IA : logique scoring + règles + enrichissement
+
+-----------------------------------
+1. MODÈLES PRISMA (AJOUTS)
+-----------------------------------
+
+model EmailTemplate {
+  id        String @id @default(uuid())
+  name      String
+  subject   String
+  body      String
+}
+
+model EmailLog {
+  id        String   @id @default(uuid())
+  to        String
+  subject   String
+  status    String   // sent, failed
+  createdAt DateTime @default(now())
+}
+
+model Reminder {
+  id        String   @id @default(uuid())
+  clientId  String
+  type      String   // payment, followup
+  dueDate   DateTime
+  status    String   // pending, sent
+}
+
+model EnrichedLead {
+  id          String @id @default(uuid())
+  leadId      String
+  companySize Int?
+  industry    String?
+  website     String?
+  score       Int
+}
+
+-----------------------------------
+2. EMAIL AUTOMATIQUE
+-----------------------------------
+
+Créer service sendEmail(template, data)
+
+LOGIQUE :
+- remplacer variables :
+  {{name}}, {{company}}, {{product}}
+
+Exemple template :
+
+Subject : Offre vanille Madagascar
+
+Body :
+Bonjour {{name}},
+Nous proposons de la vanille gourmet...
+
+-----------------------------------
+3. AUTOMATISATION EMAIL
+-----------------------------------
+
+Cas :
+
+- nouveau lead → email automatique
+- devis envoyé → email suivi
+- facture non payée → relance
+
+Créer trigger :
+
+onLeadCreated → send email
+onQuoteSent → send follow-up
+onInvoiceOverdue → send reminder
+
+-----------------------------------
+4. RELANCE CLIENT AUTOMATIQUE
+-----------------------------------
+
+Créer CRON job (daily)
+
+LOGIQUE :
+
+- chercher factures non payées > 7 jours
+- créer Reminder
+- envoyer email
+
+-----------------------------------
+5. SCORING IA AVANCÉ
+-----------------------------------
+
+Créer fonction scoreLeadAdvanced(lead)
+
+CRITÈRES :
+
+score = 0
+
+- pays (USA, Europe) → +30
+- taille entreprise → +20
+- activité food/import → +30
+- présence site web → +10
+- interaction (email ouvert) → +10
+
+Retour score /100
+
+-----------------------------------
+6. INTÉGRATION KOMPASS (SCRAPING)
+-----------------------------------
+
+Créer service scrapeKompass(query)
+
+LOGIQUE :
+
+- utiliser Puppeteer
+- récupérer :
+  - nom entreprise
+  - pays
+  - activité
+  - contact (si possible)
+
+Créer leads automatiquement
+
+-----------------------------------
+7. ENRICHISSEMENT IA
+-----------------------------------
+
+Pour chaque lead :
+
+- analyser activité
+- détecter secteur
+- calcul score
+
+Stocker dans EnrichedLead
+
+-----------------------------------
+8. PIPELINE AUTOMATISÉ
+-----------------------------------
+
+Workflow :
+
+Lead → enrichissement → scoring → email → suivi → vente
+
+-----------------------------------
+9. DASHBOARD COMMERCIAL (AJOUTS)
+-----------------------------------
+
+Afficher :
+
+- leads chauds (score élevé)
+- emails envoyés
+- taux réponse
+- clients à relancer
+
+-----------------------------------
+10. UI REACT (AJOUTS)
+-----------------------------------
+
+Pages :
+
+/sales/emails
+/sales/templates
+/sales/reminders
+
+-----------------------------------
+11. TEMPLATE UI
+-----------------------------------
+
+Créer éditeur simple :
+
+- subject
+- body
+- variables dynamiques
+
+-----------------------------------
+12. SÉCURITÉ & LIMITES
+-----------------------------------
+
+- limiter envoi email (anti spam)
+- logs erreurs
+- scraping contrôlé
+
+-----------------------------------
+13. LIVRABLE
+-----------------------------------
+
+- CRM complet
+- automation email
+- IA scoring
+- scraping Kompass
+- dashboard enrichi
+
+Commence par :
+1. EmailTemplate + Email service
+2. scoring IA
+3. scraping Kompass

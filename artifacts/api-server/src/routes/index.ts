@@ -25,6 +25,9 @@ import accountingAssetsRouter from "./accounting-assets";
 import accountingReportsRouter from "./accounting-reports";
 import dashboardRbacRouter from "./dashboard-rbac";
 import usersRouter from "./users";
+import lotCostsRouter from "./lot-costs";
+import aiPredictionRouter from "./ai-prediction";
+import logisticsDashboardRouter from "./logistics-dashboard";
 
 const router: IRouter = Router();
 
@@ -54,5 +57,8 @@ router.use(accountingAssetsRouter);
 router.use(accountingReportsRouter);
 router.use(dashboardRbacRouter);
 router.use(usersRouter);
+router.use(lotCostsRouter);
+router.use(aiPredictionRouter);
+router.use(logisticsDashboardRouter);
 
 export default router;
