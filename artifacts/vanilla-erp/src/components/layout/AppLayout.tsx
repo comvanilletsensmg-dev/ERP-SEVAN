@@ -14,25 +14,53 @@ import {
   LogOut,
   CreditCard,
   ArrowLeftRight,
+  UserCheck,
+  CalendarDays,
+  ClipboardList,
+  MessageSquare,
 } from "lucide-react";
+
+const mainNav = [
+  { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Fournisseurs",     href: "/suppliers",       icon: Users },
+  { label: "Achats",           href: "/purchases",       icon: ShoppingCart },
+  { label: "Lots",             href: "/lots",            icon: Package },
+  { label: "Clients",          href: "/clients",         icon: Globe },
+  { label: "Ventes",           href: "/sales",           icon: TrendingUp },
+  { label: "Paiements",        href: "/payments",        icon: CreditCard },
+  { label: "Mouvements stock", href: "/stock-movements", icon: ArrowLeftRight },
+  { label: "Comptabilité",     href: "/accounting",      icon: BookOpen },
+];
+
+const hrNav = [
+  { label: "Employés",    href: "/hr/employees",  icon: UserCheck },
+  { label: "Congés",      href: "/hr/leaves",     icon: CalendarDays },
+  { label: "Pointage",    href: "/hr/attendance",  icon: ClipboardList },
+  { label: "Demandes RH", href: "/hr/requests",   icon: MessageSquare },
+];
+
+function NavItem({ href, label, icon: Icon, location }: { href: string; label: string; icon: React.ElementType; location: string }) {
+  const isActive = location === href || (href !== "/dashboard" && location.startsWith(href));
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+        isActive
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+      }`}
+    >
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const logout = useLogout();
-
-  const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Suppliers", href: "/suppliers", icon: Users },
-    { label: "Purchases", href: "/purchases", icon: ShoppingCart },
-    { label: "Lots", href: "/lots", icon: Package },
-    { label: "Clients", href: "/clients", icon: Globe },
-    { label: "Sales", href: "/sales", icon: TrendingUp },
-    { label: "Payments", href: "/payments", icon: CreditCard },
-    { label: "Stock Movements", href: "/stock-movements", icon: ArrowLeftRight },
-    { label: "Accounting", href: "/accounting", icon: BookOpen },
-  ];
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -47,25 +75,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <h1 className="text-xl font-serif font-bold tracking-tight text-sidebar-primary">Vanilla ERP</h1>
           <p className="text-xs text-sidebar-foreground/70 mt-1">Madagascar Operations</p>
         </div>
-        <nav className="flex-1 px-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto pb-4">
+          {mainNav.map((item) => (
+            <NavItem key={item.href} {...item} location={location} />
+          ))}
+
+          <div className="pt-4 pb-1">
+            <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Ressources Humaines</p>
+          </div>
+          {hrNav.map((item) => (
+            <NavItem key={item.href} {...item} location={location} />
+          ))}
         </nav>
+
         <div className="p-4 border-t border-sidebar-border">
           <div className="mb-4 px-2">
             <p className="text-sm font-medium">{user?.email}</p>
@@ -76,7 +99,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Sign out
+            Déconnexion
           </button>
         </div>
       </aside>

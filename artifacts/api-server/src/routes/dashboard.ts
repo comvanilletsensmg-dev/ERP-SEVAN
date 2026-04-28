@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable } from "@workspace/db";
-import { sql, count, sum } from "drizzle-orm";
+import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable } from "@workspace/db";
+import { sql, count, sum, eq, gte, lt, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -86,6 +86,41 @@ router.get("/dashboard/lot-status", requireAuth, async (_req, res): Promise<void
       totalKg: Number(r.totalKg ?? 0),
     }))
   );
+});
+
+router.get("/dashboard/hr-summary", requireAuth, async (_req, res): Promise<void> => {
+  const [empCount] = await db.select({ count: count() }).from(employeesTable);
+
+  const [pendingLeaves] = await db
+    .select({ count: count() })
+    .from(leavesTable)
+    .where(eq(leavesTable.status, "pending"));
+
+  // Employees absent today = who have an approved leave covering today
+  const today = new Date();
+  const [absentToday] = await db
+    .select({ count: count() })
+    .from(leavesTable)
+    .where(
+      and(
+        eq(leavesTable.status, "approved"),
+        sql`${leavesTable.startDate} <= ${today}`,
+        sql`${leavesTable.endDate} >= ${today}`
+      )
+    );
+
+  // Pending HR requests
+  const [pendingRequests] = await db
+    .select({ count: count() })
+    .from(hrRequestsTable)
+    .where(eq(hrRequestsTable.status, "pending"));
+
+  res.json({
+    totalEmployees: Number(empCount?.count ?? 0),
+    absentToday: Number(absentToday?.count ?? 0),
+    pendingLeaves: Number(pendingLeaves?.count ?? 0),
+    pendingRequests: Number(pendingRequests?.count ?? 0),
+  });
 });
 
 export default router;

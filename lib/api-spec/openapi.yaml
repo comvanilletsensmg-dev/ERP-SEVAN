@@ -30,6 +30,8 @@ tags:
     description: Stock movements
   - name: payments
     description: Client payments
+  - name: hr
+    description: HR module — employees, leaves, attendance, requests
 
 paths:
   /healthz:
@@ -492,6 +494,266 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LotStatusCount"
+
+  /employees:
+    get:
+      operationId: getEmployees
+      tags: [hr]
+      summary: List all employees
+      responses:
+        "200":
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+    post:
+      operationId: createEmployee
+      tags: [hr]
+      summary: Create an employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmployeeBody"
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  /employees/export/csv:
+    get:
+      operationId: exportEmployeesCsv
+      tags: [hr]
+      summary: Export employee list as CSV
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /employees/{id}:
+    put:
+      operationId: updateEmployee
+      tags: [hr]
+      summary: Update an employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmployeeBody"
+      responses:
+        "200":
+          description: Employee updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  /leaves:
+    get:
+      operationId: getLeaves
+      tags: [hr]
+      summary: List all leave requests
+      responses:
+        "200":
+          description: List of leaves
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Leave"
+    post:
+      operationId: createLeave
+      tags: [hr]
+      summary: Submit a leave request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeaveBody"
+      responses:
+        "201":
+          description: Leave request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+
+  /leaves/{id}/approve:
+    put:
+      operationId: approveLeave
+      tags: [hr]
+      summary: Approve or reject a leave request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveLeaveBody"
+      responses:
+        "200":
+          description: Leave updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+
+  /attendance:
+    get:
+      operationId: getAttendance
+      tags: [hr]
+      summary: List attendance records
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+          description: Filter by date (YYYY-MM-DD)
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/checkin:
+    post:
+      operationId: checkIn
+      tags: [hr]
+      summary: Record employee check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInBody"
+      responses:
+        "201":
+          description: Check-in recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/checkout:
+    post:
+      operationId: checkOut
+      tags: [hr]
+      summary: Record employee check-out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckOutBody"
+      responses:
+        "200":
+          description: Check-out recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  /hr-requests:
+    get:
+      operationId: getHrRequests
+      tags: [hr]
+      summary: List HR requests
+      responses:
+        "200":
+          description: List of HR requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HrRequest"
+    post:
+      operationId: createHrRequest
+      tags: [hr]
+      summary: Submit an HR request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHrRequestBody"
+      responses:
+        "201":
+          description: HR request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HrRequest"
+
+  /hr-requests/{id}:
+    put:
+      operationId: updateHrRequest
+      tags: [hr]
+      summary: Update HR request status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateHrRequestBody"
+      responses:
+        "200":
+          description: HR request updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HrRequest"
+
+  /dashboard/hr-summary:
+    get:
+      operationId: getHrDashboardSummary
+      tags: [hr]
+      summary: HR dashboard summary
+      responses:
+        "200":
+          description: HR summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HrDashboardSummary"
 
 components:
   schemas:
@@ -1018,3 +1280,210 @@ components:
         - status
         - count
         - totalKg
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+          nullable: true
+        salary:
+          type: number
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - position
+        - createdAt
+
+    CreateEmployeeBody:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+          nullable: true
+        salary:
+          type: number
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+      required:
+        - name
+        - position
+
+    Leave:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        type:
+          type: string
+          description: vacation | sick
+        startDate:
+          type: string
+        endDate:
+          type: string
+        status:
+          type: string
+          description: pending | approved | rejected
+        createdAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - type
+        - startDate
+        - endDate
+        - status
+        - createdAt
+
+    CreateLeaveBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        type:
+          type: string
+          description: vacation | sick
+        startDate:
+          type: string
+        endDate:
+          type: string
+      required:
+        - employeeId
+        - type
+        - startDate
+        - endDate
+
+    ApproveLeaveBody:
+      type: object
+      properties:
+        status:
+          type: string
+          description: approved | rejected
+      required:
+        - status
+
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        date:
+          type: string
+        checkIn:
+          type: string
+          nullable: true
+        checkOut:
+          type: string
+          nullable: true
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - date
+
+    CheckInBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+      required:
+        - employeeId
+
+    CheckOutBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+      required:
+        - employeeId
+
+    HrRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        type:
+          type: string
+          description: leave | advance | issue
+        description:
+          type: string
+        status:
+          type: string
+          description: pending | approved
+        createdAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - type
+        - description
+        - status
+        - createdAt
+
+    CreateHrRequestBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        type:
+          type: string
+          description: leave | advance | issue
+        description:
+          type: string
+      required:
+        - employeeId
+        - type
+        - description
+
+    UpdateHrRequestBody:
+      type: object
+      properties:
+        status:
+          type: string
+          description: pending | approved
+
+    HrDashboardSummary:
+      type: object
+      properties:
+        totalEmployees:
+          type: number
+        absentToday:
+          type: number
+        pendingLeaves:
+          type: number
+        pendingRequests:
+          type: number
+      required:
+        - totalEmployees
+        - absentToday
+        - pendingLeaves
+        - pendingRequests

@@ -16,13 +16,17 @@ import Sales from "@/pages/sales";
 import Accounting from "@/pages/accounting";
 import Payments from "@/pages/payments";
 import StockMovements from "@/pages/stock-movements";
+import Employees from "@/pages/Employees";
+import Leaves from "@/pages/Leaves";
+import Attendance from "@/pages/Attendance";
+import HrRequests from "@/pages/HrRequests";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background text-primary font-serif">Loading ERP...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background text-primary font-serif">Chargement ERP…</div>;
 
   if (!isAuthenticated) {
     return <Redirect to="/login" />;
@@ -49,6 +53,10 @@ function Router() {
       <Route path="/accounting" component={() => <ProtectedRoute component={Accounting} />} />
       <Route path="/payments" component={() => <ProtectedRoute component={Payments} />} />
       <Route path="/stock-movements" component={() => <ProtectedRoute component={StockMovements} />} />
+      <Route path="/hr/employees" component={() => <ProtectedRoute component={Employees} />} />
+      <Route path="/hr/leaves" component={() => <ProtectedRoute component={Leaves} />} />
+      <Route path="/hr/attendance" component={() => <ProtectedRoute component={Attendance} />} />
+      <Route path="/hr/requests" component={() => <ProtectedRoute component={HrRequests} />} />
       <Route component={NotFound} />
     </Switch>
   );

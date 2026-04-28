@@ -604,3 +604,255 @@ export const GetLotStatusBreakdownResponseItem = zod.object({
 export const GetLotStatusBreakdownResponse = zod.array(
   GetLotStatusBreakdownResponseItem,
 );
+
+/**
+ * @summary List all employees
+ */
+export const GetEmployeesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  position: zod.string(),
+  department: zod.string().nullish(),
+  salary: zod.number().nullish(),
+  phone: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetEmployeesResponse = zod.array(GetEmployeesResponseItem);
+
+/**
+ * @summary Create an employee
+ */
+export const CreateEmployeeBody = zod.object({
+  name: zod.string(),
+  position: zod.string(),
+  department: zod.string().nullish(),
+  salary: zod.number().nullish(),
+  phone: zod.string().nullish(),
+});
+
+/**
+ * @summary Update an employee
+ */
+export const UpdateEmployeeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateEmployeeBody = zod.object({
+  name: zod.string(),
+  position: zod.string(),
+  department: zod.string().nullish(),
+  salary: zod.number().nullish(),
+  phone: zod.string().nullish(),
+});
+
+export const UpdateEmployeeResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  position: zod.string(),
+  department: zod.string().nullish(),
+  salary: zod.number().nullish(),
+  phone: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary List all leave requests
+ */
+export const GetLeavesResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  type: zod.string().describe("vacation | sick"),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  status: zod.string().describe("pending | approved | rejected"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetLeavesResponse = zod.array(GetLeavesResponseItem);
+
+/**
+ * @summary Submit a leave request
+ */
+export const CreateLeaveBody = zod.object({
+  employeeId: zod.string(),
+  type: zod.string().describe("vacation | sick"),
+  startDate: zod.string(),
+  endDate: zod.string(),
+});
+
+/**
+ * @summary Approve or reject a leave request
+ */
+export const ApproveLeaveParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ApproveLeaveBody = zod.object({
+  status: zod.string().describe("approved | rejected"),
+});
+
+export const ApproveLeaveResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  type: zod.string().describe("vacation | sick"),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  status: zod.string().describe("pending | approved | rejected"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary List attendance records
+ */
+export const GetAttendanceQueryParams = zod.object({
+  date: zod.coerce.string().optional().describe("Filter by date (YYYY-MM-DD)"),
+  employeeId: zod.coerce.string().optional(),
+});
+
+export const GetAttendanceResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  date: zod.string(),
+  checkIn: zod.string().nullish(),
+  checkOut: zod.string().nullish(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetAttendanceResponse = zod.array(GetAttendanceResponseItem);
+
+/**
+ * @summary Record employee check-in
+ */
+export const CheckInBody = zod.object({
+  employeeId: zod.string(),
+});
+
+/**
+ * @summary Record employee check-out
+ */
+export const CheckOutBody = zod.object({
+  employeeId: zod.string(),
+});
+
+export const CheckOutResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  date: zod.string(),
+  checkIn: zod.string().nullish(),
+  checkOut: zod.string().nullish(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary List HR requests
+ */
+export const GetHrRequestsResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  type: zod.string().describe("leave | advance | issue"),
+  description: zod.string(),
+  status: zod.string().describe("pending | approved"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetHrRequestsResponse = zod.array(GetHrRequestsResponseItem);
+
+/**
+ * @summary Submit an HR request
+ */
+export const CreateHrRequestBody = zod.object({
+  employeeId: zod.string(),
+  type: zod.string().describe("leave | advance | issue"),
+  description: zod.string(),
+});
+
+/**
+ * @summary Update HR request status
+ */
+export const UpdateHrRequestParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateHrRequestBody = zod.object({
+  status: zod.string().optional().describe("pending | approved"),
+});
+
+export const UpdateHrRequestResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  type: zod.string().describe("leave | advance | issue"),
+  description: zod.string(),
+  status: zod.string().describe("pending | approved"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary HR dashboard summary
+ */
+export const GetHrDashboardSummaryResponse = zod.object({
+  totalEmployees: zod.number(),
+  absentToday: zod.number(),
+  pendingLeaves: zod.number(),
+  pendingRequests: zod.number(),
+});

@@ -225,3 +225,103 @@ export interface LotStatusCount {
   count: number;
   totalKg: number;
 }
+
+export interface Employee {
+  id: string;
+  name: string;
+  position: string;
+  department?: string | null;
+  salary?: number | null;
+  phone?: string | null;
+  createdAt: string;
+}
+
+export interface CreateEmployeeBody {
+  name: string;
+  position: string;
+  department?: string | null;
+  salary?: number | null;
+  phone?: string | null;
+}
+
+export interface Leave {
+  id: string;
+  employeeId: string;
+  /** vacation | sick */
+  type: string;
+  startDate: string;
+  endDate: string;
+  /** pending | approved | rejected */
+  status: string;
+  createdAt: string;
+  employee?: Employee;
+}
+
+export interface CreateLeaveBody {
+  employeeId: string;
+  /** vacation | sick */
+  type: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ApproveLeaveBody {
+  /** approved | rejected */
+  status: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
+  employee?: Employee;
+}
+
+export interface CheckInBody {
+  employeeId: string;
+}
+
+export interface CheckOutBody {
+  employeeId: string;
+}
+
+export interface HrRequest {
+  id: string;
+  employeeId: string;
+  /** leave | advance | issue */
+  type: string;
+  description: string;
+  /** pending | approved */
+  status: string;
+  createdAt: string;
+  employee?: Employee;
+}
+
+export interface CreateHrRequestBody {
+  employeeId: string;
+  /** leave | advance | issue */
+  type: string;
+  description: string;
+}
+
+export interface UpdateHrRequestBody {
+  /** pending | approved */
+  status?: string;
+}
+
+export interface HrDashboardSummary {
+  totalEmployees: number;
+  absentToday: number;
+  pendingLeaves: number;
+  pendingRequests: number;
+}
+
+export type GetAttendanceParams = {
+  /**
+   * Filter by date (YYYY-MM-DD)
+   */
+  date?: string;
+  employeeId?: string;
+};

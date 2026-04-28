@@ -7,3 +7,7 @@ export * from "./sales";
 export * from "./accounting";
 export * from "./stock_movements";
 export * from "./payments";
+export * from "./employees";
+export * from "./leaves";
+export * from "./attendance";
+export * from "./hr_requests";

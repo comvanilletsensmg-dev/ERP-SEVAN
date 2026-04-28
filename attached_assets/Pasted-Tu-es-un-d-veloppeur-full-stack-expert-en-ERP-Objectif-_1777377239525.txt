@@ -1,0 +1,150 @@
+Tu es un développeur full-stack expert en ERP.
+
+Objectif :
+Ajouter un module RH simple et efficace dans un ERP existant (Node.js + Prisma).
+
+Contexte Madagascar :
+- gestion simple (pas usine à gaz)
+- adapté PME
+- suivi employés + congés + demandes
+
+-----------------------------------
+1. MODÈLES PRISMA À AJOUTER
+-----------------------------------
+
+model Employee {
+  id          String   @id @default(uuid())
+  name        String
+  position    String
+  department  String?
+  salary      Float?
+  phone       String?
+  createdAt   DateTime @default(now())
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  employeeId  String
+  type        String   // vacation, sick
+  startDate   DateTime
+  endDate     DateTime
+  status      String   // pending, approved, rejected
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model HRRequest {
+  id          String   @id @default(uuid())
+  employeeId  String
+  type        String   // leave, advance, issue
+  description String
+  status      String   // pending, approved
+  createdAt   DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+-----------------------------------
+2. ENDPOINTS BACKEND
+-----------------------------------
+
+EMPLOYEES
+GET /api/employees
+POST /api/employees
+
+LEAVES
+POST /api/leaves
+GET /api/leaves
+PUT /api/leaves/:id/approve
+
+ATTENDANCE
+POST /api/attendance/checkin
+POST /api/attendance/checkout
+GET /api/attendance
+
+HR REQUESTS
+POST /api/hr-requests
+GET /api/hr-requests
+PUT /api/hr-requests/:id
+
+-----------------------------------
+3. LOGIQUE MÉTIER
+-----------------------------------
+
+CHECK-IN :
+- créer attendance avec checkIn = now
+
+CHECK-OUT :
+- mettre à jour checkOut
+
+CONGÉ :
+- statut par défaut = pending
+- validation admin → approved
+
+HR REQUEST :
+- workflow simple (pending → approved)
+
+-----------------------------------
+4. UI À CRÉER (React)
+-----------------------------------
+
+Pages :
+
+/employees
+- liste employés
+- bouton ajouter
+
+/leaves
+- calendrier simple
+- statut (pending / approved)
+
+/attendance
+- bouton :
+  - CHECK IN
+  - CHECK OUT
+
+/hr-requests
+- formulaire demande
+- liste avec statut
+
+-----------------------------------
+5. DASHBOARD RH
+-----------------------------------
+
+Widgets :
+
+- nombre employés
+- absents aujourd’hui
+- congés en attente
+
+-----------------------------------
+6. BONUS IMPORTANT
+-----------------------------------
+
+- exporter liste employés en CSV
+- filtre par date
+- UI très simple (mobile friendly)
+
+-----------------------------------
+7. LIVRABLE
+-----------------------------------
+
+- backend fonctionnel
+- endpoints testables
+- UI basique mais propre
+- instructions migration Prisma
+
+Commence par :
+1. Prisma schema
+2. endpoints employees
+3. puis leaves + attendance

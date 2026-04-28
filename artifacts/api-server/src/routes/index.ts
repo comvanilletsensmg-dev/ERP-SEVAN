@@ -10,6 +10,10 @@ import accountingRouter from "./accounting";
 import dashboardRouter from "./dashboard";
 import paymentsRouter from "./payments";
 import stockMovementsRouter from "./stock-movements";
+import employeesRouter from "./employees";
+import leavesRouter from "./leaves";
+import attendanceRouter from "./attendance";
+import hrRequestsRouter from "./hr-requests";
 
 const router: IRouter = Router();
 
@@ -24,5 +28,9 @@ router.use(accountingRouter);
 router.use(dashboardRouter);
 router.use(paymentsRouter);
 router.use(stockMovementsRouter);
+router.use(employeesRouter);
+router.use(leavesRouter);
+router.use(attendanceRouter);
+router.use(hrRequestsRouter);
 
 export default router;

@@ -9,6 +9,7 @@ import {
   stockMovementsTable,
   journalEntriesTable,
   journalLinesTable,
+  employeesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
@@ -38,6 +39,20 @@ export async function seedDatabase() {
       password: "admin123",
       role: "admin",
     });
+  }
+
+  // HR: seed sample employees (always checked, independent of suppliers)
+  const existingEmployees = await db.select().from(employeesTable).limit(1);
+  if (existingEmployees.length === 0) {
+    logger.info("Seeding HR employees...");
+    await db.insert(employeesTable).values([
+      { name: "Rindra Rakotondrabe",  position: "Responsable Production", department: "Production",     salary: 1800000, phone: "+261 32 11 111 11" },
+      { name: "Vola Andriamahefa",    position: "Contrôleuse Qualité",    department: "Qualité",       salary: 1400000, phone: "+261 33 22 222 22" },
+      { name: "Heritiana Razafy",     position: "Opérateur Séchage",      department: "Séchage",       salary: 900000,  phone: "+261 34 33 333 33" },
+      { name: "Fanja Randrianirina",  position: "Responsable Logistique", department: "Logistique",    salary: 1600000, phone: "+261 32 44 444 44" },
+      { name: "Tojo Rabemananjara",   position: "Comptable",              department: "Finance",       salary: 1500000, phone: "+261 33 55 555 55" },
+      { name: "Miora Rasolofomanana", position: "Assistante RH",          department: "Administration", salary: 1200000, phone: "+261 34 66 666 66" },
+    ]);
   }
 
   const existingSuppliers = await db.select().from(suppliersTable).limit(1);
