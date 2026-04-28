@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Vanilla ERP"
+version = "1.0.0"
+id = "artifacts/vanilla-erp"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24769
+
+[services.development]
+run = "pnpm --filter @workspace/vanilla-erp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vanilla-erp", "run", "build" ]
+publicDir = "artifacts/vanilla-erp/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24769"
+BASE_PATH = "/"

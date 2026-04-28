@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Vanilla Export ERP API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: suppliers
+    description: Supplier management
+  - name: purchases
+    description: Purchase management
+  - name: lots
+    description: Lot management
+  - name: clients
+    description: Client management
+  - name: sales
+    description: Sales management
+  - name: accounting
+    description: Accounting & journal
+  - name: dashboard
+    description: Dashboard analytics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +40,419 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logout success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /suppliers:
+    get:
+      operationId: getSuppliers
+      tags: [suppliers]
+      summary: List all suppliers
+      responses:
+        "200":
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create a supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "201":
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      summary: Get a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    put:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "200":
+          description: Supplier updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /purchases:
+    get:
+      operationId: getPurchases
+      tags: [purchases]
+      summary: List all purchases
+      responses:
+        "200":
+          description: List of purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+    post:
+      operationId: createPurchase
+      tags: [purchases]
+      summary: Create a purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseBody"
+      responses:
+        "201":
+          description: Purchase created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+
+  /lots:
+    get:
+      operationId: getLots
+      tags: [lots]
+      summary: List all lots
+      responses:
+        "200":
+          description: List of lots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lot"
+    post:
+      operationId: createLot
+      tags: [lots]
+      summary: Create a lot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLotBody"
+      responses:
+        "201":
+          description: Lot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lot"
+
+  /lots/{id}:
+    get:
+      operationId: getLot
+      tags: [lots]
+      summary: Get a lot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lot"
+    put:
+      operationId: updateLot
+      tags: [lots]
+      summary: Update a lot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLotBody"
+      responses:
+        "200":
+          description: Lot updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lot"
+
+  /clients:
+    get:
+      operationId: getClients
+      tags: [clients]
+      summary: List all clients
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientBody"
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /sales:
+    get:
+      operationId: getSales
+      tags: [sales]
+      summary: List all sales
+      responses:
+        "200":
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sale"
+    post:
+      operationId: createSale
+      tags: [sales]
+      summary: Create a sale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSaleBody"
+      responses:
+        "201":
+          description: Sale created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+
+  /sales/{id}:
+    get:
+      operationId: getSale
+      tags: [sales]
+      summary: Get a sale
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+
+  /journal:
+    get:
+      operationId: getJournal
+      tags: [accounting]
+      summary: List journal entries
+      responses:
+        "200":
+          description: List of journal entries with lines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntry"
+
+  /accounts:
+    get:
+      operationId: getAccounts
+      tags: [accounting]
+      summary: List chart of accounts
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/lot-status:
+    get:
+      operationId: getLotStatusBreakdown
+      tags: [dashboard]
+      summary: Lot status breakdown
+      responses:
+        "200":
+          description: Lot status counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LotStatusCount"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +463,441 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - email
+        - role
+        - createdAt
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        score:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - region
+        - score
+        - createdAt
+
+    CreateSupplierBody:
+      type: object
+      properties:
+        name:
+          type: string
+        region:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        score:
+          type: number
+      required:
+        - name
+        - region
+
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: string
+        supplierId:
+          type: string
+        totalAmount:
+          type: number
+        paymentMethod:
+          type: string
+        createdAt:
+          type: string
+        supplier:
+          $ref: "#/components/schemas/Supplier"
+      required:
+        - id
+        - supplierId
+        - totalAmount
+        - paymentMethod
+        - createdAt
+
+    CreatePurchaseBody:
+      type: object
+      properties:
+        supplierId:
+          type: string
+        totalAmount:
+          type: number
+        paymentMethod:
+          type: string
+      required:
+        - supplierId
+        - totalAmount
+        - paymentMethod
+
+    Lot:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        supplierId:
+          type: string
+        weightInitial:
+          type: number
+        weightCurrent:
+          type: number
+        humidity:
+          type: number
+        grade:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        supplier:
+          $ref: "#/components/schemas/Supplier"
+      required:
+        - id
+        - code
+        - supplierId
+        - weightInitial
+        - weightCurrent
+        - humidity
+        - grade
+        - status
+        - createdAt
+
+    CreateLotBody:
+      type: object
+      properties:
+        code:
+          type: string
+        supplierId:
+          type: string
+        weightInitial:
+          type: number
+        weightCurrent:
+          type: number
+        humidity:
+          type: number
+        grade:
+          type: string
+        status:
+          type: string
+      required:
+        - code
+        - supplierId
+        - weightInitial
+        - weightCurrent
+        - humidity
+        - grade
+        - status
+
+    UpdateLotBody:
+      type: object
+      properties:
+        weightCurrent:
+          type: number
+        humidity:
+          type: number
+        grade:
+          type: string
+        status:
+          type: string
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        country:
+          type: string
+        email:
+          type: string
+          nullable: true
+        currency:
+          type: string
+      required:
+        - id
+        - name
+        - country
+        - currency
+
+    CreateClientBody:
+      type: object
+      properties:
+        name:
+          type: string
+        country:
+          type: string
+        email:
+          type: string
+          nullable: true
+        currency:
+          type: string
+      required:
+        - name
+        - country
+        - currency
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+        clientId:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        incoterm:
+          type: string
+        createdAt:
+          type: string
+        client:
+          $ref: "#/components/schemas/Client"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleItem"
+      required:
+        - id
+        - clientId
+        - totalAmount
+        - currency
+        - incoterm
+        - createdAt
+
+    CreateSaleBody:
+      type: object
+      properties:
+        clientId:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        incoterm:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSaleItemBody"
+      required:
+        - clientId
+        - totalAmount
+        - currency
+        - incoterm
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: string
+        saleId:
+          type: string
+        lotId:
+          type: string
+        quantity:
+          type: number
+        price:
+          type: number
+        lot:
+          $ref: "#/components/schemas/Lot"
+      required:
+        - id
+        - saleId
+        - lotId
+        - quantity
+        - price
+
+    CreateSaleItemBody:
+      type: object
+      properties:
+        lotId:
+          type: string
+        quantity:
+          type: number
+        price:
+          type: number
+      required:
+        - lotId
+        - quantity
+        - price
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+      required:
+        - id
+        - code
+        - name
+        - type
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        reference:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalLine"
+      required:
+        - id
+        - date
+        - reference
+
+    JournalLine:
+      type: object
+      properties:
+        id:
+          type: string
+        entryId:
+          type: string
+        accountId:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        account:
+          $ref: "#/components/schemas/Account"
+      required:
+        - id
+        - entryId
+        - accountId
+        - debit
+        - credit
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalStockKg:
+          type: number
+        totalSalesUsd:
+          type: number
+        totalPurchasesMga:
+          type: number
+        activeLotsCount:
+          type: number
+        suppliersCount:
+          type: number
+        clientsCount:
+          type: number
+      required:
+        - totalStockKg
+        - totalSalesUsd
+        - totalPurchasesMga
+        - activeLotsCount
+        - suppliersCount
+        - clientsCount
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - description
+        - createdAt
+
+    LotStatusCount:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: number
+        totalKg:
+          type: number
+      required:
+        - status
+        - count
+        - totalKg

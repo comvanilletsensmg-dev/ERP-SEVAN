@@ -17,6 +17,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _defaultRequestInit: Omit<RequestInit, "body" | "method"> = {};
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +43,14 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+}
+
+/**
+ * Set default request init options that are merged into every fetch call.
+ * Useful for setting credentials: "include" for cookie-based auth in web apps.
+ */
+export function setDefaultRequestInit(init: Omit<RequestInit, "body" | "method">): void {
+  _defaultRequestInit = init;
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
@@ -360,7 +369,7 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const response = await fetch(input, { ..._defaultRequestInit, ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

@@ -1,0 +1,244 @@
+Tu es un développeur full-stack senior.
+
+Objectif :
+Créer un ERP simple, robuste et évolutif pour une entreprise d’export de vanille à Madagascar.
+
+Contraintes :
+- Simplicité maximale (utilisable terrain)
+- Offline-friendly (localStorage + sync)
+- Multi-devise (MGA, USD, EUR)
+- Comptabilité PCG 2005 basique
+- Architecture claire et maintenable
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL
+- ORM : Prisma
+- Front : React + Tailwind
+- Auth : JWT
+
+-----------------------------------
+1. PRISMA SCHEMA (À CRÉER)
+-----------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  region    String
+  phone     String?
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Lot {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  supplierId     String
+  weightInitial  Float
+  weightCurrent  Float
+  humidity       Float
+  grade          String
+  status         String
+  createdAt      DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  supplierId    String
+  totalAmount   Float
+  paymentMethod String
+  createdAt     DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model Client {
+  id       String @id @default(uuid())
+  name     String
+  country  String
+  email    String?
+  currency String
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  clientId    String
+  totalAmount Float
+  currency    String
+  incoterm    String
+  createdAt   DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+model SaleItem {
+  id        String @id @default(uuid())
+  saleId    String
+  lotId     String
+  quantity  Float
+  price     Float
+
+  sale Sale @relation(fields: [saleId], references: [id])
+  lot  Lot  @relation(fields: [lotId], references: [id])
+}
+
+model Account {
+  id    String @id @default(uuid())
+  code  String
+  name  String
+  type  String
+}
+
+model JournalEntry {
+  id        String   @id @default(uuid())
+  date      DateTime
+  reference String
+}
+
+model JournalLine {
+  id        String @id @default(uuid())
+  entryId   String
+  accountId String
+  debit     Float
+  credit    Float
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id])
+  account Account      @relation(fields: [accountId], references: [id])
+}
+
+-----------------------------------
+2. JSON STRUCTURES (API STANDARD)
+-----------------------------------
+
+Supplier JSON:
+{
+  "name": "Collecteur SAVA",
+  "region": "SAVA",
+  "phone": "0340000000"
+}
+
+Purchase JSON:
+{
+  "supplierId": "uuid",
+  "totalAmount": 500000,
+  "paymentMethod": "mobile_money"
+}
+
+Lot JSON:
+{
+  "code": "VAN-2026-001",
+  "supplierId": "uuid",
+  "weightInitial": 120,
+  "weightCurrent": 110,
+  "humidity": 35,
+  "grade": "gourmet",
+  "status": "curing"
+}
+
+Client JSON:
+{
+  "name": "Vanilla Import France",
+  "country": "France",
+  "currency": "EUR"
+}
+
+Sale JSON:
+{
+  "clientId": "uuid",
+  "totalAmount": 12000,
+  "currency": "USD",
+  "incoterm": "FOB"
+}
+
+-----------------------------------
+3. BACKEND (ENDPOINTS À CRÉER)
+-----------------------------------
+
+Auth:
+POST /api/login
+
+Suppliers:
+GET /api/suppliers
+POST /api/suppliers
+
+Purchases:
+POST /api/purchases
+
+Lots:
+GET /api/lots
+POST /api/lots
+
+Sales:
+POST /api/sales
+
+Accounting:
+GET /api/journal
+
+-----------------------------------
+4. LOGIQUE AUTOMATIQUE
+-----------------------------------
+
+À chaque achat :
+- créer écriture comptable :
+  débit stock (31)
+  crédit fournisseur (401)
+
+À chaque vente :
+- débit client (411)
+- crédit produit (701)
+
+-----------------------------------
+5. FRONTEND
+-----------------------------------
+
+Créer pages React :
+
+/login
+/dashboard
+/suppliers
+/purchases
+/lots
+/sales
+/accounting
+
+Dashboard :
+- stock total
+- ventes
+- trésorerie
+
+-----------------------------------
+6. BONUS
+-----------------------------------
+
+- QR code pour lot
+- export PDF facture
+- import CSV clients
+
+-----------------------------------
+7. LIVRABLE
+-----------------------------------
+
+- App fonctionnelle
+- UI simple et propre
+- Instructions pour lancer
+
+Commence par backend + Prisma, puis frontend.
