@@ -116,8 +116,12 @@ export const UpdateSupplierResponse = zod.object({
 export const GetPurchasesResponseItem = zod.object({
   id: zod.string(),
   supplierId: zod.string(),
+  weight: zod.number(),
+  pricePerKg: zod.number(),
   totalAmount: zod.number(),
   paymentMethod: zod.string(),
+  humidity: zod.number(),
+  lotId: zod.string().nullish(),
   createdAt: zod.string(),
   supplier: zod
     .object({
@@ -133,12 +137,15 @@ export const GetPurchasesResponseItem = zod.object({
 export const GetPurchasesResponse = zod.array(GetPurchasesResponseItem);
 
 /**
- * @summary Create a purchase
+ * @summary Create a purchase (auto-creates lot + stock movement + journal entry)
  */
 export const CreatePurchaseBody = zod.object({
   supplierId: zod.string(),
-  totalAmount: zod.number(),
-  paymentMethod: zod.string(),
+  weight: zod.number().describe("Weight in kg"),
+  pricePerKg: zod.number().describe("Price per kg in MGA"),
+  totalAmount: zod.number().describe("Total amount in MGA"),
+  paymentMethod: zod.string().describe("cash | mobile_money | bank_transfer"),
+  humidity: zod.number().describe("Humidity percentage"),
 });
 
 /**
@@ -148,10 +155,11 @@ export const GetLotsResponseItem = zod.object({
   id: zod.string(),
   code: zod.string(),
   supplierId: zod.string(),
+  purchaseId: zod.string().nullish(),
   weightInitial: zod.number(),
   weightCurrent: zod.number(),
   humidity: zod.number(),
-  grade: zod.string(),
+  grade: zod.string().nullish(),
   status: zod.string(),
   createdAt: zod.string(),
   supplier: zod
@@ -168,19 +176,6 @@ export const GetLotsResponseItem = zod.object({
 export const GetLotsResponse = zod.array(GetLotsResponseItem);
 
 /**
- * @summary Create a lot
- */
-export const CreateLotBody = zod.object({
-  code: zod.string(),
-  supplierId: zod.string(),
-  weightInitial: zod.number(),
-  weightCurrent: zod.number(),
-  humidity: zod.number(),
-  grade: zod.string(),
-  status: zod.string(),
-});
-
-/**
  * @summary Get a lot
  */
 export const GetLotParams = zod.object({
@@ -191,10 +186,11 @@ export const GetLotResponse = zod.object({
   id: zod.string(),
   code: zod.string(),
   supplierId: zod.string(),
+  purchaseId: zod.string().nullish(),
   weightInitial: zod.number(),
   weightCurrent: zod.number(),
   humidity: zod.number(),
-  grade: zod.string(),
+  grade: zod.string().nullish(),
   status: zod.string(),
   createdAt: zod.string(),
   supplier: zod
@@ -210,7 +206,7 @@ export const GetLotResponse = zod.object({
 });
 
 /**
- * @summary Update a lot
+ * @summary Update a lot (records LOSS stock movement if weight changed)
  */
 export const UpdateLotParams = zod.object({
   id: zod.coerce.string(),
@@ -227,10 +223,11 @@ export const UpdateLotResponse = zod.object({
   id: zod.string(),
   code: zod.string(),
   supplierId: zod.string(),
+  purchaseId: zod.string().nullish(),
   weightInitial: zod.number(),
   weightCurrent: zod.number(),
   humidity: zod.number(),
-  grade: zod.string(),
+  grade: zod.string().nullish(),
   status: zod.string(),
   createdAt: zod.string(),
   supplier: zod
@@ -314,10 +311,11 @@ export const GetSalesResponseItem = zod.object({
             id: zod.string(),
             code: zod.string(),
             supplierId: zod.string(),
+            purchaseId: zod.string().nullish(),
             weightInitial: zod.number(),
             weightCurrent: zod.number(),
             humidity: zod.number(),
-            grade: zod.string(),
+            grade: zod.string().nullish(),
             status: zod.string(),
             createdAt: zod.string(),
             supplier: zod
@@ -339,22 +337,19 @@ export const GetSalesResponseItem = zod.object({
 export const GetSalesResponse = zod.array(GetSalesResponseItem);
 
 /**
- * @summary Create a sale
+ * @summary Create a sale (validates stock, records OUT movements + journal entry)
  */
 export const CreateSaleBody = zod.object({
   clientId: zod.string(),
-  totalAmount: zod.number(),
   currency: zod.string(),
   incoterm: zod.string(),
-  items: zod
-    .array(
-      zod.object({
-        lotId: zod.string(),
-        quantity: zod.number(),
-        price: zod.number(),
-      }),
-    )
-    .optional(),
+  items: zod.array(
+    zod.object({
+      lotId: zod.string(),
+      quantity: zod.number().describe("Quantity in kg"),
+      price: zod.number().describe("Price per kg in the sale currency"),
+    }),
+  ),
 });
 
 /**
@@ -393,10 +388,11 @@ export const GetSaleResponse = zod.object({
             id: zod.string(),
             code: zod.string(),
             supplierId: zod.string(),
+            purchaseId: zod.string().nullish(),
             weightInitial: zod.number(),
             weightCurrent: zod.number(),
             humidity: zod.number(),
-            grade: zod.string(),
+            grade: zod.string().nullish(),
             status: zod.string(),
             createdAt: zod.string(),
             supplier: zod
@@ -415,6 +411,120 @@ export const GetSaleResponse = zod.object({
     )
     .optional(),
 });
+
+/**
+ * @summary List all payments
+ */
+export const GetPaymentsResponseItem = zod.object({
+  id: zod.string(),
+  saleId: zod.string(),
+  amount: zod.number(),
+  method: zod.string(),
+  createdAt: zod.string(),
+  sale: zod
+    .object({
+      id: zod.string(),
+      clientId: zod.string(),
+      totalAmount: zod.number(),
+      currency: zod.string(),
+      incoterm: zod.string(),
+      createdAt: zod.string(),
+      client: zod
+        .object({
+          id: zod.string(),
+          name: zod.string(),
+          country: zod.string(),
+          email: zod.string().nullish(),
+          currency: zod.string(),
+        })
+        .optional(),
+      items: zod
+        .array(
+          zod.object({
+            id: zod.string(),
+            saleId: zod.string(),
+            lotId: zod.string(),
+            quantity: zod.number(),
+            price: zod.number(),
+            lot: zod
+              .object({
+                id: zod.string(),
+                code: zod.string(),
+                supplierId: zod.string(),
+                purchaseId: zod.string().nullish(),
+                weightInitial: zod.number(),
+                weightCurrent: zod.number(),
+                humidity: zod.number(),
+                grade: zod.string().nullish(),
+                status: zod.string(),
+                createdAt: zod.string(),
+                supplier: zod
+                  .object({
+                    id: zod.string(),
+                    name: zod.string(),
+                    region: zod.string(),
+                    phone: zod.string().nullish(),
+                    score: zod.number(),
+                    createdAt: zod.string(),
+                  })
+                  .optional(),
+              })
+              .optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+});
+export const GetPaymentsResponse = zod.array(GetPaymentsResponseItem);
+
+/**
+ * @summary Record a client payment (debit 512 / credit 411)
+ */
+export const CreatePaymentBody = zod.object({
+  saleId: zod.string(),
+  amount: zod.number(),
+  method: zod.string().describe("bank | mobile_money | cash"),
+});
+
+/**
+ * @summary List all stock movements
+ */
+export const GetStockMovementsResponseItem = zod.object({
+  id: zod.string(),
+  lotId: zod.string(),
+  type: zod.string().describe("IN | OUT | LOSS"),
+  quantity: zod.number(),
+  note: zod.string().nullish(),
+  createdAt: zod.string(),
+  lot: zod
+    .object({
+      id: zod.string(),
+      code: zod.string(),
+      supplierId: zod.string(),
+      purchaseId: zod.string().nullish(),
+      weightInitial: zod.number(),
+      weightCurrent: zod.number(),
+      humidity: zod.number(),
+      grade: zod.string().nullish(),
+      status: zod.string(),
+      createdAt: zod.string(),
+      supplier: zod
+        .object({
+          id: zod.string(),
+          name: zod.string(),
+          region: zod.string(),
+          phone: zod.string().nullish(),
+          score: zod.number(),
+          createdAt: zod.string(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+export const GetStockMovementsResponse = zod.array(
+  GetStockMovementsResponseItem,
+);
 
 /**
  * @summary List journal entries

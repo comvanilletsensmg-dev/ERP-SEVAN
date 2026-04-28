@@ -14,6 +14,8 @@ import Lots from "@/pages/lots";
 import Clients from "@/pages/clients";
 import Sales from "@/pages/sales";
 import Accounting from "@/pages/accounting";
+import Payments from "@/pages/payments";
+import StockMovements from "@/pages/stock-movements";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ function Router() {
       <Route path="/clients" component={() => <ProtectedRoute component={Clients} />} />
       <Route path="/sales" component={() => <ProtectedRoute component={Sales} />} />
       <Route path="/accounting" component={() => <ProtectedRoute component={Accounting} />} />
+      <Route path="/payments" component={() => <ProtectedRoute component={Payments} />} />
+      <Route path="/stock-movements" component={() => <ProtectedRoute component={StockMovements} />} />
       <Route component={NotFound} />
     </Switch>
   );

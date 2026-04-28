@@ -52,39 +52,47 @@ export interface CreateSupplierBody {
 export interface Purchase {
   id: string;
   supplierId: string;
+  weight: number;
+  pricePerKg: number;
   totalAmount: number;
   paymentMethod: string;
+  humidity: number;
+  lotId?: string | null;
   createdAt: string;
   supplier?: Supplier;
-}
-
-export interface CreatePurchaseBody {
-  supplierId: string;
-  totalAmount: number;
-  paymentMethod: string;
 }
 
 export interface Lot {
   id: string;
   code: string;
   supplierId: string;
+  purchaseId?: string | null;
   weightInitial: number;
   weightCurrent: number;
   humidity: number;
-  grade: string;
+  grade?: string | null;
   status: string;
   createdAt: string;
   supplier?: Supplier;
 }
 
-export interface CreateLotBody {
-  code: string;
+export interface PurchaseWithLot {
+  purchase: Purchase;
+  lot: Lot;
+}
+
+export interface CreatePurchaseBody {
   supplierId: string;
-  weightInitial: number;
-  weightCurrent: number;
+  /** Weight in kg */
+  weight: number;
+  /** Price per kg in MGA */
+  pricePerKg: number;
+  /** Total amount in MGA */
+  totalAmount: number;
+  /** cash | mobile_money | bank_transfer */
+  paymentMethod: string;
+  /** Humidity percentage */
   humidity: number;
-  grade: string;
-  status: string;
 }
 
 export interface UpdateLotBody {
@@ -131,16 +139,44 @@ export interface Sale {
 
 export interface CreateSaleItemBody {
   lotId: string;
+  /** Quantity in kg */
   quantity: number;
+  /** Price per kg in the sale currency */
   price: number;
 }
 
 export interface CreateSaleBody {
   clientId: string;
-  totalAmount: number;
   currency: string;
   incoterm: string;
-  items?: CreateSaleItemBody[];
+  items: CreateSaleItemBody[];
+}
+
+export interface Payment {
+  id: string;
+  saleId: string;
+  amount: number;
+  method: string;
+  createdAt: string;
+  sale?: Sale;
+}
+
+export interface CreatePaymentBody {
+  saleId: string;
+  amount: number;
+  /** bank | mobile_money | cash */
+  method: string;
+}
+
+export interface StockMovement {
+  id: string;
+  lotId: string;
+  /** IN | OUT | LOSS */
+  type: string;
+  quantity: number;
+  note?: string | null;
+  createdAt: string;
+  lot?: Lot;
 }
 
 export interface Account {

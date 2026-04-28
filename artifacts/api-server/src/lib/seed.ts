@@ -1,39 +1,55 @@
-import { db, accountsTable, usersTable, suppliersTable, clientsTable, lotsTable, purchasesTable, salesTable, saleItemsTable } from "@workspace/db";
+import {
+  db,
+  accountsTable,
+  usersTable,
+  suppliersTable,
+  clientsTable,
+  lotsTable,
+  purchasesTable,
+  stockMovementsTable,
+  journalEntriesTable,
+  journalLinesTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 export async function seedDatabase() {
-  // Check if already seeded
+  // Check if already seeded (check accounts first)
   const existingAccounts = await db.select().from(accountsTable).limit(1);
-  if (existingAccounts.length > 0) {
-    logger.info("Database already seeded, skipping");
+  if (existingAccounts.length === 0) {
+    logger.info("Seeding PCG 2005 accounts...");
+
+    await db.insert(accountsTable).values([
+      { code: "31", name: "Stocks de matières premières", type: "actif" },
+      { code: "401", name: "Fournisseurs", type: "passif" },
+      { code: "411", name: "Clients", type: "actif" },
+      { code: "512", name: "Banques", type: "actif" },
+      { code: "701", name: "Ventes de produits finis", type: "produit" },
+      { code: "602", name: "Achats stockés - Matières premières", type: "charge" },
+      { code: "44571", name: "TVA collectée", type: "passif" },
+      { code: "44566", name: "TVA déductible", type: "actif" },
+    ]);
+  }
+
+  const existingUsers = await db.select().from(usersTable).limit(1);
+  if (existingUsers.length === 0) {
+    await db.insert(usersTable).values({
+      email: "admin@vanillaMadagascar.mg",
+      password: "admin123",
+      role: "admin",
+    });
+  }
+
+  const existingSuppliers = await db.select().from(suppliersTable).limit(1);
+  if (existingSuppliers.length > 0) {
+    logger.info("Suppliers already seeded, skipping operational data");
     return;
   }
 
-  logger.info("Seeding database...");
-
-  // PCG 2005 chart of accounts
-  const accounts = [
-    { code: "31", name: "Stocks de matières premières", type: "actif" },
-    { code: "401", name: "Fournisseurs", type: "passif" },
-    { code: "411", name: "Clients", type: "actif" },
-    { code: "512", name: "Banques", type: "actif" },
-    { code: "701", name: "Ventes de produits finis", type: "produit" },
-    { code: "602", name: "Achats stockés - Matières premières", type: "charge" },
-    { code: "44571", name: "TVA collectée", type: "passif" },
-    { code: "44566", name: "TVA déductible", type: "actif" },
-  ];
-
-  await db.insert(accountsTable).values(accounts);
-
-  // Admin user (password is plain text for simplicity per spec)
-  await db.insert(usersTable).values({
-    email: "admin@vanillaMadagascar.mg",
-    password: "admin123",
-    role: "admin",
-  });
+  logger.info("Seeding suppliers, clients, lots and purchases...");
 
   // Sample suppliers
-  const [supplier1] = await db
+  const [supplier1, supplier2] = await db
     .insert(suppliersTable)
     .values([
       { name: "Collecteur SAVA", region: "SAVA", phone: "0340000001", score: 85 },
@@ -43,29 +59,157 @@ export async function seedDatabase() {
     .returning();
 
   // Sample clients
-  const [client1] = await db
+  await db
     .insert(clientsTable)
     .values([
       { name: "Vanilla Import France", country: "France", email: "contact@vanillaimport.fr", currency: "EUR" },
       { name: "Spice World USA", country: "United States", email: "orders@spiceworld.com", currency: "USD" },
-    ])
+    ]);
+
+  // Look up accounting accounts
+  const accounts = await db.select().from(accountsTable);
+  const stockAcc = accounts.find((a) => a.code === "31");
+  const supplierAcc = accounts.find((a) => a.code === "401");
+
+  // --- Purchase 1 → Lot curing (raw → in processing) ---
+  const [purchase1] = await db
+    .insert(purchasesTable)
+    .values({
+      supplierId: supplier1.id,
+      weight: 120,
+      pricePerKg: 40000,
+      totalAmount: 4800000,
+      paymentMethod: "mobile_money",
+      humidity: 38,
+    })
     .returning();
 
-  // Sample lots
   const [lot1] = await db
     .insert(lotsTable)
-    .values([
-      { code: "VAN-2026-001", supplierId: supplier1.id, weightInitial: 120, weightCurrent: 110, humidity: 32, grade: "gourmet", status: "curing" },
-      { code: "VAN-2026-002", supplierId: supplier1.id, weightInitial: 80, weightCurrent: 75, humidity: 28, grade: "standard", status: "drying" },
-    ])
+    .values({
+      code: "VAN-2026-1001",
+      supplierId: supplier1.id,
+      purchaseId: purchase1.id,
+      weightInitial: 120,
+      weightCurrent: 112,
+      humidity: 38,
+      grade: null,
+      status: "curing",
+    })
     .returning();
 
-  // Sample purchase
-  await db.insert(purchasesTable).values({
-    supplierId: supplier1.id,
-    totalAmount: 500000,
-    paymentMethod: "mobile_money",
+  await db.update(purchasesTable).set({ lotId: lot1.id }).where(eq(purchasesTable.id, purchase1.id));
+  await db.insert(stockMovementsTable).values({
+    lotId: lot1.id,
+    type: "IN",
+    quantity: 120,
+    note: `Achat initial — fournisseur ${supplier1.name}`,
   });
+  await db.insert(stockMovementsTable).values({
+    lotId: lot1.id,
+    type: "LOSS",
+    quantity: 8,
+    note: "Perte séchage initial VAN-2026-1001",
+  });
+
+  // --- Purchase 2 → Lot drying ---
+  const [purchase2] = await db
+    .insert(purchasesTable)
+    .values({
+      supplierId: supplier2.id,
+      weight: 80,
+      pricePerKg: 42000,
+      totalAmount: 3360000,
+      paymentMethod: "bank_transfer",
+      humidity: 35,
+    })
+    .returning();
+
+  const [lot2] = await db
+    .insert(lotsTable)
+    .values({
+      code: "VAN-2026-1002",
+      supplierId: supplier2.id,
+      purchaseId: purchase2.id,
+      weightInitial: 80,
+      weightCurrent: 76,
+      humidity: 30,
+      grade: "standard",
+      status: "drying",
+    })
+    .returning();
+
+  await db.insert(stockMovementsTable).values({
+    lotId: lot2.id,
+    type: "IN",
+    quantity: 80,
+    note: `Achat initial — fournisseur ${supplier2.name}`,
+  });
+  await db.insert(stockMovementsTable).values({
+    lotId: lot2.id,
+    type: "LOSS",
+    quantity: 4,
+    note: "Perte séchage VAN-2026-1002",
+  });
+
+  // --- Purchase 3 → Lot READY for demo sales ---
+  const [purchase3] = await db
+    .insert(purchasesTable)
+    .values({
+      supplierId: supplier1.id,
+      weight: 150,
+      pricePerKg: 38000,
+      totalAmount: 5700000,
+      paymentMethod: "cash",
+      humidity: 40,
+    })
+    .returning();
+
+  const [lot3] = await db
+    .insert(lotsTable)
+    .values({
+      code: "VAN-2026-1003",
+      supplierId: supplier1.id,
+      purchaseId: purchase3.id,
+      weightInitial: 150,
+      weightCurrent: 130,
+      humidity: 25,
+      grade: "gourmet",
+      status: "ready",
+    })
+    .returning();
+
+  await db.insert(stockMovementsTable).values({
+    lotId: lot3.id,
+    type: "IN",
+    quantity: 150,
+    note: `Achat initial — fournisseur ${supplier1.name}`,
+  });
+  await db.insert(stockMovementsTable).values({
+    lotId: lot3.id,
+    type: "LOSS",
+    quantity: 20,
+    note: "Perte transformation complète VAN-2026-1003",
+  });
+
+  // Journal entries for the three purchases
+  if (stockAcc && supplierAcc) {
+    for (const [purchase, label] of [
+      [purchase1, "ACHAT-001"],
+      [purchase2, "ACHAT-002"],
+      [purchase3, "ACHAT-003"],
+    ] as const) {
+      const [entry] = await db
+        .insert(journalEntriesTable)
+        .values({ date: new Date(), reference: label })
+        .returning();
+
+      await db.insert(journalLinesTable).values([
+        { entryId: entry.id, accountId: stockAcc.id, debit: purchase.totalAmount, credit: 0 },
+        { entryId: entry.id, accountId: supplierAcc.id, debit: 0, credit: purchase.totalAmount },
+      ]);
+    }
+  }
 
   logger.info("Database seeded successfully");
 }

@@ -26,6 +26,10 @@ tags:
     description: Accounting & journal
   - name: dashboard
     description: Dashboard analytics
+  - name: stock
+    description: Stock movements
+  - name: payments
+    description: Client payments
 
 paths:
   /healthz:
@@ -189,7 +193,7 @@ paths:
     post:
       operationId: createPurchase
       tags: [purchases]
-      summary: Create a purchase
+      summary: Create a purchase (auto-creates lot + stock movement + journal entry)
       requestBody:
         required: true
         content:
@@ -198,11 +202,11 @@ paths:
               $ref: "#/components/schemas/CreatePurchaseBody"
       responses:
         "201":
-          description: Purchase created
+          description: Purchase created with lot
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Purchase"
+                $ref: "#/components/schemas/PurchaseWithLot"
 
   /lots:
     get:
@@ -218,23 +222,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Lot"
-    post:
-      operationId: createLot
-      tags: [lots]
-      summary: Create a lot
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateLotBody"
-      responses:
-        "201":
-          description: Lot created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Lot"
 
   /lots/{id}:
     get:
@@ -257,7 +244,7 @@ paths:
     put:
       operationId: updateLot
       tags: [lots]
-      summary: Update a lot
+      summary: Update a lot (records LOSS stock movement if weight changed)
       parameters:
         - name: id
           in: path
@@ -346,7 +333,7 @@ paths:
     post:
       operationId: createSale
       tags: [sales]
-      summary: Create a sale
+      summary: Create a sale (validates stock, records OUT movements + journal entry)
       requestBody:
         required: true
         content:
@@ -360,6 +347,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Sale"
+        "400":
+          description: Business rule violation (stock insufficient, lot not ready, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /sales/{id}:
     get:
@@ -379,6 +372,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Sale"
+
+  /payments:
+    get:
+      operationId: getPayments
+      tags: [payments]
+      summary: List all payments
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      operationId: createPayment
+      tags: [payments]
+      summary: Record a client payment (debit 512 / credit 411)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentBody"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /stock-movements:
+    get:
+      operationId: getStockMovements
+      tags: [stock]
+      summary: List all stock movements
+      responses:
+        "200":
+          description: List of stock movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
 
   /journal:
     get:
@@ -561,10 +601,19 @@ components:
           type: string
         supplierId:
           type: string
+        weight:
+          type: number
+        pricePerKg:
+          type: number
         totalAmount:
           type: number
         paymentMethod:
           type: string
+        humidity:
+          type: number
+        lotId:
+          type: string
+          nullable: true
         createdAt:
           type: string
         supplier:
@@ -572,23 +621,51 @@ components:
       required:
         - id
         - supplierId
+        - weight
+        - pricePerKg
         - totalAmount
         - paymentMethod
+        - humidity
         - createdAt
+
+    PurchaseWithLot:
+      type: object
+      properties:
+        purchase:
+          $ref: "#/components/schemas/Purchase"
+        lot:
+          $ref: "#/components/schemas/Lot"
+      required:
+        - purchase
+        - lot
 
     CreatePurchaseBody:
       type: object
       properties:
         supplierId:
           type: string
+        weight:
+          type: number
+          description: Weight in kg
+        pricePerKg:
+          type: number
+          description: Price per kg in MGA
         totalAmount:
           type: number
+          description: Total amount in MGA
         paymentMethod:
           type: string
+          description: cash | mobile_money | bank_transfer
+        humidity:
+          type: number
+          description: Humidity percentage
       required:
         - supplierId
+        - weight
+        - pricePerKg
         - totalAmount
         - paymentMethod
+        - humidity
 
     Lot:
       type: object
@@ -599,6 +676,9 @@ components:
           type: string
         supplierId:
           type: string
+        purchaseId:
+          type: string
+          nullable: true
         weightInitial:
           type: number
         weightCurrent:
@@ -607,6 +687,7 @@ components:
           type: number
         grade:
           type: string
+          nullable: true
         status:
           type: string
         createdAt:
@@ -620,35 +701,8 @@ components:
         - weightInitial
         - weightCurrent
         - humidity
-        - grade
         - status
         - createdAt
-
-    CreateLotBody:
-      type: object
-      properties:
-        code:
-          type: string
-        supplierId:
-          type: string
-        weightInitial:
-          type: number
-        weightCurrent:
-          type: number
-        humidity:
-          type: number
-        grade:
-          type: string
-        status:
-          type: string
-      required:
-        - code
-        - supplierId
-        - weightInitial
-        - weightCurrent
-        - humidity
-        - grade
-        - status
 
     UpdateLotBody:
       type: object
@@ -733,8 +787,6 @@ components:
       properties:
         clientId:
           type: string
-        totalAmount:
-          type: number
         currency:
           type: string
         incoterm:
@@ -745,9 +797,9 @@ components:
             $ref: "#/components/schemas/CreateSaleItemBody"
       required:
         - clientId
-        - totalAmount
         - currency
         - incoterm
+        - items
 
     SaleItem:
       type: object
@@ -778,12 +830,77 @@ components:
           type: string
         quantity:
           type: number
+          description: Quantity in kg
         price:
           type: number
+          description: Price per kg in the sale currency
       required:
         - lotId
         - quantity
         - price
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        saleId:
+          type: string
+        amount:
+          type: number
+        method:
+          type: string
+        createdAt:
+          type: string
+        sale:
+          $ref: "#/components/schemas/Sale"
+      required:
+        - id
+        - saleId
+        - amount
+        - method
+        - createdAt
+
+    CreatePaymentBody:
+      type: object
+      properties:
+        saleId:
+          type: string
+        amount:
+          type: number
+        method:
+          type: string
+          description: bank | mobile_money | cash
+      required:
+        - saleId
+        - amount
+        - method
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: string
+        lotId:
+          type: string
+        type:
+          type: string
+          description: IN | OUT | LOSS
+        quantity:
+          type: number
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        lot:
+          $ref: "#/components/schemas/Lot"
+      required:
+        - id
+        - lotId
+        - type
+        - quantity
+        - createdAt
 
     Account:
       type: object

@@ -12,6 +12,8 @@ import {
   TrendingUp,
   BookOpen,
   LogOut,
+  CreditCard,
+  ArrowLeftRight,
 } from "lucide-react";
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -27,6 +29,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { label: "Lots", href: "/lots", icon: Package },
     { label: "Clients", href: "/clients", icon: Globe },
     { label: "Sales", href: "/sales", icon: TrendingUp },
+    { label: "Payments", href: "/payments", icon: CreditCard },
+    { label: "Stock Movements", href: "/stock-movements", icon: ArrowLeftRight },
     { label: "Accounting", href: "/accounting", icon: BookOpen },
   ];
 

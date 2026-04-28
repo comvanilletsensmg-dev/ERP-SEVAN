@@ -1,0 +1,195 @@
+Tu es un développeur backend senior spécialisé en ERP métier.
+
+Objectif :
+Implémenter le workflow central d’un ERP d’export de vanille à Madagascar :
+ACHAT → LOT → STOCK → VENTE → COMPTABILITÉ
+
+Stack :
+- Node.js + Express
+- Prisma + PostgreSQL
+
+IMPORTANT :
+- Code SIMPLE, lisible, robuste
+- Logique métier AUTOMATIQUE (pas dépendre du frontend)
+- Respect du PCG 2005 simplifié
+- Traçabilité complète par LOT
+
+-----------------------------------
+1. MODÈLES PRISMA (à créer ou compléter)
+-----------------------------------
+
+Lot
+Purchase
+StockMovement
+Sale
+SaleItem
+JournalEntry
+JournalLine
+
+-----------------------------------
+2. RÈGLE MÉTIER PRINCIPALE
+-----------------------------------
+
+TOUT passe par le LOT.
+
+Un achat crée automatiquement :
+- un lot
+- un mouvement de stock
+- une écriture comptable
+
+Une vente :
+- consomme un lot
+- met à jour le stock
+- génère une écriture comptable
+
+-----------------------------------
+3. ENDPOINT 1 : ACHAT COMPLET
+-----------------------------------
+
+POST /api/purchases
+
+Input JSON :
+{
+  "supplierId": "uuid",
+  "weight": 120,
+  "pricePerKg": 40000,
+  "totalAmount": 4800000,
+  "paymentMethod": "mobile_money",
+  "humidity": 38
+}
+
+LOGIQUE À IMPLÉMENTER :
+
+1. Créer Purchase
+
+2. Générer code lot unique :
+format : VAN-YYYY-XXXX
+
+3. Créer Lot :
+- weightInitial = weight
+- weightCurrent = weight
+- status = "raw"
+
+4. Créer StockMovement :
+type = "IN"
+
+5. Créer écriture comptable :
+JournalEntry :
+- débit compte 31 (stock)
+- crédit compte 401 (fournisseur)
+
+-----------------------------------
+4. ENDPOINT 2 : TRANSFORMATION LOT
+-----------------------------------
+
+PUT /api/lots/:id
+
+Input :
+{
+  "weightCurrent": 105,
+  "humidity": 28,
+  "grade": "gourmet",
+  "status": "ready"
+}
+
+LOGIQUE :
+
+- calcul perte = weightInitial - weightCurrent
+- créer StockMovement type "LOSS"
+- mettre à jour lot
+
+-----------------------------------
+5. ENDPOINT 3 : VENTE EXPORT
+-----------------------------------
+
+POST /api/sales
+
+Input :
+{
+  "clientId": "uuid",
+  "currency": "USD",
+  "incoterm": "FOB",
+  "items": [
+    {
+      "lotId": "uuid",
+      "quantity": 100,
+      "price": 120
+    }
+  ]
+}
+
+LOGIQUE :
+
+Pour chaque item :
+- vérifier stock disponible
+- décrémenter weightCurrent
+- créer StockMovement type "OUT"
+
+Calcul total
+
+Créer Sale + SaleItems
+
+Créer écriture comptable :
+- débit 411 (client)
+- crédit 701 (vente)
+
+-----------------------------------
+6. ENDPOINT 4 : PAIEMENT CLIENT
+-----------------------------------
+
+POST /api/payments
+
+Input :
+{
+  "saleId": "uuid",
+  "amount": 12000,
+  "method": "bank"
+}
+
+LOGIQUE :
+
+- créer paiement
+- écriture comptable :
+  débit 512 (banque)
+  crédit 411 (client)
+
+-----------------------------------
+7. CONTRAINTES MÉTIER
+-----------------------------------
+
+- empêcher vente si stock insuffisant
+- empêcher vente si lot.status != "ready"
+- arrondir poids à 2 décimales
+- logs console pour debug
+
+-----------------------------------
+8. STRUCTURE DOSSIERS
+-----------------------------------
+
+/controllers
+/services
+/routes
+/prisma
+
+-----------------------------------
+9. LIVRABLE
+-----------------------------------
+
+- Code backend complet
+- Routes fonctionnelles
+- Prisma schema à jour
+- Instructions :
+  - npx prisma migrate dev
+  - npm run dev
+
+-----------------------------------
+10. BONUS SI POSSIBLE
+-----------------------------------
+
+- fonction utilitaire generateLotCode()
+- middleware validation simple
+
+Commence par :
+1. Prisma schema
+2. Purchase endpoint complet
+3. Puis sale endpoint

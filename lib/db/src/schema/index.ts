@@ -5,3 +5,5 @@ export * from "./lots";
 export * from "./clients";
 export * from "./sales";
 export * from "./accounting";
+export * from "./stock_movements";
+export * from "./payments";

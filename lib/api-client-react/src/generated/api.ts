@@ -21,7 +21,7 @@ import type {
   ActivityItem,
   Client,
   CreateClientBody,
-  CreateLotBody,
+  CreatePaymentBody,
   CreatePurchaseBody,
   CreateSaleBody,
   CreateSupplierBody,
@@ -33,8 +33,11 @@ import type {
   LoginResponse,
   Lot,
   LotStatusCount,
+  Payment,
   Purchase,
+  PurchaseWithLot,
   Sale,
+  StockMovement,
   SuccessResponse,
   Supplier,
   UpdateLotBody,
@@ -766,7 +769,7 @@ export function useGetPurchases<
 }
 
 /**
- * @summary Create a purchase
+ * @summary Create a purchase (auto-creates lot + stock movement + journal entry)
  */
 export const getCreatePurchaseUrl = () => {
   return `/api/purchases`;
@@ -775,8 +778,8 @@ export const getCreatePurchaseUrl = () => {
 export const createPurchase = async (
   createPurchaseBody: CreatePurchaseBody,
   options?: RequestInit,
-): Promise<Purchase> => {
-  return customFetch<Purchase>(getCreatePurchaseUrl(), {
+): Promise<PurchaseWithLot> => {
+  return customFetch<PurchaseWithLot>(getCreatePurchaseUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -829,7 +832,7 @@ export type CreatePurchaseMutationBody = BodyType<CreatePurchaseBody>;
 export type CreatePurchaseMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a purchase
+ * @summary Create a purchase (auto-creates lot + stock movement + journal entry)
  */
 export const useCreatePurchase = <
   TError = ErrorType<unknown>,
@@ -917,92 +920,6 @@ export function useGetLots<
 }
 
 /**
- * @summary Create a lot
- */
-export const getCreateLotUrl = () => {
-  return `/api/lots`;
-};
-
-export const createLot = async (
-  createLotBody: CreateLotBody,
-  options?: RequestInit,
-): Promise<Lot> => {
-  return customFetch<Lot>(getCreateLotUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createLotBody),
-  });
-};
-
-export const getCreateLotMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createLot>>,
-    TError,
-    { data: BodyType<CreateLotBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createLot>>,
-  TError,
-  { data: BodyType<CreateLotBody> },
-  TContext
-> => {
-  const mutationKey = ["createLot"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createLot>>,
-    { data: BodyType<CreateLotBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return createLot(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CreateLotMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createLot>>
->;
-export type CreateLotMutationBody = BodyType<CreateLotBody>;
-export type CreateLotMutationError = ErrorType<unknown>;
-
-/**
- * @summary Create a lot
- */
-export const useCreateLot = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createLot>>,
-    TError,
-    { data: BodyType<CreateLotBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof createLot>>,
-  TError,
-  { data: BodyType<CreateLotBody> },
-  TContext
-> => {
-  return useMutation(getCreateLotMutationOptions(options));
-};
-
-/**
  * @summary Get a lot
  */
 export const getGetLotUrl = (id: string) => {
@@ -1078,7 +995,7 @@ export function useGetLot<
 }
 
 /**
- * @summary Update a lot
+ * @summary Update a lot (records LOSS stock movement if weight changed)
  */
 export const getUpdateLotUrl = (id: string) => {
   return `/api/lots/${id}`;
@@ -1142,7 +1059,7 @@ export type UpdateLotMutationBody = BodyType<UpdateLotBody>;
 export type UpdateLotMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update a lot
+ * @summary Update a lot (records LOSS stock movement if weight changed)
  */
 export const useUpdateLot = <
   TError = ErrorType<unknown>,
@@ -1474,7 +1391,7 @@ export function useGetSales<
 }
 
 /**
- * @summary Create a sale
+ * @summary Create a sale (validates stock, records OUT movements + journal entry)
  */
 export const getCreateSaleUrl = () => {
   return `/api/sales`;
@@ -1493,7 +1410,7 @@ export const createSale = async (
 };
 
 export const getCreateSaleMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1534,13 +1451,13 @@ export type CreateSaleMutationResult = NonNullable<
   Awaited<ReturnType<typeof createSale>>
 >;
 export type CreateSaleMutationBody = BodyType<CreateSaleBody>;
-export type CreateSaleMutationError = ErrorType<unknown>;
+export type CreateSaleMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Create a sale
+ * @summary Create a sale (validates stock, records OUT movements + journal entry)
  */
 export const useCreateSale = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1628,6 +1545,242 @@ export function useGetSale<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetSaleQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all payments
+ */
+export const getGetPaymentsUrl = () => {
+  return `/api/payments`;
+};
+
+export const getPayments = async (
+  options?: RequestInit,
+): Promise<Payment[]> => {
+  return customFetch<Payment[]>(getGetPaymentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPaymentsQueryKey = () => {
+  return [`/api/payments`] as const;
+};
+
+export const getGetPaymentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPayments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPayments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPaymentsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayments>>> = ({
+    signal,
+  }) => getPayments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPayments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPaymentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPayments>>
+>;
+export type GetPaymentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all payments
+ */
+
+export function useGetPayments<
+  TData = Awaited<ReturnType<typeof getPayments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPayments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPaymentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record a client payment (debit 512 / credit 411)
+ */
+export const getCreatePaymentUrl = () => {
+  return `/api/payments`;
+};
+
+export const createPayment = async (
+  createPaymentBody: CreatePaymentBody,
+  options?: RequestInit,
+): Promise<Payment> => {
+  return customFetch<Payment>(getCreatePaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPaymentBody),
+  });
+};
+
+export const getCreatePaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPayment>>,
+    TError,
+    { data: BodyType<CreatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPayment>>,
+  TError,
+  { data: BodyType<CreatePaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["createPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPayment>>,
+    { data: BodyType<CreatePaymentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPayment>>
+>;
+export type CreatePaymentMutationBody = BodyType<CreatePaymentBody>;
+export type CreatePaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Record a client payment (debit 512 / credit 411)
+ */
+export const useCreatePayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPayment>>,
+    TError,
+    { data: BodyType<CreatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPayment>>,
+  TError,
+  { data: BodyType<CreatePaymentBody> },
+  TContext
+> => {
+  return useMutation(getCreatePaymentMutationOptions(options));
+};
+
+/**
+ * @summary List all stock movements
+ */
+export const getGetStockMovementsUrl = () => {
+  return `/api/stock-movements`;
+};
+
+export const getStockMovements = async (
+  options?: RequestInit,
+): Promise<StockMovement[]> => {
+  return customFetch<StockMovement[]>(getGetStockMovementsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStockMovementsQueryKey = () => {
+  return [`/api/stock-movements`] as const;
+};
+
+export const getGetStockMovementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStockMovements>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStockMovements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStockMovementsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStockMovements>>
+  > = ({ signal }) => getStockMovements({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStockMovements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStockMovementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStockMovements>>
+>;
+export type GetStockMovementsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all stock movements
+ */
+
+export function useGetStockMovements<
+  TData = Awaited<ReturnType<typeof getStockMovements>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStockMovements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStockMovementsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
