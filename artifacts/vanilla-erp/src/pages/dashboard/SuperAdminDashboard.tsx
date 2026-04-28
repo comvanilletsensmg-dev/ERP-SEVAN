@@ -3,9 +3,9 @@ import { Package, TrendingUp, Users, Banknote, Warehouse, BarChart2, UserCheck, 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from "recharts";
 
 interface SuperAdminData {
-  logistics: { totalStockKg: number; totalSalesUsd: number; totalPurchasesMga: number; activeLotsCount: number; suppliersCount: number; clientsCount: number; lotStatusBreakdown: { status: string; count: number; totalKg: number }[] };
-  hr: { totalEmployees: number; activeEmployees: number; absentToday: number; pendingLeaves: number; pendingRequests: number; totalSalariesMga: number };
-  accounting: { revenue: number; charges: number; resultat: number; bankBalance: number; pendingInvoices: number };
+  logistics?: { totalStockKg: number; totalSalesUsd: number; totalPurchasesMga: number; activeLotsCount: number; suppliersCount: number; clientsCount: number; lotStatusBreakdown: { status: string; count: number; totalKg: number }[] };
+  hr?: { totalEmployees: number; activeEmployees: number; absentToday: number; pendingLeaves: number; pendingRequests: number; totalSalariesMga: number };
+  accounting?: { revenue: number; charges: number; resultat: number; bankBalance: number; pendingInvoices: number };
 }
 
 const LOT_COLORS: Record<string, string> = { curing: "#f59e0b", drying: "#f97316", ready: "#22c55e", sold: "#94a3b8" };
@@ -28,6 +28,16 @@ function KPICard({ title, value, sub, Icon, accent }: { title: string; value: st
 
 export default function SuperAdminDashboard({ data }: { data: SuperAdminData }) {
   const { logistics: l, hr, accounting: a } = data;
+
+  if (!l || !hr || !a) {
+    return (
+      <div className="flex items-center gap-3 text-muted-foreground p-4">
+        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        Chargement des données consolidées…
+      </div>
+    );
+  }
+
   const barData = [
     { name: "Revenus", value: a.revenue / 1_000_000 },
     { name: "Charges", value: a.charges / 1_000_000 },
