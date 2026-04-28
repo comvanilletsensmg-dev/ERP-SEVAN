@@ -232,6 +232,8 @@ export interface Employee {
   position: string;
   department?: string | null;
   salary?: number | null;
+  hireDate?: string | null;
+  isActive: boolean;
   phone?: string | null;
   createdAt: string;
 }
@@ -241,6 +243,8 @@ export interface CreateEmployeeBody {
   position: string;
   department?: string | null;
   salary?: number | null;
+  hireDate?: string | null;
+  isActive?: boolean | null;
   phone?: string | null;
 }
 
@@ -316,6 +320,93 @@ export interface HrDashboardSummary {
   absentToday: number;
   pendingLeaves: number;
   pendingRequests: number;
+  totalSalariesMga: number;
+  totalBonusesMga: number;
+}
+
+export interface PayrollRecord {
+  id: string;
+  employeeId: string;
+  month: string;
+  salaryBase: number;
+  bonus: number;
+  deductions: number;
+  charges: number;
+  netSalary: number;
+  createdAt: string;
+  employee?: Employee;
+}
+
+export interface GeneratePayrollBody {
+  employeeId: string;
+  /** YYYY-MM */
+  month: string;
+}
+
+export type BonusRecordLot = { [key: string]: unknown } | null;
+
+export interface BonusRecord {
+  id: string;
+  employeeId: string;
+  lotId: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  createdAt: string;
+  employee?: Employee;
+  lot?: BonusRecordLot;
+}
+
+export interface CreateBonusBody {
+  employeeId: string;
+  lotId: string;
+  quantity: number;
+  /** MGA per kg */
+  rate: number;
+}
+
+export interface Candidate {
+  id: string;
+  name: string;
+  position: string;
+  /** new | interview | hired | rejected */
+  status: string;
+  phone?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreateCandidateBody {
+  name: string;
+  position: string;
+  phone?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateCandidateBody {
+  /** new | interview | hired | rejected */
+  status?: string;
+  notes?: string | null;
+}
+
+export interface OnboardingTask {
+  id: string;
+  employeeId: string;
+  title: string;
+  /** pending | done */
+  status: string;
+  createdAt: string;
+  employee?: Employee;
+}
+
+export interface CreateOnboardingTaskBody {
+  employeeId: string;
+  title: string;
+}
+
+export interface UpdateOnboardingTaskBody {
+  /** pending | done */
+  status?: string;
 }
 
 export type GetAttendanceParams = {
@@ -323,5 +414,21 @@ export type GetAttendanceParams = {
    * Filter by date (YYYY-MM-DD)
    */
   date?: string;
+  employeeId?: string;
+};
+
+export type GetPayrollsParams = {
+  /**
+   * Filter by month (YYYY-MM)
+   */
+  month?: string;
+  employeeId?: string;
+};
+
+export type GetBonusesParams = {
+  employeeId?: string;
+};
+
+export type GetOnboardingTasksParams = {
   employeeId?: string;
 };

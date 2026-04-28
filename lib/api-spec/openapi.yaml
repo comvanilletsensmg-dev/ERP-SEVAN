@@ -755,6 +755,204 @@ paths:
               schema:
                 $ref: "#/components/schemas/HrDashboardSummary"
 
+  /payroll:
+    get:
+      operationId: getPayrolls
+      tags: [hr]
+      summary: List payroll records
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+          description: Filter by month (YYYY-MM)
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of payroll records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayrollRecord"
+    post:
+      operationId: generatePayroll
+      tags: [hr]
+      summary: Generate payroll for an employee and month
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeneratePayrollBody"
+      responses:
+        "201":
+          description: Payroll generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollRecord"
+
+  /bonuses:
+    get:
+      operationId: getBonuses
+      tags: [hr]
+      summary: List all production bonuses
+      parameters:
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of bonuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BonusRecord"
+    post:
+      operationId: createBonus
+      tags: [hr]
+      summary: Award a production bonus (lot-based)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBonusBody"
+      responses:
+        "201":
+          description: Bonus created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BonusRecord"
+
+  /candidates:
+    get:
+      operationId: getCandidates
+      tags: [hr]
+      summary: List recruitment candidates
+      responses:
+        "200":
+          description: List of candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candidate"
+    post:
+      operationId: createCandidate
+      tags: [hr]
+      summary: Add a new candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCandidateBody"
+      responses:
+        "201":
+          description: Candidate created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+  /candidates/{id}:
+    put:
+      operationId: updateCandidate
+      tags: [hr]
+      summary: Update candidate status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCandidateBody"
+      responses:
+        "200":
+          description: Candidate updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+  /onboarding:
+    get:
+      operationId: getOnboardingTasks
+      tags: [hr]
+      summary: List onboarding tasks
+      parameters:
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of onboarding tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OnboardingTask"
+    post:
+      operationId: createOnboardingTask
+      tags: [hr]
+      summary: Create onboarding task for employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOnboardingTaskBody"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingTask"
+
+  /onboarding/{id}:
+    put:
+      operationId: updateOnboardingTask
+      tags: [hr]
+      summary: Update onboarding task status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOnboardingTaskBody"
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingTask"
+
 components:
   schemas:
     HealthStatus:
@@ -1296,6 +1494,11 @@ components:
         salary:
           type: number
           nullable: true
+        hireDate:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
         phone:
           type: string
           nullable: true
@@ -1305,6 +1508,7 @@ components:
         - id
         - name
         - position
+        - isActive
         - createdAt
 
     CreateEmployeeBody:
@@ -1319,6 +1523,12 @@ components:
           nullable: true
         salary:
           type: number
+          nullable: true
+        hireDate:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
           nullable: true
         phone:
           type: string
@@ -1482,8 +1692,204 @@ components:
           type: number
         pendingRequests:
           type: number
+        totalSalariesMga:
+          type: number
+        totalBonusesMga:
+          type: number
       required:
         - totalEmployees
         - absentToday
         - pendingLeaves
         - pendingRequests
+        - totalSalariesMga
+        - totalBonusesMga
+
+    PayrollRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        month:
+          type: string
+        salaryBase:
+          type: number
+        bonus:
+          type: number
+        deductions:
+          type: number
+        charges:
+          type: number
+        netSalary:
+          type: number
+        createdAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - month
+        - salaryBase
+        - bonus
+        - deductions
+        - charges
+        - netSalary
+        - createdAt
+
+    GeneratePayrollBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        month:
+          type: string
+          description: "YYYY-MM"
+      required:
+        - employeeId
+        - month
+
+    BonusRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        lotId:
+          type: string
+        quantity:
+          type: number
+        rate:
+          type: number
+        amount:
+          type: number
+        createdAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+        lot:
+          type: object
+          nullable: true
+      required:
+        - id
+        - employeeId
+        - lotId
+        - quantity
+        - rate
+        - amount
+        - createdAt
+
+    CreateBonusBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        lotId:
+          type: string
+        quantity:
+          type: number
+        rate:
+          type: number
+          description: MGA per kg
+      required:
+        - employeeId
+        - lotId
+        - quantity
+        - rate
+
+    Candidate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        position:
+          type: string
+        status:
+          type: string
+          description: new | interview | hired | rejected
+        phone:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - position
+        - status
+        - createdAt
+
+    CreateCandidateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - position
+
+    UpdateCandidateBody:
+      type: object
+      properties:
+        status:
+          type: string
+          description: new | interview | hired | rejected
+        notes:
+          type: string
+          nullable: true
+
+    OnboardingTask:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          description: pending | done
+        createdAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - title
+        - status
+        - createdAt
+
+    CreateOnboardingTaskBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        title:
+          type: string
+      required:
+        - employeeId
+        - title
+
+    UpdateOnboardingTaskBody:
+      type: object
+      properties:
+        status:
+          type: string
+          description: pending | done

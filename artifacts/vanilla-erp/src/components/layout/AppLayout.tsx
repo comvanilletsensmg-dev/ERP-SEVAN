@@ -18,6 +18,9 @@ import {
   CalendarDays,
   ClipboardList,
   MessageSquare,
+  Banknote,
+  Award,
+  UserPlus,
 } from "lucide-react";
 
 const mainNav = [
@@ -33,10 +36,13 @@ const mainNav = [
 ];
 
 const hrNav = [
-  { label: "Employés",    href: "/hr/employees",  icon: UserCheck },
-  { label: "Congés",      href: "/hr/leaves",     icon: CalendarDays },
-  { label: "Pointage",    href: "/hr/attendance",  icon: ClipboardList },
-  { label: "Demandes RH", href: "/hr/requests",   icon: MessageSquare },
+  { label: "Employés",         href: "/hr/employees",  icon: UserCheck },
+  { label: "Congés",           href: "/hr/leaves",     icon: CalendarDays },
+  { label: "Pointage",         href: "/hr/attendance", icon: ClipboardList },
+  { label: "Demandes RH",      href: "/hr/requests",   icon: MessageSquare },
+  { label: "Paie",             href: "/hr/payroll",    icon: Banknote },
+  { label: "Primes Production",href: "/hr/bonuses",    icon: Award },
+  { label: "Recrutement",      href: "/hr/candidates", icon: UserPlus },
 ];
 
 function NavItem({ href, label, icon: Icon, location }: { href: string; label: string; icon: React.ElementType; location: string }) {

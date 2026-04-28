@@ -11,3 +11,7 @@ export * from "./employees";
 export * from "./leaves";
 export * from "./attendance";
 export * from "./hr_requests";
+export * from "./payroll";
+export * from "./bonuses";
+export * from "./candidates";
+export * from "./onboarding";

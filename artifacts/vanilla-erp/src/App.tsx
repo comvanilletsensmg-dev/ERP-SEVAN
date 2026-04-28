@@ -20,6 +20,9 @@ import Employees from "@/pages/Employees";
 import Leaves from "@/pages/Leaves";
 import Attendance from "@/pages/Attendance";
 import HrRequests from "@/pages/HrRequests";
+import Payroll from "@/pages/Payroll";
+import Bonuses from "@/pages/Bonuses";
+import Candidates from "@/pages/Candidates";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +60,9 @@ function Router() {
       <Route path="/hr/leaves" component={() => <ProtectedRoute component={Leaves} />} />
       <Route path="/hr/attendance" component={() => <ProtectedRoute component={Attendance} />} />
       <Route path="/hr/requests" component={() => <ProtectedRoute component={HrRequests} />} />
+      <Route path="/hr/payroll" component={() => <ProtectedRoute component={Payroll} />} />
+      <Route path="/hr/bonuses" component={() => <ProtectedRoute component={Bonuses} />} />
+      <Route path="/hr/candidates" component={() => <ProtectedRoute component={Candidates} />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -14,6 +14,10 @@ import employeesRouter from "./employees";
 import leavesRouter from "./leaves";
 import attendanceRouter from "./attendance";
 import hrRequestsRouter from "./hr-requests";
+import payrollRouter from "./payroll";
+import bonusesRouter from "./bonuses";
+import candidatesRouter from "./candidates";
+import onboardingRouter from "./onboarding";
 
 const router: IRouter = Router();
 
@@ -32,5 +36,9 @@ router.use(employeesRouter);
 router.use(leavesRouter);
 router.use(attendanceRouter);
 router.use(hrRequestsRouter);
+router.use(payrollRouter);
+router.use(bonusesRouter);
+router.use(candidatesRouter);
+router.use(onboardingRouter);
 
 export default router;

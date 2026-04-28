@@ -1,0 +1,249 @@
+Tu es un développeur full-stack senior expert ERP (Node.js, Prisma, React).
+
+Objectif :
+Ajouter un module RH COMPLET dans un ERP existant avec :
+- gestion employés
+- congés / présence
+- demandes RH
+- recrutement & onboarding (simple)
+- PAIE Madagascar (simplifiée mais réaliste)
+- système de PRIMES basé sur rendement vanille (lots traités)
+
+Contraintes :
+- simple, robuste, mobile-friendly
+- adapté PME Madagascar
+- devise MGA
+- intégration avec module LOT existant
+
+Stack :
+- Node.js + Express
+- Prisma + PostgreSQL
+- React + Tailwind
+
+-----------------------------------
+1. MODÈLES PRISMA (À AJOUTER)
+-----------------------------------
+
+model Employee {
+  id            String   @id @default(uuid())
+  name          String
+  position      String
+  department    String?
+  salaryBase    Float
+  hireDate      DateTime
+  phone         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  employeeId  String
+  type        String   // vacation, sick
+  startDate   DateTime
+  endDate     DateTime
+  status      String   // pending, approved, rejected
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model HRRequest {
+  id          String   @id @default(uuid())
+  employeeId  String
+  type        String   // advance, issue, leave
+  description String
+  status      String   // pending, approved
+  createdAt   DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Payroll {
+  id            String   @id @default(uuid())
+  employeeId    String
+  month         String
+  salaryBase    Float
+  bonus         Float
+  deductions    Float
+  netSalary     Float
+  createdAt     DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Bonus {
+  id          String   @id @default(uuid())
+  employeeId  String
+  lotId       String
+  quantity    Float
+  rate        Float
+  amount      Float
+  createdAt   DateTime @default(now())
+}
+
+-----------------------------------
+2. LOGIQUE MÉTIER – PRÉSENCE
+-----------------------------------
+
+POST /attendance/checkin
+→ crée checkIn = now
+
+POST /attendance/checkout
+→ calcule durée travail
+
+-----------------------------------
+3. LOGIQUE MÉTIER – CONGÉS
+-----------------------------------
+
+POST /leaves
+→ status = pending
+
+PUT /leaves/:id/approve
+→ status = approved
+
+-----------------------------------
+4. PAIE MADAGASCAR (SIMPLIFIÉE)
+-----------------------------------
+
+Créer service calculatePayroll(employeeId, month)
+
+LOGIQUE :
+
+salaireBase = employee.salaryBase
+
+bonus = somme(Bonus du mois)
+
+deductions =
+- absences (jours non travaillés)
+- avances (HRRequest type advance)
+
+charges simplifiées :
+- CNAPS ≈ 1% salarié
+- OSTIE ≈ 1% salarié
+
+netSalary =
+salaireBase + bonus - deductions - charges
+
+Créer Payroll automatiquement
+
+-----------------------------------
+5. PRIMES PAR RENDEMENT VANILLE
+-----------------------------------
+
+Objectif :
+payer les employés selon production réelle
+
+RÈGLE :
+
+Pour chaque lot traité :
+
+bonus = quantité traitée × taux
+
+Exemple :
+- 10 kg traité
+- taux = 2000 MGA/kg
+→ bonus = 20 000 MGA
+
+Endpoint :
+
+POST /bonuses
+{
+  "employeeId": "uuid",
+  "lotId": "uuid",
+  "quantity": 10,
+  "rate": 2000
+}
+
+-----------------------------------
+6. INTÉGRATION AVEC LOTS
+-----------------------------------
+
+Quand un lot est transformé :
+
+→ possibilité d’assigner un employé
+→ générer automatiquement un bonus
+
+-----------------------------------
+7. RECRUTEMENT (SIMPLE)
+-----------------------------------
+
+model Candidate {
+  id       String @id @default(uuid())
+  name     String
+  position String
+  status   String // new, interview, hired
+}
+
+Endpoints :
+- POST /candidates
+- PUT /candidates/:id
+
+-----------------------------------
+8. ONBOARDING
+-----------------------------------
+
+model OnboardingTask {
+  id          String @id @default(uuid())
+  employeeId  String
+  title       String
+  status      String
+}
+
+-----------------------------------
+9. UI (REACT)
+-----------------------------------
+
+Pages :
+
+/employees
+/leaves
+/attendance
+/payroll
+/bonuses
+/hr-requests
+/candidates
+
+-----------------------------------
+10. DASHBOARD RH
+-----------------------------------
+
+Afficher :
+- employés actifs
+- absents aujourd’hui
+- total salaires du mois
+- total bonus production
+
+-----------------------------------
+11. CONTRAINTES IMPORTANTES
+-----------------------------------
+
+- calcul paie automatique
+- éviter doublons bonus
+- validation admin obligatoire
+- logs clairs
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- Prisma schema complet
+- API fonctionnelle
+- UI simple
+- instructions :
+  npx prisma migrate dev
+  npm run dev
+
+Commence par :
+1. modèles Prisma
+2. bonus + payroll logic
+3. endpoints RH

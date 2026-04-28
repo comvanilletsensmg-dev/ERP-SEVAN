@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable } from "@workspace/db";
+import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable, payrollTable, bonusesTable } from "@workspace/db";
 import { sql, count, sum, eq, gte, lt, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
@@ -115,11 +115,28 @@ router.get("/dashboard/hr-summary", requireAuth, async (_req, res): Promise<void
     .from(hrRequestsTable)
     .where(eq(hrRequestsTable.status, "pending"));
 
+  // Current month total salaries from payroll table
+  const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
+  const [totalSalaries] = await db
+    .select({ total: sum(payrollTable.netSalary) })
+    .from(payrollTable)
+    .where(eq(payrollTable.month, currentMonth));
+
+  // Total bonuses this month
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const [totalBonuses] = await db
+    .select({ total: sum(bonusesTable.amount) })
+    .from(bonusesTable)
+    .where(and(gte(bonusesTable.createdAt, monthStart), lt(bonusesTable.createdAt, monthEnd)));
+
   res.json({
     totalEmployees: Number(empCount?.count ?? 0),
     absentToday: Number(absentToday?.count ?? 0),
     pendingLeaves: Number(pendingLeaves?.count ?? 0),
     pendingRequests: Number(pendingRequests?.count ?? 0),
+    totalSalariesMga: Number(totalSalaries?.total ?? 0),
+    totalBonusesMga: Number(totalBonuses?.total ?? 0),
   });
 });
 

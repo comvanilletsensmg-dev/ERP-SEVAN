@@ -6,9 +6,13 @@ import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
+function formatEmployee(e: typeof employeesTable.$inferSelect) {
+  return { ...e, createdAt: e.createdAt.toISOString(), hireDate: e.hireDate?.toISOString() ?? null };
+}
+
 router.get("/employees", requireAuth, async (_req, res): Promise<void> => {
   const employees = await db.select().from(employeesTable).orderBy(employeesTable.createdAt);
-  res.json(employees.map((e) => ({ ...e, createdAt: e.createdAt.toISOString() })));
+  res.json(employees.map(formatEmployee));
 });
 
 router.get("/employees/export/csv", requireAuth, async (_req, res): Promise<void> => {
@@ -36,9 +40,11 @@ router.post("/employees", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [employee] = await db.insert(employeesTable).values(parsed.data).returning();
+  const insertData: any = { ...parsed.data };
+  if (insertData.hireDate) insertData.hireDate = new Date(insertData.hireDate);
+  const [employee] = await db.insert(employeesTable).values(insertData).returning();
   console.log(`[HR] Created employee: ${employee.name} — ${employee.position}`);
-  res.status(201).json({ ...employee, createdAt: employee.createdAt.toISOString() });
+  res.status(201).json(formatEmployee(employee));
 });
 
 router.put("/employees/:id", requireAuth, async (req, res): Promise<void> => {
@@ -47,16 +53,18 @@ router.put("/employees/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const updateData: any = { ...parsed.data };
+  if (updateData.hireDate) updateData.hireDate = new Date(updateData.hireDate);
   const [employee] = await db
     .update(employeesTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(employeesTable.id, req.params.id))
     .returning();
   if (!employee) {
     res.status(404).json({ error: "Employé introuvable" });
     return;
   }
-  res.json({ ...employee, createdAt: employee.createdAt.toISOString() });
+  res.json(formatEmployee(employee));
 });
 
 export default router;

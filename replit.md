@@ -71,10 +71,14 @@ Tables:
 - `accounts` — plan comptable PCG 2005 (31, 401, 411, 512, 701…)
 - `journal_entries` — écritures comptables
 - `journal_lines` — lignes d'écriture (debit/credit)
-- `employees` — employés (name, position, department, salary, phone)
+- `employees` — employés (name, position, department, salary, hireDate, isActive, phone)
 - `leaves` — congés (employeeId, type: vacation|sick, startDate, endDate, status: pending|approved|rejected)
 - `attendance` — pointage (employeeId, date, checkIn, checkOut)
 - `hr_requests` — demandes RH (employeeId, type: leave|advance|issue, description, status: pending|approved)
+- `payroll` — fiches de paie (employeeId, month YYYY-MM, salaryBase, bonus, deductions, charges, netSalary)
+- `bonuses` — primes production (employeeId, lotId, quantity kg, rate MGA/kg, amount)
+- `candidates` — recrutement (name, position, status: new|interview|hired|rejected, phone, notes)
+- `onboarding_tasks` — onboarding (employeeId, title, status: pending|done)
 
 ## Frontend Pages
 
@@ -87,7 +91,10 @@ Tables:
 - `/payments` — enregistrement paiement client
 - `/stock-movements` — traçabilité complète (IN / OUT / LOSS)
 - `/accounting` — journal comptable PCG 2005
-- `/hr/employees` — liste + création + modification employés (export CSV)
+- `/hr/employees` — liste + création + modification employés (export CSV, hireDate, isActive)
 - `/hr/leaves` — demandes de congé + approbation/rejet
 - `/hr/attendance` — pointage journalier (check-in / check-out) par employé
 - `/hr/requests` — demandes RH générales (avance, problème, congé)
+- `/hr/payroll` — génération fiche de paie (salaire + primes − absences − CNAPS/OSTIE 2%)
+- `/hr/bonuses` — primes production liées aux lots vanille (quantité × taux MGA/kg)
+- `/hr/candidates` — pipeline recrutement kanban (nouveau → entretien → recruté) + onboarding tasks

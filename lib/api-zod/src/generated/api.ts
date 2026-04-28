@@ -614,6 +614,8 @@ export const GetEmployeesResponseItem = zod.object({
   position: zod.string(),
   department: zod.string().nullish(),
   salary: zod.number().nullish(),
+  hireDate: zod.string().nullish(),
+  isActive: zod.boolean(),
   phone: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -627,6 +629,8 @@ export const CreateEmployeeBody = zod.object({
   position: zod.string(),
   department: zod.string().nullish(),
   salary: zod.number().nullish(),
+  hireDate: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
   phone: zod.string().nullish(),
 });
 
@@ -642,6 +646,8 @@ export const UpdateEmployeeBody = zod.object({
   position: zod.string(),
   department: zod.string().nullish(),
   salary: zod.number().nullish(),
+  hireDate: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
   phone: zod.string().nullish(),
 });
 
@@ -651,6 +657,8 @@ export const UpdateEmployeeResponse = zod.object({
   position: zod.string(),
   department: zod.string().nullish(),
   salary: zod.number().nullish(),
+  hireDate: zod.string().nullish(),
+  isActive: zod.boolean(),
   phone: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -673,6 +681,8 @@ export const GetLeavesResponseItem = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -716,6 +726,8 @@ export const ApproveLeaveResponse = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -743,6 +755,8 @@ export const GetAttendanceResponseItem = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -777,6 +791,8 @@ export const CheckOutResponse = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -800,6 +816,8 @@ export const GetHrRequestsResponseItem = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -841,6 +859,8 @@ export const UpdateHrRequestResponse = zod.object({
       position: zod.string(),
       department: zod.string().nullish(),
       salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
       phone: zod.string().nullish(),
       createdAt: zod.string(),
     })
@@ -855,4 +875,210 @@ export const GetHrDashboardSummaryResponse = zod.object({
   absentToday: zod.number(),
   pendingLeaves: zod.number(),
   pendingRequests: zod.number(),
+  totalSalariesMga: zod.number(),
+  totalBonusesMga: zod.number(),
+});
+
+/**
+ * @summary List payroll records
+ */
+export const GetPayrollsQueryParams = zod.object({
+  month: zod.coerce.string().optional().describe("Filter by month (YYYY-MM)"),
+  employeeId: zod.coerce.string().optional(),
+});
+
+export const GetPayrollsResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  month: zod.string(),
+  salaryBase: zod.number(),
+  bonus: zod.number(),
+  deductions: zod.number(),
+  charges: zod.number(),
+  netSalary: zod.number(),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetPayrollsResponse = zod.array(GetPayrollsResponseItem);
+
+/**
+ * @summary Generate payroll for an employee and month
+ */
+export const GeneratePayrollBody = zod.object({
+  employeeId: zod.string(),
+  month: zod.string().describe("YYYY-MM"),
+});
+
+/**
+ * @summary List all production bonuses
+ */
+export const GetBonusesQueryParams = zod.object({
+  employeeId: zod.coerce.string().optional(),
+});
+
+export const GetBonusesResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  lotId: zod.string(),
+  quantity: zod.number(),
+  rate: zod.number(),
+  amount: zod.number(),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+  lot: zod.object({}).passthrough().nullish(),
+});
+export const GetBonusesResponse = zod.array(GetBonusesResponseItem);
+
+/**
+ * @summary Award a production bonus (lot-based)
+ */
+export const CreateBonusBody = zod.object({
+  employeeId: zod.string(),
+  lotId: zod.string(),
+  quantity: zod.number(),
+  rate: zod.number().describe("MGA per kg"),
+});
+
+/**
+ * @summary List recruitment candidates
+ */
+export const GetCandidatesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  position: zod.string(),
+  status: zod.string().describe("new | interview | hired | rejected"),
+  phone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetCandidatesResponse = zod.array(GetCandidatesResponseItem);
+
+/**
+ * @summary Add a new candidate
+ */
+export const CreateCandidateBody = zod.object({
+  name: zod.string(),
+  position: zod.string(),
+  phone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update candidate status
+ */
+export const UpdateCandidateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateCandidateBody = zod.object({
+  status: zod
+    .string()
+    .optional()
+    .describe("new | interview | hired | rejected"),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateCandidateResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  position: zod.string(),
+  status: zod.string().describe("new | interview | hired | rejected"),
+  phone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary List onboarding tasks
+ */
+export const GetOnboardingTasksQueryParams = zod.object({
+  employeeId: zod.coerce.string().optional(),
+});
+
+export const GetOnboardingTasksResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  title: zod.string(),
+  status: zod.string().describe("pending | done"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetOnboardingTasksResponse = zod.array(
+  GetOnboardingTasksResponseItem,
+);
+
+/**
+ * @summary Create onboarding task for employee
+ */
+export const CreateOnboardingTaskBody = zod.object({
+  employeeId: zod.string(),
+  title: zod.string(),
+});
+
+/**
+ * @summary Update onboarding task status
+ */
+export const UpdateOnboardingTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateOnboardingTaskBody = zod.object({
+  status: zod.string().optional().describe("pending | done"),
+});
+
+export const UpdateOnboardingTaskResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  title: zod.string(),
+  status: zod.string().describe("pending | done"),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
 });
