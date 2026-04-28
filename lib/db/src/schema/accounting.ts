@@ -13,6 +13,7 @@ export const journalEntriesTable = pgTable("journal_entries", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   date: timestamp("date").notNull().defaultNow(),
   reference: text("reference").notNull(),
+  description: text("description"),
 });
 
 export const journalLinesTable = pgTable("journal_lines", {

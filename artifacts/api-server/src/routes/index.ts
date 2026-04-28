@@ -18,6 +18,11 @@ import payrollRouter from "./payroll";
 import bonusesRouter from "./bonuses";
 import candidatesRouter from "./candidates";
 import onboardingRouter from "./onboarding";
+import accountingPartnersRouter from "./accounting-partners";
+import accountingInvoicesRouter from "./accounting-invoices";
+import accountingBankRouter from "./accounting-bank";
+import accountingAssetsRouter from "./accounting-assets";
+import accountingReportsRouter from "./accounting-reports";
 
 const router: IRouter = Router();
 
@@ -40,5 +45,10 @@ router.use(payrollRouter);
 router.use(bonusesRouter);
 router.use(candidatesRouter);
 router.use(onboardingRouter);
+router.use(accountingPartnersRouter);
+router.use(accountingInvoicesRouter);
+router.use(accountingBankRouter);
+router.use(accountingAssetsRouter);
+router.use(accountingReportsRouter);
 
 export default router;

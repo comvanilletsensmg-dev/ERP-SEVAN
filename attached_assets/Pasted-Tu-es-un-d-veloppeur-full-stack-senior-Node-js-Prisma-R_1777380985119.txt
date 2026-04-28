@@ -1,0 +1,285 @@
+Tu es un développeur full-stack senior (Node.js, Prisma, React).
+
+Objectif :
+Implémenter un module COMPTABILITÉ dans un ERP existant, limité à :
+- tenue comptable (PCG 2005)
+- bilans financiers (bilan, résultat)
+- saisie automatique des factures (OCR)
+- rapprochement bancaire (semi-automatique)
+- gestion des tiers (clients/fournisseurs)
+- facturation
+- immobilisations (cycle de vie simple)
+- TVA (Madagascar)
+- reporting temps réel
+- import scan (PDF/JPG/PNG) + export (PDF/Excel)
+
+Contraintes :
+- simple, fiable, automatisé
+- zéro double saisie (écritures générées par les flux)
+- multi-devises (MGA, USD, EUR)
+- tolérance connexion lente
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL
+- ORM : Prisma
+- OCR : Tesseract.js (fallback) + possibilité API externe
+- Files : stockage local /uploads
+- Front : React + Tailwind
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Account {
+  id    String @id @default(uuid())
+  code  String @unique   // PCG (31, 401, 411, 512…)
+  name  String
+  type  String           // asset, liability, expense, revenue
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid())
+  date        DateTime
+  reference   String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model JournalLine {
+  id        String @id @default(uuid())
+  entryId   String
+  accountId String
+  debit     Float
+  credit    Float
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id])
+  account Account      @relation(fields: [accountId], references: [id])
+}
+
+model Partner { // tiers
+  id      String @id @default(uuid())
+  name    String
+  type    String // client, supplier
+  email   String?
+  phone   String?
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  partnerId   String
+  type        String   // sale, purchase
+  amountHT    Float
+  tva         Float
+  amountTTC   Float
+  currency    String
+  status      String   // draft, validated, paid
+  dueDate     DateTime?
+  fileUrl     String?  // doc OCR
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  partnerId   String?
+  invoiceId   String?
+  amount      Float
+  method      String   // bank, cash, mobile_money
+  currency    String
+  date        DateTime
+}
+
+model BankTransaction {
+  id          String   @id @default(uuid())
+  date        DateTime
+  description String
+  amount      Float
+  matched     Boolean @default(false)
+}
+
+model FixedAsset {
+  id            String   @id @default(uuid())
+  name          String
+  value         Float
+  startDate     DateTime
+  depreciation  Float
+  durationMonths Int
+}
+
+-----------------------------------
+2. OCR FACTURES (SCAN / UPLOAD)
+-----------------------------------
+
+Créer endpoint :
+
+POST /api/documents/upload
+
+- accepter PDF, PNG, JPEG
+- sauvegarder dans /uploads
+
+OCR LOGIQUE :
+- extraire :
+  - fournisseur/client
+  - montant HT / TTC
+  - date
+- créer Invoice automatiquement
+
+Utiliser :
+- tesseract.js
+- parser simple regex
+
+-----------------------------------
+3. ÉCRITURES AUTOMATIQUES
+-----------------------------------
+
+Quand Invoice VALIDATED :
+
+ACHAT :
+- débit 6xx (charge ou stock)
+- débit TVA (445)
+- crédit 401
+
+VENTE :
+- débit 411
+- crédit 7xx
+- crédit TVA (445)
+
+PAIEMENT :
+- débit 512 / 53
+- crédit 401 ou 411
+
+-----------------------------------
+4. RAPPROCHEMENT BANCAIRE
+-----------------------------------
+
+POST /api/bank/import
+
+- importer CSV banque
+
+LOGIQUE :
+- matcher avec Payment / Invoice
+- marquer matched = true
+
+UI :
+- bouton “matcher automatiquement”
+- validation manuelle
+
+-----------------------------------
+5. GESTION DES TIERS
+-----------------------------------
+
+- liste clients/fournisseurs
+- balance âgée :
+  - factures non payées
+- relances simples (statut overdue)
+
+-----------------------------------
+6. FACTURATION
+-----------------------------------
+
+POST /api/invoices
+
+- créer facture
+- calcul TVA (20%)
+
+Générer PDF :
+- template HTML → PDF
+
+-----------------------------------
+7. IMMOBILISATIONS
+-----------------------------------
+
+Créer actif :
+
+- calcul amortissement mensuel :
+value / durationMonths
+
+générer écriture :
+- débit charge amortissement
+- crédit amortissement cumulé
+
+-----------------------------------
+8. TVA (MADAGASCAR)
+-----------------------------------
+
+- taux = 20%
+- export = 0%
+
+Calcul automatique :
+- TVA collectée
+- TVA déductible
+
+Rapport TVA :
+GET /api/reports/tva
+
+-----------------------------------
+9. BILANS FINANCIERS
+-----------------------------------
+
+Créer endpoints :
+
+GET /api/reports/balance
+GET /api/reports/income
+GET /api/reports/general-ledger
+
+-----------------------------------
+10. REPORTING DASHBOARD
+-----------------------------------
+
+Afficher :
+
+- chiffre d’affaires
+- charges
+- résultat
+- trésorerie
+- factures en attente
+
+-----------------------------------
+11. IMPORT / EXPORT FICHIERS
+-----------------------------------
+
+IMPORT :
+- upload fichiers (scan imprimante locale → dossier)
+- CSV banque
+
+EXPORT :
+- PDF factures
+- Excel balance
+- rapport comptable
+
+-----------------------------------
+12. UI PAGES
+-----------------------------------
+
+/accounting/dashboard
+/accounting/invoices
+/accounting/partners
+/accounting/bank
+/accounting/reports
+/accounting/assets
+
+-----------------------------------
+13. CONTRAINTES IMPORTANTES
+-----------------------------------
+
+- aucune écriture déséquilibrée
+- validation obligatoire
+- logs debug
+- gestion erreurs OCR
+
+-----------------------------------
+14. LIVRABLE
+-----------------------------------
+
+- backend fonctionnel
+- OCR opérationnel
+- reporting simple
+- instructions :
+  npx prisma migrate dev
+  npm run dev
+
+Commence par :
+1. modèles Prisma
+2. upload + OCR
+3. invoice + écritures

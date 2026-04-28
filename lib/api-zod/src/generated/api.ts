@@ -1082,3 +1082,373 @@ export const UpdateOnboardingTaskResponse = zod.object({
     })
     .optional(),
 });
+
+/**
+ * @summary List accounting partners (tiers)
+ */
+export const GetPartnersResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  type: zod.string().describe("client | supplier"),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  vatNumber: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetPartnersResponse = zod.array(GetPartnersResponseItem);
+
+/**
+ * @summary Create accounting partner
+ */
+export const CreatePartnerBody = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  vatNumber: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update accounting partner
+ */
+export const UpdatePartnerParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdatePartnerBody = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  vatNumber: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdatePartnerResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  type: zod.string().describe("client | supplier"),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  vatNumber: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary List invoices
+ */
+export const GetInvoicesQueryParams = zod.object({
+  type: zod.coerce.string().optional().describe("sale | purchase"),
+  status: zod.coerce.string().optional().describe("draft | validated | paid"),
+  partnerId: zod.coerce.string().optional(),
+});
+
+export const GetInvoicesResponseItem = zod.object({
+  id: zod.string(),
+  invoiceNumber: zod.string(),
+  partnerId: zod.string(),
+  type: zod.string().describe("sale | purchase"),
+  currency: zod.string(),
+  amountHT: zod.number(),
+  tvaRate: zod.number(),
+  tvaMontant: zod.number(),
+  amountTTC: zod.number(),
+  status: zod.string().describe("draft | validated | paid"),
+  dueDate: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  journalEntryId: zod.string().nullish(),
+  createdAt: zod.string(),
+  partner: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      type: zod.string().describe("client | supplier"),
+      email: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      vatNumber: zod.string().nullish(),
+      address: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetInvoicesResponse = zod.array(GetInvoicesResponseItem);
+
+/**
+ * @summary Create invoice
+ */
+export const CreateInvoiceBody = zod.object({
+  invoiceNumber: zod.string(),
+  partnerId: zod.string(),
+  type: zod.string(),
+  currency: zod.string().optional(),
+  amountHT: zod.number(),
+  tvaRate: zod.number().optional(),
+  dueDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Validate invoice and post to journal
+ */
+export const ValidateInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ValidateInvoiceResponse = zod.object({
+  id: zod.string(),
+  invoiceNumber: zod.string(),
+  partnerId: zod.string(),
+  type: zod.string().describe("sale | purchase"),
+  currency: zod.string(),
+  amountHT: zod.number(),
+  tvaRate: zod.number(),
+  tvaMontant: zod.number(),
+  amountTTC: zod.number(),
+  status: zod.string().describe("draft | validated | paid"),
+  dueDate: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  journalEntryId: zod.string().nullish(),
+  createdAt: zod.string(),
+  partner: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      type: zod.string().describe("client | supplier"),
+      email: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      vatNumber: zod.string().nullish(),
+      address: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Mark invoice as paid and post payment entry
+ */
+export const PayInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PayInvoiceResponse = zod.object({
+  id: zod.string(),
+  invoiceNumber: zod.string(),
+  partnerId: zod.string(),
+  type: zod.string().describe("sale | purchase"),
+  currency: zod.string(),
+  amountHT: zod.number(),
+  tvaRate: zod.number(),
+  tvaMontant: zod.number(),
+  amountTTC: zod.number(),
+  status: zod.string().describe("draft | validated | paid"),
+  dueDate: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  journalEntryId: zod.string().nullish(),
+  createdAt: zod.string(),
+  partner: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      type: zod.string().describe("client | supplier"),
+      email: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      vatNumber: zod.string().nullish(),
+      address: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary List bank transactions
+ */
+export const GetBankResponseItem = zod.object({
+  id: zod.string(),
+  date: zod.string(),
+  description: zod.string(),
+  amount: zod.number(),
+  currency: zod.string(),
+  reference: zod.string().nullish(),
+  matched: zod.boolean(),
+  matchedRef: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetBankResponse = zod.array(GetBankResponseItem);
+
+/**
+ * @summary Create bank transaction manually
+ */
+export const CreateBankTransactionBody = zod.object({
+  date: zod.string(),
+  description: zod.string(),
+  amount: zod.number(),
+  currency: zod.string().optional(),
+  reference: zod.string().nullish(),
+});
+
+/**
+ * @summary Import bank transactions from CSV rows
+ */
+export const ImportBankTransactionsBody = zod.object({
+  rows: zod.array(
+    zod.object({
+      date: zod.string(),
+      description: zod.string(),
+      amount: zod.number(),
+      reference: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Match a bank transaction
+ */
+export const MatchBankTransactionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MatchBankTransactionBody = zod.object({
+  matchedRef: zod.string().nullish(),
+});
+
+export const MatchBankTransactionResponse = zod.object({
+  id: zod.string(),
+  date: zod.string(),
+  description: zod.string(),
+  amount: zod.number(),
+  currency: zod.string(),
+  reference: zod.string().nullish(),
+  matched: zod.boolean(),
+  matchedRef: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Unmatch a bank transaction
+ */
+export const UnmatchBankTransactionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UnmatchBankTransactionResponse = zod.object({
+  id: zod.string(),
+  date: zod.string(),
+  description: zod.string(),
+  amount: zod.number(),
+  currency: zod.string(),
+  reference: zod.string().nullish(),
+  matched: zod.boolean(),
+  matchedRef: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary List fixed assets
+ */
+export const GetAssetsResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  category: zod.string(),
+  value: zod.number(),
+  residualValue: zod.number(),
+  accumulatedDepreciation: zod.number(),
+  startDate: zod.string(),
+  durationMonths: zod.number(),
+  currency: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.string().describe("active | fully_depreciated | disposed"),
+  createdAt: zod.string(),
+});
+export const GetAssetsResponse = zod.array(GetAssetsResponseItem);
+
+/**
+ * @summary Create fixed asset
+ */
+export const CreateAssetBody = zod.object({
+  name: zod.string(),
+  category: zod.string().optional(),
+  value: zod.number(),
+  residualValue: zod.number().optional(),
+  startDate: zod.string(),
+  durationMonths: zod.number(),
+  currency: zod.string().optional(),
+  notes: zod.string().nullish(),
+  status: zod.string().optional(),
+});
+
+/**
+ * @summary Post one monthly depreciation for an asset
+ */
+export const DepreciateAssetParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DepreciateAssetResponse = zod.object({
+  asset: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    category: zod.string(),
+    value: zod.number(),
+    residualValue: zod.number(),
+    accumulatedDepreciation: zod.number(),
+    startDate: zod.string(),
+    durationMonths: zod.number(),
+    currency: zod.string(),
+    notes: zod.string().nullish(),
+    status: zod.string().describe("active | fully_depreciated | disposed"),
+    createdAt: zod.string(),
+  }),
+  monthlyDepreciation: zod.number(),
+  totalAccumulated: zod.number(),
+});
+
+/**
+ * @summary General balance — debit/credit/solde per account
+ */
+export const GetReportsBalanceResponseItem = zod.object({
+  id: zod.string(),
+  code: zod.string(),
+  name: zod.string(),
+  type: zod.string(),
+  debit: zod.number(),
+  credit: zod.number(),
+  solde: zod.number(),
+});
+export const GetReportsBalanceResponse = zod.array(
+  GetReportsBalanceResponseItem,
+);
+
+/**
+ * @summary Income statement (compte de résultat)
+ */
+export const GetReportsIncomeResponse = zod.object({
+  revenues: zod.array(zod.object({}).passthrough()),
+  charges: zod.array(zod.object({}).passthrough()),
+  totalRevenue: zod.number(),
+  totalCharges: zod.number(),
+  resultat: zod.number(),
+});
+
+/**
+ * @summary TVA report
+ */
+export const GetReportsTvaResponse = zod.object({
+  tvaCollectee: zod.number(),
+  tvaDeduite: zod.number(),
+  solde: zod.number(),
+  fromJournal: zod.object({}).passthrough().optional(),
+  fromInvoices: zod.object({}).passthrough().optional(),
+});

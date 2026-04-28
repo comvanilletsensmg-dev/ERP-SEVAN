@@ -15,3 +15,7 @@ export * from "./payroll";
 export * from "./bonuses";
 export * from "./candidates";
 export * from "./onboarding";
+export * from "./partners";
+export * from "./invoices";
+export * from "./bank_transactions";
+export * from "./fixed_assets";

@@ -21,6 +21,11 @@ import {
   Banknote,
   Award,
   UserPlus,
+  FileText,
+  Building2,
+  Landmark,
+  BarChart3,
+  Layers,
 } from "lucide-react";
 
 const mainNav = [
@@ -32,7 +37,15 @@ const mainNav = [
   { label: "Ventes",           href: "/sales",           icon: TrendingUp },
   { label: "Paiements",        href: "/payments",        icon: CreditCard },
   { label: "Mouvements stock", href: "/stock-movements", icon: ArrowLeftRight },
-  { label: "Comptabilité",     href: "/accounting",      icon: BookOpen },
+];
+
+const accountingNav = [
+  { label: "Journal",           href: "/accounting",              icon: BookOpen },
+  { label: "Factures",          href: "/accounting/invoices",     icon: FileText },
+  { label: "Tiers",             href: "/accounting/partners",     icon: Building2 },
+  { label: "Rapprochement",     href: "/accounting/bank",         icon: Landmark },
+  { label: "Immobilisations",   href: "/accounting/assets",       icon: Layers },
+  { label: "Rapports",          href: "/accounting/reports",      icon: BarChart3 },
 ];
 
 const hrNav = [
@@ -45,8 +58,9 @@ const hrNav = [
   { label: "Recrutement",      href: "/hr/candidates", icon: UserPlus },
 ];
 
+const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];
 function NavItem({ href, label, icon: Icon, location }: { href: string; label: string; icon: React.ElementType; location: string }) {
-  const isActive = location === href || (href !== "/dashboard" && location.startsWith(href));
+  const isActive = location === href || (!EXACT_MATCH_PATHS.includes(href) && location.startsWith(href + "/"));
   return (
     <Link
       href={href}
@@ -84,6 +98,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto pb-4">
           {mainNav.map((item) => (
+            <NavItem key={item.href} {...item} location={location} />
+          ))}
+
+          <div className="pt-4 pb-1">
+            <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Comptabilité</p>
+          </div>
+          {accountingNav.map((item) => (
             <NavItem key={item.href} {...item} location={location} />
           ))}
 

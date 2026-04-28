@@ -68,9 +68,13 @@ Tables:
 - `sales` — ventes (totalAmount auto-computed, currency, incoterm)
 - `sale_items` — lignes de vente (lotId, quantity, price)
 - `payments` — paiements clients (saleId, amount, method)
-- `accounts` — plan comptable PCG 2005 (31, 401, 411, 512, 701…)
-- `journal_entries` — écritures comptables
+- `accounts` — plan comptable PCG 2005 (31, 401, 411, 445, 512, 601, 681, 701…) — types: asset/liability/expense/revenue
+- `journal_entries` — écritures comptables (date, reference, description)
 - `journal_lines` — lignes d'écriture (debit/credit)
+- `accounting_partners` — tiers comptables (client/supplier, TVA, adresse)
+- `accounting_invoices` — factures avec TVA (sale/purchase, draft→validated→paid, écriture auto sur validation)
+- `bank_transactions` — transactions bancaires (import CSV, rapprochement manuel/auto)
+- `fixed_assets` — immobilisations (amortissement linéaire, dotation mensuelle auto-postée)
 - `employees` — employés (name, position, department, salary, hireDate, isActive, phone)
 - `leaves` — congés (employeeId, type: vacation|sick, startDate, endDate, status: pending|approved|rejected)
 - `attendance` — pointage (employeeId, date, checkIn, checkOut)
@@ -90,7 +94,12 @@ Tables:
 - `/sales` — création vente export (lots ready uniquement)
 - `/payments` — enregistrement paiement client
 - `/stock-movements` — traçabilité complète (IN / OUT / LOSS)
-- `/accounting` — journal comptable PCG 2005
+- `/accounting` — journal comptable PCG 2005 + plan de comptes
+- `/accounting/invoices` — factures vente/achat (TVA 20%/0% export, validation → écritures auto, paiement)
+- `/accounting/partners` — tiers comptables (clients/fournisseurs, N° TVA, adresse)
+- `/accounting/bank` — rapprochement bancaire (import CSV, matching manuel, solde)
+- `/accounting/assets` — immobilisations (dotation mensuelle → Débit 681/Crédit 281, progression)
+- `/accounting/reports` — compte de résultat, balance générale, rapport TVA Madagascar
 - `/hr/employees` — liste + création + modification employés (export CSV, hireDate, isActive)
 - `/hr/leaves` — demandes de congé + approbation/rejet
 - `/hr/attendance` — pointage journalier (check-in / check-out) par employé

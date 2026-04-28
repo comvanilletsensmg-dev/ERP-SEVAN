@@ -409,6 +409,158 @@ export interface UpdateOnboardingTaskBody {
   status?: string;
 }
 
+export interface AccountingPartner {
+  id: string;
+  name: string;
+  /** client | supplier */
+  type: string;
+  email?: string | null;
+  phone?: string | null;
+  vatNumber?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreatePartnerBody {
+  name: string;
+  type: string;
+  email?: string | null;
+  phone?: string | null;
+  vatNumber?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface AccountingInvoice {
+  id: string;
+  invoiceNumber: string;
+  partnerId: string;
+  /** sale | purchase */
+  type: string;
+  currency: string;
+  amountHT: number;
+  tvaRate: number;
+  tvaMontant: number;
+  amountTTC: number;
+  /** draft | validated | paid */
+  status: string;
+  dueDate?: string | null;
+  fileUrl?: string | null;
+  notes?: string | null;
+  journalEntryId?: string | null;
+  createdAt: string;
+  partner?: AccountingPartner;
+}
+
+export interface CreateInvoiceBody {
+  invoiceNumber: string;
+  partnerId: string;
+  type: string;
+  currency?: string;
+  amountHT: number;
+  tvaRate?: number;
+  dueDate?: string | null;
+  notes?: string | null;
+}
+
+export interface BankTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  reference?: string | null;
+  matched: boolean;
+  matchedRef?: string | null;
+  createdAt: string;
+}
+
+export interface CreateBankTransactionBody {
+  date: string;
+  description: string;
+  amount: number;
+  currency?: string;
+  reference?: string | null;
+}
+
+export type ImportBankBodyRowsItem = {
+  date: string;
+  description: string;
+  amount: number;
+  reference?: string | null;
+};
+
+export interface ImportBankBody {
+  rows: ImportBankBodyRowsItem[];
+}
+
+export interface MatchBankBody {
+  matchedRef?: string | null;
+}
+
+export interface FixedAsset {
+  id: string;
+  name: string;
+  category: string;
+  value: number;
+  residualValue: number;
+  accumulatedDepreciation: number;
+  startDate: string;
+  durationMonths: number;
+  currency: string;
+  notes?: string | null;
+  /** active | fully_depreciated | disposed */
+  status: string;
+  createdAt: string;
+}
+
+export interface CreateAssetBody {
+  name: string;
+  category?: string;
+  value: number;
+  residualValue?: number;
+  startDate: string;
+  durationMonths: number;
+  currency?: string;
+  notes?: string | null;
+  status?: string;
+}
+
+export interface BalanceLine {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  debit: number;
+  credit: number;
+  solde: number;
+}
+
+export type IncomeReportRevenuesItem = { [key: string]: unknown };
+
+export type IncomeReportChargesItem = { [key: string]: unknown };
+
+export interface IncomeReport {
+  revenues: IncomeReportRevenuesItem[];
+  charges: IncomeReportChargesItem[];
+  totalRevenue: number;
+  totalCharges: number;
+  resultat: number;
+}
+
+export type TvaReportFromJournal = { [key: string]: unknown };
+
+export type TvaReportFromInvoices = { [key: string]: unknown };
+
+export interface TvaReport {
+  tvaCollectee: number;
+  tvaDeduite: number;
+  solde: number;
+  fromJournal?: TvaReportFromJournal;
+  fromInvoices?: TvaReportFromInvoices;
+}
+
 export type GetAttendanceParams = {
   /**
    * Filter by date (YYYY-MM-DD)
@@ -431,4 +583,27 @@ export type GetBonusesParams = {
 
 export type GetOnboardingTasksParams = {
   employeeId?: string;
+};
+
+export type GetInvoicesParams = {
+  /**
+   * sale | purchase
+   */
+  type?: string;
+  /**
+   * draft | validated | paid
+   */
+  status?: string;
+  partnerId?: string;
+};
+
+export type ImportBankTransactions201 = {
+  imported: number;
+  rows: BankTransaction[];
+};
+
+export type DepreciateAsset200 = {
+  asset: FixedAsset;
+  monthlyDepreciation: number;
+  totalAccumulated: number;
 };

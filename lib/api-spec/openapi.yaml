@@ -953,6 +953,356 @@ paths:
               schema:
                 $ref: "#/components/schemas/OnboardingTask"
 
+  /partners:
+    get:
+      operationId: getPartners
+      tags: [accounting]
+      summary: List accounting partners (tiers)
+      responses:
+        "200":
+          description: List of partners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountingPartner"
+    post:
+      operationId: createPartner
+      tags: [accounting]
+      summary: Create accounting partner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartnerBody"
+      responses:
+        "201":
+          description: Partner created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountingPartner"
+
+  /partners/{id}:
+    put:
+      operationId: updatePartner
+      tags: [accounting]
+      summary: Update accounting partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartnerBody"
+      responses:
+        "200":
+          description: Partner updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountingPartner"
+
+  /invoices:
+    get:
+      operationId: getInvoices
+      tags: [accounting]
+      summary: List invoices
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+          description: sale | purchase
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: draft | validated | paid
+        - name: partnerId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountingInvoice"
+    post:
+      operationId: createInvoice
+      tags: [accounting]
+      summary: Create invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceBody"
+      responses:
+        "201":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountingInvoice"
+
+  /invoices/{id}/validate:
+    put:
+      operationId: validateInvoice
+      tags: [accounting]
+      summary: Validate invoice and post to journal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice validated with journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountingInvoice"
+
+  /invoices/{id}/pay:
+    put:
+      operationId: payInvoice
+      tags: [accounting]
+      summary: Mark invoice as paid and post payment entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice marked paid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountingInvoice"
+
+  /bank:
+    get:
+      operationId: getBank
+      tags: [accounting]
+      summary: List bank transactions
+      responses:
+        "200":
+          description: List of bank transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BankTransaction"
+    post:
+      operationId: createBankTransaction
+      tags: [accounting]
+      summary: Create bank transaction manually
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBankTransactionBody"
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankTransaction"
+
+  /bank/import:
+    post:
+      operationId: importBankTransactions
+      tags: [accounting]
+      summary: Import bank transactions from CSV rows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportBankBody"
+      responses:
+        "201":
+          description: Transactions imported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: number
+                  rows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BankTransaction"
+                required:
+                  - imported
+                  - rows
+
+  /bank/{id}/match:
+    put:
+      operationId: matchBankTransaction
+      tags: [accounting]
+      summary: Match a bank transaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchBankBody"
+      responses:
+        "200":
+          description: Transaction matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankTransaction"
+
+  /bank/{id}/unmatch:
+    put:
+      operationId: unmatchBankTransaction
+      tags: [accounting]
+      summary: Unmatch a bank transaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction unmatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankTransaction"
+
+  /assets:
+    get:
+      operationId: getAssets
+      tags: [accounting]
+      summary: List fixed assets
+      responses:
+        "200":
+          description: List of fixed assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FixedAsset"
+    post:
+      operationId: createAsset
+      tags: [accounting]
+      summary: Create fixed asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssetBody"
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedAsset"
+
+  /assets/{id}/depreciate:
+    post:
+      operationId: depreciateAsset
+      tags: [accounting]
+      summary: Post one monthly depreciation for an asset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Depreciation posted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: "#/components/schemas/FixedAsset"
+                  monthlyDepreciation:
+                    type: number
+                  totalAccumulated:
+                    type: number
+                required:
+                  - asset
+                  - monthlyDepreciation
+                  - totalAccumulated
+
+  /reports/balance:
+    get:
+      operationId: getReportsBalance
+      tags: [accounting]
+      summary: General balance — debit/credit/solde per account
+      responses:
+        "200":
+          description: Balance générale
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BalanceLine"
+
+  /reports/income:
+    get:
+      operationId: getReportsIncome
+      tags: [accounting]
+      summary: Income statement (compte de résultat)
+      responses:
+        "200":
+          description: Income statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncomeReport"
+
+  /reports/tva:
+    get:
+      operationId: getReportsTva
+      tags: [accounting]
+      summary: TVA report
+      responses:
+        "200":
+          description: TVA report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TvaReport"
+
 components:
   schemas:
     HealthStatus:
@@ -1893,3 +2243,363 @@ components:
         status:
           type: string
           description: pending | done
+
+    AccountingPartner:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          description: client | supplier
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        vatNumber:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - type
+        - createdAt
+
+    CreatePartnerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        vatNumber:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - type
+
+    AccountingInvoice:
+      type: object
+      properties:
+        id:
+          type: string
+        invoiceNumber:
+          type: string
+        partnerId:
+          type: string
+        type:
+          type: string
+          description: sale | purchase
+        currency:
+          type: string
+        amountHT:
+          type: number
+        tvaRate:
+          type: number
+        tvaMontant:
+          type: number
+        amountTTC:
+          type: number
+        status:
+          type: string
+          description: draft | validated | paid
+        dueDate:
+          type: string
+          nullable: true
+        fileUrl:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        journalEntryId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        partner:
+          $ref: "#/components/schemas/AccountingPartner"
+      required:
+        - id
+        - invoiceNumber
+        - partnerId
+        - type
+        - currency
+        - amountHT
+        - tvaRate
+        - tvaMontant
+        - amountTTC
+        - status
+        - createdAt
+
+    CreateInvoiceBody:
+      type: object
+      properties:
+        invoiceNumber:
+          type: string
+        partnerId:
+          type: string
+        type:
+          type: string
+        currency:
+          type: string
+        amountHT:
+          type: number
+        tvaRate:
+          type: number
+        dueDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - invoiceNumber
+        - partnerId
+        - type
+        - amountHT
+
+    BankTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        reference:
+          type: string
+          nullable: true
+        matched:
+          type: boolean
+        matchedRef:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - date
+        - description
+        - amount
+        - currency
+        - matched
+        - createdAt
+
+    CreateBankTransactionBody:
+      type: object
+      properties:
+        date:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        reference:
+          type: string
+          nullable: true
+      required:
+        - date
+        - description
+        - amount
+
+    ImportBankBody:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              description:
+                type: string
+              amount:
+                type: number
+              reference:
+                type: string
+                nullable: true
+            required:
+              - date
+              - description
+              - amount
+      required:
+        - rows
+
+    MatchBankBody:
+      type: object
+      properties:
+        matchedRef:
+          type: string
+          nullable: true
+
+    FixedAsset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        value:
+          type: number
+        residualValue:
+          type: number
+        accumulatedDepreciation:
+          type: number
+        startDate:
+          type: string
+        durationMonths:
+          type: number
+        currency:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: active | fully_depreciated | disposed
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - category
+        - value
+        - residualValue
+        - accumulatedDepreciation
+        - startDate
+        - durationMonths
+        - currency
+        - status
+        - createdAt
+
+    CreateAssetBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        value:
+          type: number
+        residualValue:
+          type: number
+        startDate:
+          type: string
+        durationMonths:
+          type: number
+        currency:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+      required:
+        - name
+        - value
+        - startDate
+        - durationMonths
+
+    BalanceLine:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        debit:
+          type: number
+        credit:
+          type: number
+        solde:
+          type: number
+      required:
+        - id
+        - code
+        - name
+        - type
+        - debit
+        - credit
+        - solde
+
+    IncomeReport:
+      type: object
+      properties:
+        revenues:
+          type: array
+          items:
+            type: object
+        charges:
+          type: array
+          items:
+            type: object
+        totalRevenue:
+          type: number
+        totalCharges:
+          type: number
+        resultat:
+          type: number
+      required:
+        - revenues
+        - charges
+        - totalRevenue
+        - totalCharges
+        - resultat
+
+    TvaReport:
+      type: object
+      properties:
+        tvaCollectee:
+          type: number
+        tvaDeduite:
+          type: number
+        solde:
+          type: number
+        fromJournal:
+          type: object
+        fromInvoices:
+          type: object
+      required:
+        - tvaCollectee
+        - tvaDeduite
+        - solde

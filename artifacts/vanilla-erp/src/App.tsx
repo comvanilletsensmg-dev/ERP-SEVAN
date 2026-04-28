@@ -23,6 +23,11 @@ import HrRequests from "@/pages/HrRequests";
 import Payroll from "@/pages/Payroll";
 import Bonuses from "@/pages/Bonuses";
 import Candidates from "@/pages/Candidates";
+import AccountingInvoices from "@/pages/accounting/Invoices";
+import AccountingPartners from "@/pages/accounting/Partners";
+import AccountingBank from "@/pages/accounting/Bank";
+import AccountingAssets from "@/pages/accounting/Assets";
+import AccountingReports from "@/pages/accounting/Reports";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +68,11 @@ function Router() {
       <Route path="/hr/payroll" component={() => <ProtectedRoute component={Payroll} />} />
       <Route path="/hr/bonuses" component={() => <ProtectedRoute component={Bonuses} />} />
       <Route path="/hr/candidates" component={() => <ProtectedRoute component={Candidates} />} />
+      <Route path="/accounting/invoices" component={() => <ProtectedRoute component={AccountingInvoices} />} />
+      <Route path="/accounting/partners" component={() => <ProtectedRoute component={AccountingPartners} />} />
+      <Route path="/accounting/bank" component={() => <ProtectedRoute component={AccountingBank} />} />
+      <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
+      <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route component={NotFound} />
     </Switch>
   );
