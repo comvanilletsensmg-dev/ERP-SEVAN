@@ -28,6 +28,7 @@ router.post("/login", async (req, res): Promise<void> => {
     user: {
       id: user.id,
       email: user.email,
+      name: user.name ?? null,
       role: user.role,
       createdAt: user.createdAt.toISOString(),
     },
@@ -55,6 +56,7 @@ router.get("/me", async (req, res): Promise<void> => {
   res.json({
     id: user.id,
     email: user.email,
+    name: user.name ?? null,
     role: user.role,
     createdAt: user.createdAt.toISOString(),
   });

@@ -23,6 +23,8 @@ import accountingInvoicesRouter from "./accounting-invoices";
 import accountingBankRouter from "./accounting-bank";
 import accountingAssetsRouter from "./accounting-assets";
 import accountingReportsRouter from "./accounting-reports";
+import dashboardRbacRouter from "./dashboard-rbac";
+import usersRouter from "./users";
 
 const router: IRouter = Router();
 
@@ -50,5 +52,7 @@ router.use(accountingInvoicesRouter);
 router.use(accountingBankRouter);
 router.use(accountingAssetsRouter);
 router.use(accountingReportsRouter);
+router.use(dashboardRbacRouter);
+router.use(usersRouter);
 
 export default router;

@@ -1,0 +1,233 @@
+Tu es un développeur full-stack senior expert en ERP SaaS.
+
+Objectif :
+Construire une architecture complète ERP avec :
+- modules séparés (accounting, logistics, hr)
+- gestion des rôles (RBAC)
+- UI dynamique selon rôle
+- dashboard personnalisé par rôle
+- dashboard global pour SUPER_ADMIN
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Auth : JWT
+- Frontend : React + Tailwind
+
+-----------------------------------
+1. STRUCTURE BACKEND (DOSSIERS)
+-----------------------------------
+
+/src
+  /modules
+    /accounting
+      accounting.routes.js
+      accounting.controller.js
+    /logistics
+      logistics.routes.js
+      logistics.controller.js
+    /hr
+      hr.routes.js
+      hr.controller.js
+  /middleware
+    auth.js
+    roles.js
+  /config
+    roles.js
+  server.js
+
+-----------------------------------
+2. ROLES
+-----------------------------------
+
+SUPER_ADMIN
+ACCOUNTANT
+LOGISTICS_MANAGER
+HR_MANAGER
+
+-----------------------------------
+3. MIDDLEWARE AUTH + RBAC
+-----------------------------------
+
+authMiddleware :
+- vérifier JWT
+- injecter req.user
+
+authorizeRoles(...roles) :
+- vérifier accès
+
+-----------------------------------
+4. ROUTES PAR MODULE
+-----------------------------------
+
+ACCOUNTING :
+
+router.use(
+  "/api/accounting",
+  authMiddleware,
+  authorizeRoles("SUPER_ADMIN", "ACCOUNTANT"),
+  accountingRoutes
+);
+
+LOGISTICS :
+
+router.use(
+  "/api/logistics",
+  authMiddleware,
+  authorizeRoles("SUPER_ADMIN", "LOGISTICS_MANAGER"),
+  logisticsRoutes
+);
+
+HR :
+
+router.use(
+  "/api/hr",
+  authMiddleware,
+  authorizeRoles("SUPER_ADMIN", "HR_MANAGER"),
+  hrRoutes
+);
+
+-----------------------------------
+5. FRONTEND STRUCTURE
+-----------------------------------
+
+/src
+  /pages
+    /dashboard
+      SuperAdminDashboard.jsx
+      AccountingDashboard.jsx
+      LogisticsDashboard.jsx
+      HRDashboard.jsx
+  /components
+    Sidebar.jsx
+    Header.jsx
+    KPIcard.jsx
+  /utils
+    permissions.js
+
+-----------------------------------
+6. PERMISSIONS FRONTEND
+-----------------------------------
+
+permissions.js :
+
+export function getAccessibleModules(role) {
+  if (role === "SUPER_ADMIN") {
+    return ["accounting", "logistics", "hr"];
+  }
+
+  const map = {
+    ACCOUNTANT: ["accounting"],
+    LOGISTICS_MANAGER: ["logistics"],
+    HR_MANAGER: ["hr"]
+  };
+
+  return map[role] || [];
+}
+
+-----------------------------------
+7. SIDEBAR DYNAMIQUE
+-----------------------------------
+
+Afficher selon rôle :
+
+- Comptabilité
+- Logistique
+- RH
+
+-----------------------------------
+8. DASHBOARD PAR RÔLE
+-----------------------------------
+
+A. SUPER ADMIN (GLOBAL)
+
+Afficher :
+- chiffre d’affaires global
+- trésorerie totale
+- stock global
+- nombre employés
+
++ graphiques globaux
+
+-----------------------------------
+
+B. ACCOUNTANT DASHBOARD
+
+Afficher :
+- revenus
+- charges
+- résultat
+- factures en attente
+- cashflow
+
+-----------------------------------
+
+C. LOGISTICS DASHBOARD
+
+Afficher :
+- stock total
+- valeur stock
+- mouvements récents
+- alertes stock
+
+-----------------------------------
+
+D. HR DASHBOARD
+
+Afficher :
+- employés actifs
+- absents aujourd’hui
+- congés en attente
+- masse salariale
+
+-----------------------------------
+9. ROUTE DASHBOARD API
+-----------------------------------
+
+GET /api/dashboard
+
+Retour dynamique selon rôle :
+
+if role = ACCOUNTANT → financial data  
+if role = LOGISTICS → stock data  
+if role = HR → employee data  
+if SUPER_ADMIN → combine all
+
+-----------------------------------
+10. UI LOGIQUE DASHBOARD
+-----------------------------------
+
+Dashboard.jsx :
+
+switch(role) {
+  case "SUPER_ADMIN":
+    return <SuperAdminDashboard />
+  case "ACCOUNTANT":
+    return <AccountingDashboard />
+  case "LOGISTICS_MANAGER":
+    return <LogisticsDashboard />
+  case "HR_MANAGER":
+    return <HRDashboard />
+}
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- protection backend obligatoire
+- pas d’accès croisé
+- logs accès refusé
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- backend structuré par module
+- routes sécurisées
+- frontend dynamique
+- dashboards fonctionnels
+
+Commence par :
+1. structure backend
+2. middleware auth + roles
+3. dashboards frontend

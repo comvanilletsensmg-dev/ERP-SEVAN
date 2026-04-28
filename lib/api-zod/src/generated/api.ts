@@ -26,6 +26,7 @@ export const LoginResponse = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
+    name: zod.string().nullish(),
     role: zod.string(),
     createdAt: zod.string(),
   }),
@@ -44,6 +45,7 @@ export const LogoutResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
+  name: zod.string().nullish(),
   role: zod.string(),
   createdAt: zod.string(),
 });

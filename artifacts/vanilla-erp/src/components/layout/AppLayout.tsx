@@ -4,32 +4,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
-  Users,
-  ShoppingCart,
-  Package,
-  Globe,
-  TrendingUp,
-  BookOpen,
-  LogOut,
-  CreditCard,
-  ArrowLeftRight,
-  UserCheck,
-  CalendarDays,
-  ClipboardList,
-  MessageSquare,
-  Banknote,
-  Award,
-  UserPlus,
-  FileText,
-  Building2,
-  Landmark,
-  BarChart3,
-  Layers,
+  LayoutDashboard, Users, ShoppingCart, Package, Globe, TrendingUp,
+  BookOpen, LogOut, CreditCard, ArrowLeftRight, UserCheck, CalendarDays,
+  ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
+  Building2, Landmark, BarChart3, Layers, ShieldCheck,
 } from "lucide-react";
+import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
-const mainNav = [
-  { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
+const logisticsNav = [
   { label: "Fournisseurs",     href: "/suppliers",       icon: Users },
   { label: "Achats",           href: "/purchases",       icon: ShoppingCart },
   { label: "Lots",             href: "/lots",            icon: Package },
@@ -40,25 +22,30 @@ const mainNav = [
 ];
 
 const accountingNav = [
-  { label: "Journal",           href: "/accounting",              icon: BookOpen },
-  { label: "Factures",          href: "/accounting/invoices",     icon: FileText },
-  { label: "Tiers",             href: "/accounting/partners",     icon: Building2 },
-  { label: "Rapprochement",     href: "/accounting/bank",         icon: Landmark },
-  { label: "Immobilisations",   href: "/accounting/assets",       icon: Layers },
-  { label: "Rapports",          href: "/accounting/reports",      icon: BarChart3 },
+  { label: "Journal",          href: "/accounting",              icon: BookOpen },
+  { label: "Factures",         href: "/accounting/invoices",     icon: FileText },
+  { label: "Tiers",            href: "/accounting/partners",     icon: Building2 },
+  { label: "Rapprochement",    href: "/accounting/bank",         icon: Landmark },
+  { label: "Immobilisations",  href: "/accounting/assets",       icon: Layers },
+  { label: "Rapports",         href: "/accounting/reports",      icon: BarChart3 },
 ];
 
 const hrNav = [
-  { label: "Employés",         href: "/hr/employees",  icon: UserCheck },
-  { label: "Congés",           href: "/hr/leaves",     icon: CalendarDays },
-  { label: "Pointage",         href: "/hr/attendance", icon: ClipboardList },
-  { label: "Demandes RH",      href: "/hr/requests",   icon: MessageSquare },
-  { label: "Paie",             href: "/hr/payroll",    icon: Banknote },
-  { label: "Primes Production",href: "/hr/bonuses",    icon: Award },
-  { label: "Recrutement",      href: "/hr/candidates", icon: UserPlus },
+  { label: "Employés",          href: "/hr/employees",  icon: UserCheck },
+  { label: "Congés",            href: "/hr/leaves",     icon: CalendarDays },
+  { label: "Pointage",          href: "/hr/attendance", icon: ClipboardList },
+  { label: "Demandes RH",       href: "/hr/requests",   icon: MessageSquare },
+  { label: "Paie",              href: "/hr/payroll",    icon: Banknote },
+  { label: "Primes Production", href: "/hr/bonuses",    icon: Award },
+  { label: "Recrutement",       href: "/hr/candidates", icon: UserPlus },
+];
+
+const adminNav = [
+  { label: "Utilisateurs", href: "/admin/users", icon: ShieldCheck },
 ];
 
 const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];
+
 function NavItem({ href, label, icon: Icon, location }: { href: string; label: string; icon: React.ElementType; location: string }) {
   const isActive = location === href || (!EXACT_MATCH_PATHS.includes(href) && location.startsWith(href + "/"));
   return (
@@ -76,11 +63,23 @@ function NavItem({ href, label, icon: Icon, location }: { href: string; label: s
   );
 }
 
+function NavSection({ title, items, location }: { title: string; items: { label: string; href: string; icon: React.ElementType }[]; location: string }) {
+  return (
+    <>
+      <div className="pt-4 pb-1">
+        <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">{title}</p>
+      </div>
+      {items.map(item => <NavItem key={item.href} {...item} location={location} />)}
+    </>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const logout = useLogout();
+  const role = user?.role ?? "";
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -97,29 +96,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto pb-4">
-          {mainNav.map((item) => (
-            <NavItem key={item.href} {...item} location={location} />
-          ))}
+          <NavItem href="/dashboard" label="Tableau de bord" icon={LayoutDashboard} location={location} />
 
-          <div className="pt-4 pb-1">
-            <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Comptabilité</p>
-          </div>
-          {accountingNav.map((item) => (
-            <NavItem key={item.href} {...item} location={location} />
-          ))}
+          {canAccess(role, "logistics") && (
+            <NavSection title="Logistique" items={logisticsNav} location={location} />
+          )}
 
-          <div className="pt-4 pb-1">
-            <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Ressources Humaines</p>
-          </div>
-          {hrNav.map((item) => (
-            <NavItem key={item.href} {...item} location={location} />
-          ))}
+          {canAccess(role, "accounting") && (
+            <NavSection title="Comptabilité" items={accountingNav} location={location} />
+          )}
+
+          {canAccess(role, "hr") && (
+            <NavSection title="Ressources Humaines" items={hrNav} location={location} />
+          )}
+
+          {canAccess(role, "admin") && (
+            <NavSection title="Administration" items={adminNav} location={location} />
+          )}
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
           <div className="mb-4 px-2">
-            <p className="text-sm font-medium">{user?.email}</p>
-            <p className="text-xs text-sidebar-foreground/70 capitalize">{user?.role}</p>
+            <p className="text-sm font-medium truncate">{user?.name ?? user?.email}</p>
+            <p className="text-xs text-sidebar-foreground/70">{ROLE_LABELS[role] ?? role}</p>
           </div>
           <button
             onClick={handleLogout}

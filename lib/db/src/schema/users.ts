@@ -6,7 +6,8 @@ export const usersTable = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("operator"),
+  name: text("name"),
+  role: text("role").notNull().default("SUPER_ADMIN"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

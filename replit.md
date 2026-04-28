@@ -100,6 +100,8 @@ Tables:
 - `/accounting/bank` — rapprochement bancaire (import CSV, matching manuel, solde)
 - `/accounting/assets` — immobilisations (dotation mensuelle → Débit 681/Crédit 281, progression)
 - `/accounting/reports` — compte de résultat, balance générale, rapport TVA Madagascar
+- `/admin/users` — gestion des utilisateurs et rôles (SUPER_ADMIN uniquement)
+- `/dashboard` — tableau de bord personnalisé selon le rôle de l'utilisateur connecté
 - `/hr/employees` — liste + création + modification employés (export CSV, hireDate, isActive)
 - `/hr/leaves` — demandes de congé + approbation/rejet
 - `/hr/attendance` — pointage journalier (check-in / check-out) par employé
