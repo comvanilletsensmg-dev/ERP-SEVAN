@@ -137,7 +137,19 @@ router.get("/crm/prospects", requireAuth, requireRole(...CRM_ROLES), async (req,
   if (status) rows = rows.filter(r => r.status === status);
   if (country) rows = rows.filter(r => r.country.toLowerCase().includes(country.toLowerCase()));
   if (source)  rows = rows.filter(r => r.source === source);
-  res.json(rows.map(safe));
+
+  // Enrich converted prospects with client code
+  const enriched = await Promise.all(rows.map(async r => {
+    const s = safe(r);
+    if (r.convertedToClientId) {
+      const [c] = await db.select({ clientCode: clientsTable.clientCode, name: clientsTable.name })
+        .from(clientsTable).where(eq(clientsTable.id, r.convertedToClientId));
+      return { ...s, convertedClientCode: c?.clientCode ?? null, convertedClientName: c?.name ?? null };
+    }
+    return { ...s, convertedClientCode: null, convertedClientName: null };
+  }));
+
+  res.json(enriched);
 });
 
 // ─── DETAIL ───────────────────────────────────────────────────────────────────

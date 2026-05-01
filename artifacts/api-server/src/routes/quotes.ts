@@ -3,7 +3,7 @@ import { db, quotesTable, quoteItemsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/roles";
-import { autoConvertProspect } from "../services/autoConvert";
+import { autoConvertProspect, autoConvertOnQuoteAccepted } from "../services/autoConvert";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -120,7 +120,29 @@ router.patch("/crm/quotes/:id/accept", requireAuth, requireRole(...CRM_WRITE), a
   const [updated] = await db.update(quotesTable).set({ status: "accepted", updatedAt: new Date() })
     .where(eq(quotesTable.id, req.params.id)).returning();
   if (!updated) { res.status(404).json({ error: "Devis introuvable" }); return; }
-  res.json(safe(updated));
+
+  // ── Auto-conversion on quote acceptance (RULE 5 — score bypass) ──────────
+  let conversionResult = null;
+  if (updated.prospectId) {
+    try {
+      conversionResult = await autoConvertOnQuoteAccepted(
+        updated.id,
+        updated.prospectId,
+        (req as any).session?.userId
+      );
+      // Re-link quote to the new/existing client
+      if (conversionResult.clientId) {
+        await db.update(quotesTable).set({
+          clientId: conversionResult.clientId,
+          prospectId: updated.prospectId,
+        }).where(eq(quotesTable.id, updated.id));
+      }
+    } catch (e) {
+      logger.error(e, "Auto-conversion on quote accept failed — non-blocking");
+    }
+  }
+
+  res.json({ ...safe(updated), _conversion: conversionResult });
 });
 
 router.patch("/crm/quotes/:id/reject", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {

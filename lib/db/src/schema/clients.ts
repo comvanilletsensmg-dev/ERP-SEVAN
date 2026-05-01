@@ -34,6 +34,7 @@ export const clientsTable = pgTable("clients", {
 
   // Origine
   source: text("source").notNull().default("other"),
+  conversionSource: text("conversion_source"),
   convertedFromId: text("converted_from_id"),
 
   // Catégorisation

@@ -28,3 +28,4 @@ export * from "./deals";
 export * from "./interactions";
 export * from "./quotes";
 export * from "./conversion_alerts";
+export * from "./conversion_logs";

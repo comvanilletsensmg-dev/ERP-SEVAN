@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +54,25 @@ export default function CrmDeals() {
 
   const create = useMutation({
     mutationFn: (d: any) => apiJson("/crm/deals", { method: "POST", body: JSON.stringify(d) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["deals"] }); setDialog(null); setForm(EMPTY_FORM); setErr(""); },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: ["prospects"] });
+      setDialog(null); setForm(EMPTY_FORM); setErr("");
+      if (data._conversion) {
+        const c = data._conversion;
+        if (c.action === "converted") {
+          toast.success(`Prospect converti → ${c.clientCode}`, {
+            description: `${c.prospectName} est maintenant client (${c.clientCode})`,
+            duration: 6000,
+          });
+        } else if (c.action === "alert_created") {
+          toast.warning("Alerte de conversion créée", {
+            description: `${c.reason ?? "Score insuffisant"} — vérifier les alertes CRM`,
+            duration: 6000,
+          });
+        }
+      }
+    },
     onError: (e: any) => setErr(e.message),
   });
 

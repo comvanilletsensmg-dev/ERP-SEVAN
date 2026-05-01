@@ -62,6 +62,9 @@ export const prospectsTable = pgTable("prospects", {
   notes: text("notes"), // alias for internalNotes (kept for compat)
   lastInteraction: timestamp("last_interaction"),
   convertedToClientId: text("converted_to_client_id"),
+  convertedAt: timestamp("converted_at"),
+  convertedBy: text("converted_by"),
+  conversionSource: text("conversion_source").notNull().default("manual"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -20,6 +20,8 @@ interface Prospect {
   certifications: string;
   createdAt: string; updatedAt: string; lastInteraction?: string;
   convertedToClientId?: string;
+  convertedClientCode?: string | null;
+  convertedClientName?: string | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -711,7 +713,9 @@ export default function Prospects() {
                         {col ? (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ color: col.color, backgroundColor: col.bg }}>{col.label}</span>
                         ) : p.status === "converted" ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium text-green-700 bg-green-50">Converti</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium text-green-700 bg-green-50 whitespace-nowrap">
+                            ✓ {p.convertedClientCode ?? "Converti"}
+                          </span>
                         ) : <span className="text-xs text-gray-400">{p.status}</span>}
                       </td>
                       <td className="px-4 py-3 text-center">

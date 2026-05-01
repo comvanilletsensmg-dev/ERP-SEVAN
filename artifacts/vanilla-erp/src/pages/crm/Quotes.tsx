@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,9 +77,26 @@ export default function CrmQuotes() {
   const changeStatus = useMutation({
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       apiJson(`/crm/quotes/${id}/${action}`, { method: "PATCH" }),
-    onSuccess: (data) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["quotes"] });
+      qc.invalidateQueries({ queryKey: ["prospects"] });
       setSelectedQuote(q => q ? { ...q, status: data.status } : q);
+      if (vars.action === "accept" && data._conversion) {
+        const c = data._conversion;
+        if (c.action === "converted") {
+          toast.success(`Prospect converti → ${c.clientCode}`, {
+            description: `${c.prospectName} est maintenant client (${c.clientCode})`,
+            duration: 6000,
+          });
+        } else if (c.action === "already_converted") {
+          toast.info(`Déjà client : ${c.clientCode}`, { description: c.clientName, duration: 4000 });
+        } else if (c.action === "alert_created") {
+          toast.warning("Alerte de conversion créée", {
+            description: `${c.reason ?? "Score insuffisant"} — vérifier les alertes CRM`,
+            duration: 6000,
+          });
+        }
+      }
     },
     onError: (e: any) => alert(e.message),
   });

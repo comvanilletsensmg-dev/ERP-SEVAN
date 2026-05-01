@@ -1,0 +1,580 @@
+Tu es un développeur backend senior expert en workflows métiers ERP. Tu implémentes le système de conversion automatique Prospect → Client dans "Vanilla ERP".
+
+CONTEXTE :
+- Un prospect peut être converti manuellement (bouton) OU automatiquement (validation devis/commande)
+- La conversion auto se déclenche silencieusement sans interruption utilisateur
+- Tout l'historique prospect est préservé et migré
+- Le commercial ne doit pas avoir à re-saisir les informations
+
+================================================================
+1. ARCHITECTURE DU WORKFLOW
+================================================================
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    DÉCLENCHEURS DE CONVERSION                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   MANUEL (bouton)              AUTOMATIQUE (validation)        │
+│   ─────────────────            ─────────────────────────       │
+│                                                                 │
+│   [Convertir en client]        Devis status → "accepted"       │
+│        ↓                       ─────────────────────────       │
+│   Prospect.qualified?          Commande créée avec prospectId  │
+│        ↓                       ─────────────────────────       │
+│   Conversion synchrone         Conversion asynchrone (silencieuse)│
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROCESSUS DE CONVERSION                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   1. VÉRIFICATION          → Prospect existe + non converti    │
+│   2. CRÉATION CLIENT       → Copie données + code auto         │
+│   3. MIGRATION DONNÉES     → Interactions, deals, devis        │
+│   4. MISE À JOUR PROSPECT  → Status "converted" + lien         │
+│   5. ACTIONS POST-CONV.    → Reminders, notifications, logs    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+================================================================
+2. MODÈLES PRISMA (COMPLÉMENTS)
+================================================================
+
+// Ajouter au modèle Prospect
+model Prospect {
+  // ... champs existants ...
+  
+  // Conversion tracking
+  convertedToClientId String?   @unique
+  convertedAt         DateTime?
+  convertedBy         String?   // userId (null si auto)
+  conversionSource    String    @default("manual") // manual, quote_accepted, order_created
+  
+  // Relation
+  client              Client?   @relation("ProspectToClient", fields: [convertedToClientId], references: [id])
+}
+
+// Ajouter au modèle Client
+model Client {
+  // ... champs existants ...
+  
+  // Origine
+  convertedFromId     String?   @unique
+  conversionSource    String?   // manual, quote_accepted, order_created
+  
+  // Relation inverse
+  prospect            Prospect? @relation("ProspectToClient", fields: [convertedFromId], references: [id])
+}
+
+// Table de log des conversions (audit)
+model ConversionLog {
+  id              String   @id @default(uuid())
+  prospectId      String
+  clientId        String
+  source          String   // manual, quote_accepted, order_created
+  triggeredBy     String?  // userId (null si système)
+  triggeredByQuoteId String?
+  triggeredByOrderId String?
+  dataMigrated    Json     // résumé de ce qui a été migré
+  createdAt       DateTime @default(now())
+}
+
+================================================================
+3. SERVICE CONVERSION (services/conversionService.js)
+================================================================
+
+import { prisma } from '../config/database';
+import { generateClientCode } from '../utils/codeGenerator';
+import { createReminder } from './reminderService';
+import { logInteraction } from './interactionService';
+
+/**
+ * CONVERSION PRINCIPALE
+ * Appelée manuellement ou automatiquement
+ */
+export async function convertProspectToClient(prospectId, options = {}) {
+  const {
+    triggeredBy,        // userId ou null (système)
+    source,             // 'manual' | 'quote_accepted' | 'order_created'
+    quoteId,            // si déclenché par devis
+    orderId,            // si déclenché par commande
+    skipValidation = false // true pour conversion auto silencieuse
+  } = options;
+
+  // ─── ÉTAPE 1: VÉRIFICATIONS ───
+  
+  const prospect = await prisma.prospect.findUnique({
+    where: { id: prospectId },
+    include: {
+      interactions: true,
+      deals: true,
+      quotes: true
+    }
+  });
+
+  if (!prospect) {
+    throw new ConversionError('PROSPECT_NOT_FOUND', 'Prospect introuvable');
+  }
+
+  if (prospect.convertedToClientId) {
+    throw new ConversionError('ALREADY_CONVERTED', 
+      `Déjà converti en client ${prospect.convertedToClientId}`);
+  }
+
+  // Vérification score (sauf override admin)
+  if (!skipValidation && prospect.score < 60 && source === 'manual') {
+    throw new ConversionError('SCORE_TOO_LOW', 
+      'Score insuffisant (minimum 60). Validation admin requise.');
+  }
+
+  // ─── ÉTAPE 2: CRÉATION CLIENT ───
+
+  const clientCode = await generateClientCode(); // CLI-2026-XXXX
+
+  const clientData = {
+    // Identité
+    companyName: prospect.companyName,
+    altName: prospect.altName,
+    type: prospect.type || 'Entreprise',
+    clientCode,
+    
+    // Adresse
+    address: prospect.address,
+    postalCode: prospect.postalCode,
+    city: prospect.city,
+    country: prospect.country,
+    region: prospect.region,
+    
+    // Contact
+    phone: prospect.phone,
+    mobile: prospect.mobile,
+    fax: prospect.fax,
+    website: prospect.website,
+    email: prospect.email,
+    refuseMassEmail: prospect.refuseMassEmail,
+    
+    // Fiscaux
+    proId1: prospect.proId1,
+    proId2: prospect.proId2,
+    vatRegistered: prospect.vatRegistered,
+    vatNumber: prospect.vatNumber,
+    
+    // Origine
+    source: `converted_${source}`,
+    convertedFromId: prospect.id,
+    conversionSource: source,
+    
+    // Commercial
+    activityType: prospect.activityType,
+    preferredCurrency: prospect.preferredCurrency || 'USD',
+    preferredIncoterm: prospect.preferredIncoterm,
+    paymentTerms: prospect.paymentTerms || 30,
+    
+    // Tags & notes
+    tags: prospect.tags,
+    internalNotes: `[Converti depuis prospect le ${new Date().toISOString()}]\n\n${prospect.internalNotes || ''}`,
+    
+    // Assignment
+    assignedTo: prospect.assignedTo,
+    createdBy: prospect.createdBy,
+    
+    // Risque par défaut selon score
+    riskLevel: prospect.score >= 80 ? 'low' : prospect.score >= 50 ? 'medium' : 'high'
+  };
+
+  const client = await prisma.client.create({ data: clientData });
+
+  // ─── ÉTAPE 3: CRÉATION CONTACT PRINCIPAL ───
+
+  if (prospect.contact || prospect.email || prospect.phone) {
+    await prisma.contact.create({
+      data: {
+        clientId: client.id,
+        firstName: prospect.contact?.split(' ')[0] || 'Contact',
+        lastName: prospect.contact?.split(' ').slice(1).join(' ') || 'Principal',
+        email: prospect.email,
+        phone: prospect.phone,
+        isPrimary: true,
+        role: 'Contact principal'
+      }
+    });
+  }
+
+  // ─── ÉTAPE 4: MIGRATION DES DONNÉES ───
+
+  const migrationSummary = {
+    interactionsCount: 0,
+    dealsCount: 0,
+    quotesCount: 0
+  };
+
+  // 4.1 Migrer interactions
+  if (prospect.interactions?.length > 0) {
+    await prisma.interaction.updateMany({
+      where: { prospectId: prospect.id },
+      data: { 
+        clientId: client.id,
+        prospectId: null
+      }
+    });
+    migrationSummary.interactionsCount = prospect.interactions.length;
+  }
+
+  // 4.2 Migrer deals
+  if (prospect.deals?.length > 0) {
+    await prisma.deal.updateMany({
+      where: { prospectId: prospect.id },
+      data: { 
+        clientId: client.id,
+        prospectId: null
+      }
+    });
+    migrationSummary.dealsCount = prospect.deals.length;
+  }
+
+  // 4.3 Migrer devis (non acceptés)
+  if (prospect.quotes?.length > 0) {
+    await prisma.quote.updateMany({
+      where: { prospectId: prospect.id },
+      data: { 
+        clientId: client.id,
+        prospectId: null
+      }
+    });
+    migrationSummary.quotesCount = prospect.quotes.length;
+  }
+
+  // ─── ÉTAPE 5: MISE À JOUR PROSPECT ───
+
+  await prisma.prospect.update({
+    where: { id: prospect.id },
+    data: {
+      status: 'converted',
+      convertedToClientId: client.id,
+      convertedAt: new Date(),
+      convertedBy: triggeredBy,
+      conversionSource: source
+    }
+  });
+
+  // ─── ÉTAPE 6: LOG DE CONVERSION ───
+
+  await prisma.conversionLog.create({
+    data: {
+      prospectId: prospect.id,
+      clientId: client.id,
+      source,
+      triggeredBy,
+      triggeredByQuoteId: quoteId,
+      triggeredByOrderId: orderId,
+      dataMigrated: migrationSummary
+    }
+  });
+
+  // ─── ÉTAPE 7: ACTIONS POST-CONVERSION ───
+
+  // 7.1 Créer reminder onboarding
+  await createReminder({
+    type: 'onboarding_client',
+    clientId: client.id,
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 jours
+    note: `Premier contact avec ${client.companyName}. Présenter catalogue, conditions, échantillons.`
+  });
+
+  // 7.2 Log interaction conversion
+  await logInteraction({
+    type: 'system',
+    note: `Conversion automatique: prospect → client ${client.clientCode} (${source})`,
+    clientId: client.id,
+    createdBy: null // système
+  });
+
+  // 7.3 Notification au commercial (si assigné)
+  if (client.assignedTo) {
+    await notifyUser(client.assignedTo, {
+      type: 'prospect_converted',
+      title: 'Nouveau client converti',
+      message: `${prospect.companyName} est maintenant client ${client.clientCode}`,
+      link: `/crm/clients/${client.id}`
+    });
+  }
+
+  return {
+    success: true,
+    client,
+    migrationSummary,
+    message: `Prospect converti en ${client.clientCode}`
+  };
+}
+
+/**
+ * CONVERSION AUTO LORS VALIDATION DEVIS
+ */
+export async function autoConvertOnQuoteAccepted(quoteId, validatedBy) {
+  const quote = await prisma.quote.findUnique({
+    where: { id: quoteId },
+    include: { prospect: true }
+  });
+
+  if (!quote?.prospectId) return null; // Déjà lié à un client
+
+  // Conversion silencieuse
+  const result = await convertProspectToClient(quote.prospectId, {
+    triggeredBy: validatedBy,
+    source: 'quote_accepted',
+    quoteId,
+    skipValidation: true // Pas de vérification score en auto
+  });
+
+  // Mettre à jour le devis avec le nouveau clientId
+  await prisma.quote.update({
+    where: { id: quoteId },
+    data: { clientId: result.client.id, prospectId: null }
+  });
+
+  return result;
+}
+
+/**
+ * CONVERSION AUTO LORS CRÉATION COMMANDE
+ */
+export async function autoConvertOnOrderCreated(orderData, createdBy) {
+  if (!orderData.prospectId) return null;
+
+  const prospect = await prisma.prospect.findUnique({
+    where: { id: orderData.prospectId }
+  });
+
+  if (!prospect || prospect.convertedToClientId) {
+    return null; // Déjà converti ou inexistant
+  }
+
+  // Conversion silencieuse
+  const result = await convertProspectToClient(orderData.prospectId, {
+    triggeredBy: createdBy,
+    source: 'order_created',
+    orderId: orderData.id,
+    skipValidation: true
+  });
+
+  return result.client.id; // Retourne le nouveau clientId
+}
+
+/**
+ * ERREUR CUSTOM
+ */
+class ConversionError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+    this.isConversionError = true;
+  }
+}
+
+================================================================
+4. INTÉGRATION DANS LES ENDPOINTS EXISTANTS
+================================================================
+
+// ─── DEVIS ───
+
+PUT /api/crm/quotes/:id/accept
+
+async function acceptQuote(req, res) {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // 1. Valider le devis
+  const quote = await prisma.quote.update({
+    where: { id },
+    data: { 
+      status: 'accepted',
+      acceptedAt: new Date(),
+      acceptedBy: userId
+    },
+    include: { prospect: true }
+  });
+
+  // 2. CONVERSION AUTO si lié à un prospect
+  let conversionResult = null;
+  if (quote.prospectId) {
+    try {
+      conversionResult = await autoConvertOnQuoteAccepted(id, userId);
+    } catch (err) {
+      // Log mais ne bloque pas la validation du devis
+      console.error('Conversion auto échouée:', err);
+    }
+  }
+
+  // 3. Créer commande depuis devis
+  const order = await createOrderFromQuote(quote, conversionResult?.client.id);
+
+  res.json({
+    success: true,
+    quote,
+    order,
+    conversion: conversionResult ? {
+      converted: true,
+      clientCode: conversionResult.client.clientCode
+    } : null
+  });
+}
+
+// ─── COMMANDE ───
+
+POST /api/crm/orders
+
+async function createOrder(req, res) {
+  const orderData = req.body;
+  const userId = req.user.id;
+
+  // 1. CONVERSION AUTO si prospectId fourni
+  let clientId = orderData.clientId;
+  
+  if (orderData.prospectId && !clientId) {
+    const newClientId = await autoConvertOnOrderCreated(
+      { ...orderData, id: 'temp' }, 
+      userId
+    );
+    if (newClientId) {
+      clientId = newClientId;
+    }
+  }
+
+  // 2. Vérifier stock disponible
+  await checkStockAvailability(orderData.items);
+
+  // 3. Créer la commande
+  const order = await prisma.order.create({
+    data: {
+      ...orderData,
+      clientId,        // Peut être le nouveau client converti
+      prospectId: null, // Toujours null après conversion
+      status: 'confirmed',
+      createdBy: userId
+    },
+    include: { client: true }
+  });
+
+  // 4. Réserver les lots
+  await reserveLots(order.items);
+
+  // 5. Écriture comptable
+  await createAccountingEntry(order);
+
+  res.json({
+    success: true,
+    order,
+    convertedFromProspect: !!orderData.prospectId
+  });
+}
+
+================================================================
+5. MIDDLEWARE CONVERSION (sécurité)
+================================================================
+
+// Middleware pour routes qui acceptent prospectId
+export function resolveProspectToClient(req, res, next) {
+  // Si prospectId dans le body, tenter conversion silencieuse
+  if (req.body.prospectId && !req.body.clientId) {
+    // La conversion sera faite dans le controller
+    // Ce middleware peut ajouter un flag pour le controller
+    req.needsConversion = true;
+  }
+  next();
+}
+
+================================================================
+6. NOTIFICATIONS & UI RÉACTIVE
+================================================================
+
+NOTIFICATION WEBSOCKET (temps réel) :
+
+{
+  type: 'prospect_converted',
+  data: {
+    prospectId: 'uuid',
+    clientId: 'uuid',
+    clientCode: 'CLI-2026-0042',
+    companyName: 'Vanilla Impex Kft.',
+    source: 'quote_accepted', // ou 'order_created'
+    convertedBy: 'user_uuid', // ou null
+    timestamp: '2026-05-01T14:30:00Z'
+  }
+}
+
+TOAST UI (React) :
+
+// Succès conversion auto
+toast.success(`✅ ${companyName} converti en client ${clientCode}`, {
+  action: {
+    label: 'Voir fiche',
+    onClick: () => navigate(`/crm/clients/${clientId}`)
+  },
+  duration: 6000
+});
+
+// Badge dans liste prospects
+{prospect.status === 'converted' && (
+  <Badge variant="blue">
+    Converti → <Link to={`/clients/${prospect.convertedToClientId}`}>
+      {prospect.client?.clientCode}
+    </Link>
+  </Badge>
+)}
+
+================================================================
+7. RÈGLES MÉTIER CRITIQUES
+================================================================
+
+RÈGLE 1 — IDEMPOTENCE
+  Si prospect déjà converti, retourner le client existant (pas d'erreur)
+
+RÈGLE 2 — ATOMICITÉ
+  Toute la conversion est une transaction Prisma
+  → Si échec, rien n'est créé (rollback)
+
+RÈGLE 3 — SILENCE AUTO
+  Conversion auto = pas de modal, pas de confirmation
+  Juste un toast de succès
+
+RÈGLE 4 — PRESERVATION
+  Le prospect reste en base (archivé), jamais supprimé
+  Lien bidirectionnel Prospect ↔ Client
+
+RÈGLE 5 — SCORE BYPASS
+  Conversion auto ignore le score minimum
+  (le devis/commande validé = qualification suffisante)
+
+RÈGLE 6 — ASSIGNATION
+  Le commercial assigné au prospect reste sur le client
+
+================================================================
+8. ENDPOINTS CONVERSION SPÉCIFIQUES
+================================================================
+
+POST   /api/crm/prospects/:id/convert        // Manuel (avec confirmation)
+GET    /api/crm/conversion-logs              // Historique conversions
+GET    /api/crm/conversion-logs/:id          // Détail conversion
+POST   /api/crm/clients/:id/revert           // Annuler conversion (admin only)
+
+================================================================
+9. LIVRABLE ATTENDU
+================================================================
+
+- Service conversion complet (manual + auto)
+- Intégration endpoints devis et commande
+- Transaction atomique Prisma
+- Notifications temps réel
+- Logs d'audit conversions
+- Tests unitaires
+
+INSTRUCTIONS :
+npx prisma migrate dev
+npm run dev
+
+COMMENCE PAR :
+1. Modèle ConversionLog
+2. Service convertProspectToClient
+3. Intégration autoConvertOnQuoteAccepted
+4. Intégration autoConvertOnOrderCreated

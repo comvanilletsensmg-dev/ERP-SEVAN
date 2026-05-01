@@ -4,6 +4,7 @@ import { db, clientsTable, clientContactsTable, prospectsTable } from "@workspac
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/roles";
 import { logger } from "../lib/logger";
+import { convertProspectToClient } from "../services/autoConvert";
 
 const router: IRouter = Router();
 const ROLES = ["SUPER_ADMIN", "COMMERCIAL", "ACCOUNTANT", "LOGISTICS_MANAGER"] as const;
@@ -236,85 +237,40 @@ router.delete("/crm/clients/:id/contacts/:cid", requireAuth, requireRole(...WRIT
 // ─── CONVERSION prospect → client ────────────────────────────────────────────
 router.put("/crm/prospects/:id/convert", requireAuth, requireRole("SUPER_ADMIN", "COMMERCIAL"), async (req, res): Promise<void> => {
   try {
-    const [prospect] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, req.params.id));
-    if (!prospect) { res.status(404).json({ error: "Prospect introuvable" }); return; }
-    if (prospect.convertedToClientId) { res.status(409).json({ error: "Prospect déjà converti", clientId: prospect.convertedToClientId }); return; }
-
-    const forceConvert = req.body?.force === true;
-    const score = prospect.score ?? 0;
-    const allowedStatuses = ["qualified", "contacted"];
-    if (!forceConvert && !(allowedStatuses.includes(prospect.status) && score >= 60)) {
-      res.status(422).json({
-        error: `Conversion impossible. Score ${score}/100 (min 60) et statut "${prospect.status}" requis (qualified ou contacted).`,
-        score, status: prospect.status,
-      });
-      return;
-    }
-
-    const clientCode = await generateClientCode();
-    const [client] = await db.insert(clientsTable).values({
-      name: prospect.company,
-      altName: prospect.altName ?? null,
-      type: prospect.type ?? "Entreprise",
-      clientCode,
-      address: prospect.address ?? null,
-      postalCode: prospect.postalCode ?? null,
-      city: prospect.city ?? null,
-      country: prospect.country,
-      region: prospect.region ?? null,
-      phone: prospect.phone ?? null,
-      mobile: prospect.mobile ?? null,
-      fax: prospect.fax ?? null,
-      website: prospect.website ?? null,
-      email: prospect.email ?? null,
-      refuseMassEmail: prospect.refuseMassEmail ?? false,
-      proId1: prospect.proId1 ?? null,
-      proId2: prospect.proId2 ?? null,
-      vatRegistered: prospect.vatRegistered ?? false,
-      vatNumber: prospect.vatNumber ?? null,
-      source: "converted_prospect",
-      convertedFromId: prospect.id,
-      tags: prospect.tags ?? "[]",
-      internalNotes: prospect.internalNotes ?? null,
-      activityType: prospect.activityType ?? null,
-      riskLevel: "medium",
-      paymentTerms: 30,
-      currency: prospect.preferredCurrency ?? "USD",
-      preferredIncoterm: prospect.preferredIncoterm ?? null,
-      createdBy: (req as any).session?.userId ?? null,
-      assignedTo: prospect.assignedTo ?? null,
-    }).returning();
-
-    // Migrate primary contact from prospect
-    if (prospect.contact) {
-      const parts = prospect.contact.trim().split(" ");
-      const firstName = parts[0] ?? prospect.contact;
-      const lastName = parts.slice(1).join(" ") || "-";
-      await db.insert(clientContactsTable).values({
-        clientId: client.id,
-        firstName, lastName,
-        email: prospect.email ?? null,
-        phone: prospect.phone ?? null,
-        mobile: prospect.mobile ?? null,
-        isPrimary: true,
-      });
-    }
-
-    // Mark prospect as converted
-    await db.update(prospectsTable).set({
-      status: "converted",
-      convertedToClientId: client.id,
-      updatedAt: new Date(),
-    }).where(eq(prospectsTable.id, prospect.id));
-
-    logger.info({ prospectId: prospect.id, clientId: client.id, clientCode }, "Prospect converted to client");
-
-    res.json({
-      success: true,
-      client: safe(client),
-      message: `Prospect converti en client ${clientCode}`,
-      nextSteps: ["Créer un devis", "Planifier appel onboarding", "Définir limite de crédit"],
+    const userId = (req as any).session?.userId;
+    const skipValidation = req.body?.force === true;
+    const result = await convertProspectToClient(req.params.id, {
+      source: "manual",
+      triggeredBy: userId,
+      skipValidation,
     });
+
+    if (result.action === "skipped") {
+      res.status(404).json({ error: result.reason });
+    } else if (result.action === "alert_created") {
+      res.status(422).json({
+        error: result.reason,
+        score: result.score,
+        status: "non_qualifié",
+      });
+    } else if (result.action === "already_converted") {
+      res.status(409).json({
+        error: "Prospect déjà converti",
+        clientId: result.clientId,
+        clientCode: result.clientCode,
+        clientName: result.clientName,
+      });
+    } else {
+      res.json({
+        success: true,
+        clientId: result.clientId,
+        clientCode: result.clientCode,
+        clientName: result.clientName,
+        migrationSummary: result.migrationSummary,
+        message: `Prospect converti en client ${result.clientCode}`,
+        nextSteps: ["Créer un devis", "Planifier appel onboarding", "Définir limite de crédit"],
+      });
+    }
   } catch (e) {
     logger.error(e, "PUT /crm/prospects/:id/convert error");
     res.status(500).json({ error: "Erreur lors de la conversion" });
