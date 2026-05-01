@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -14,6 +14,7 @@ export const dealsTable = pgTable("deals", {
   expectedClose: timestamp("expected_close"),
   notes: text("notes"),
   assignedTo: text("assigned_to"), // userId
+  autoConverted: boolean("auto_converted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

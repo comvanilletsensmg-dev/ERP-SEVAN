@@ -2,13 +2,13 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Users, ShoppingCart, Package, Globe, TrendingUp,
   BookOpen, LogOut, CreditCard, ArrowLeftRight, UserCheck, CalendarDays,
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
-  Target, Activity,
+  Target, Activity, AlertTriangle,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -43,7 +43,7 @@ const hrNav = [
 const crmNav = [
   { label: "Prospects",         href: "/crm/prospects",    icon: Globe },
   { label: "Deals / Pipeline",  href: "/crm/deals",        icon: Target },
-  { label: "Clients CRM",       href: "/crm/clients",       icon: Building2 },
+  { label: "Clients CRM",       href: "/crm/clients",      icon: Building2 },
   { label: "Ventes",            href: "/sales",             icon: TrendingUp },
   { label: "Devis",             href: "/crm/quotes",        icon: FileText },
   { label: "Activités",         href: "/crm/interactions",  icon: Activity },
@@ -57,7 +57,9 @@ const adminNav = [
 
 const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];
 
-function NavItem({ href, label, icon: Icon, location }: { href: string; label: string; icon: React.ElementType; location: string }) {
+function NavItem({ href, label, icon: Icon, location, badge }: {
+  href: string; label: string; icon: React.ElementType; location: string; badge?: number;
+}) {
   const isActive = location === href || (!EXACT_MATCH_PATHS.includes(href) && location.startsWith(href + "/"));
   return (
     <Link
@@ -69,7 +71,12 @@ function NavItem({ href, label, icon: Icon, location }: { href: string; label: s
       }`}
     >
       <Icon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      <span className="truncate flex-1">{label}</span>
+      {badge != null && badge > 0 && (
+        <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-400 text-white text-[10px] font-bold px-1">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -91,6 +98,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const logout = useLogout();
   const role = user?.role ?? "";
+
+  // Fetch pending conversion alert count
+  const { data: alertCount } = useQuery<{ pending: number }>({
+    queryKey: ["crm-alert-count"],
+    queryFn: async () => {
+      const r = await fetch("/api/crm/conversion-alerts/count", { credentials: "include" });
+      if (!r.ok) return { pending: 0 };
+      return r.json();
+    },
+    refetchInterval: 60_000,
+    enabled: canAccess(role, "crm"),
+  });
+
+  const pendingAlerts = alertCount?.pending ?? 0;
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -122,7 +143,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
           )}
 
           {canAccess(role, "crm") && (
-            <NavSection title="Commercial / CRM" items={crmNav} location={location} />
+            <>
+              <NavSection title="Commercial / CRM" items={crmNav} location={location} />
+              <NavItem
+                href="/crm/conversion-alerts"
+                label="Alertes conversion"
+                icon={AlertTriangle}
+                location={location}
+                badge={pendingAlerts}
+              />
+            </>
           )}
 
           {canAccess(role, "admin") && (

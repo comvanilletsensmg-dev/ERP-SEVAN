@@ -3,6 +3,8 @@ import { db, dealsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/roles";
+import { autoConvertProspect } from "../services/autoConvert";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const CRM_ROLES = ["SUPER_ADMIN", "COMMERCIAL", "ACCOUNTANT"] as const;
@@ -27,16 +29,52 @@ router.get("/crm/deals/:id", requireAuth, requireRole(...CRM_ROLES), async (req,
 });
 
 router.post("/crm/deals", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
-  const { title, prospectId, clientId, stage, value, currency, probability, expectedClose, notes, assignedTo } = req.body;
+  const { title, prospectId, clientId: clientIdRaw, stage, value, currency, probability, expectedClose, notes, assignedTo } = req.body;
   if (!title) { res.status(400).json({ error: "title requis" }); return; }
+
+  let resolvedClientId: string | null = clientIdRaw ?? null;
+  let conversionResult = null;
+  let autoConverted = false;
+
+  // ── Auto-conversion trigger ──────────────────────────────────────────────
+  if (prospectId && !resolvedClientId) {
+    try {
+      conversionResult = await autoConvertProspect(
+        prospectId, "deal", "pending", (req as any).session?.userId
+      );
+      if (conversionResult.action === "converted" || conversionResult.action === "already_converted") {
+        resolvedClientId = conversionResult.clientId ?? null;
+        autoConverted = conversionResult.action === "converted";
+      }
+    } catch (e) {
+      logger.error(e, "Auto-conversion failed during deal creation");
+    }
+  }
+
   const [deal] = await db.insert(dealsTable).values({
-    title, prospectId: prospectId ?? null, clientId: clientId ?? null,
-    stage: stage ?? "prospect", value: Number(value ?? 0),
-    currency: currency ?? "USD", probability: Number(probability ?? 20),
+    title,
+    prospectId: prospectId ?? null,
+    clientId: resolvedClientId,
+    stage: stage ?? (resolvedClientId ? "contact" : "prospect"),
+    value: Number(value ?? 0),
+    currency: currency ?? "USD",
+    probability: Number(probability ?? (resolvedClientId ? 30 : 20)),
     expectedClose: expectedClose ? new Date(expectedClose) : null,
-    notes: notes ?? null, assignedTo: assignedTo ?? null,
+    notes: notes ?? null,
+    assignedTo: assignedTo ?? null,
+    autoConverted,
   }).returning();
-  res.status(201).json(safe(deal));
+
+  // Update trigger ID now that we have the deal id
+  if (conversionResult?.alertId) {
+    const { conversionAlertsTable } = await import("@workspace/db");
+    await db.update(conversionAlertsTable).set({ triggerId: deal.id }).where(eq(conversionAlertsTable.id, conversionResult.alertId));
+  }
+
+  res.status(201).json({
+    ...safe(deal),
+    _conversion: conversionResult,
+  });
 });
 
 router.put("/crm/deals/:id", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {

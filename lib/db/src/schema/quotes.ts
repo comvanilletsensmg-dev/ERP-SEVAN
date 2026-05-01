@@ -6,6 +6,7 @@ export const quotesTable = pgTable("quotes", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   number: text("number").notNull(), // DEV-2026-XXXX
   clientId: text("client_id").notNull(),
+  prospectId: text("prospect_id"),
   dealId: text("deal_id"),
   totalHT: real("total_ht").notNull().default(0),
   tva: real("tva").notNull().default(0),

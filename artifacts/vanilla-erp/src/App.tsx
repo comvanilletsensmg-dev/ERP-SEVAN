@@ -35,6 +35,7 @@ import CrmProspects from "@/pages/crm/Prospects";
 import CrmProspectDetail from "@/pages/crm/ProspectDetail";
 import CrmClients from "@/pages/crm/Clients";
 import CrmClientDetail from "@/pages/crm/ClientDetail";
+import CrmConversionAlerts from "@/pages/crm/ConversionAlerts";
 import CrmDeals from "@/pages/crm/Deals";
 import CrmInteractions from "@/pages/crm/Interactions";
 import CrmQuotes from "@/pages/crm/Quotes";
@@ -93,6 +94,7 @@ function Router() {
         return <ProtectedRoute component={C} />;
       }} />
       <Route path="/crm/clients" component={() => <ProtectedRoute component={CrmClients} />} />
+      <Route path="/crm/conversion-alerts" component={() => <ProtectedRoute component={CrmConversionAlerts} />} />
       <Route path="/crm/prospects/:id" component={(params: any) => {
         const id = params?.params?.id ?? params?.id ?? "";
         const C = () => <CrmProspectDetail id={id} />;

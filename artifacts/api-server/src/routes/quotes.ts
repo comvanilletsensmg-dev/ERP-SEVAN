@@ -3,6 +3,8 @@ import { db, quotesTable, quoteItemsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/roles";
+import { autoConvertProspect } from "../services/autoConvert";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const CRM_ROLES = ["SUPER_ADMIN", "COMMERCIAL", "ACCOUNTANT"] as const;
@@ -38,15 +40,42 @@ router.get("/crm/quotes/:id", requireAuth, requireRole(...CRM_ROLES), async (req
 });
 
 router.post("/crm/quotes", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
-  const { clientId, dealId, currency, items: rawItems, notes, validUntil } = req.body;
-  if (!clientId || !rawItems?.length) { res.status(400).json({ error: "clientId et items requis" }); return; }
+  const { clientId: clientIdRaw, prospectId, dealId, currency, items: rawItems, notes, validUntil } = req.body;
+  if (!rawItems?.length) { res.status(400).json({ error: "items requis" }); return; }
+  if (!clientIdRaw && !prospectId) { res.status(400).json({ error: "clientId ou prospectId requis" }); return; }
+
+  let resolvedClientId: string = clientIdRaw;
+  let conversionResult = null;
+
+  // ── Auto-conversion trigger when quote linked to a prospect ────────────────
+  if (prospectId && !clientIdRaw) {
+    try {
+      conversionResult = await autoConvertProspect(
+        prospectId, "quote", "pending", (req as any).session?.userId
+      );
+      if (conversionResult.action === "converted" || conversionResult.action === "already_converted") {
+        resolvedClientId = conversionResult.clientId!;
+      } else {
+        // Alert created — cannot create quote without a clientId
+        res.status(422).json({
+          error: "Conversion du prospect requise avant création du devis",
+          conversion: conversionResult,
+          message: `${conversionResult.reason}. Une alerte a été créée pour l'administrateur.`,
+        });
+        return;
+      }
+    } catch (e) {
+      logger.error(e, "Auto-conversion failed during quote creation");
+      res.status(500).json({ error: "Erreur lors de la conversion du prospect" });
+      return;
+    }
+  }
 
   const items: Array<{ description: string; quantity: number; unitPrice: number; lotId?: string }> = rawItems;
   const totalHT = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const tva = 0; // export 0%
+  const tva = 0;
   const totalTTC = totalHT + tva;
 
-  // Block if >10000 USD and not SUPER_ADMIN
   if (totalHT > 10000 && req.currentUser?.role !== "SUPER_ADMIN") {
     res.status(403).json({ error: "Devis > 10 000 USD — validation Super Admin requise" });
     return;
@@ -56,10 +85,18 @@ router.post("/crm/quotes", requireAuth, requireRole(...CRM_WRITE), async (req, r
   const validUntilDate = validUntil ? new Date(validUntil) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   const [quote] = await db.insert(quotesTable).values({
-    number, clientId, dealId: dealId ?? null, totalHT, tva, totalTTC,
+    number, clientId: resolvedClientId,
+    prospectId: prospectId ?? null,
+    dealId: dealId ?? null, totalHT, tva, totalTTC,
     currency: currency ?? "USD", status: "draft", validUntil: validUntilDate,
     notes: notes ?? null,
   }).returning();
+
+  // Update trigger id in alert
+  if (conversionResult?.alertId) {
+    const { conversionAlertsTable } = await import("@workspace/db");
+    await db.update(conversionAlertsTable).set({ triggerId: quote.id }).where(eq(conversionAlertsTable.id, conversionResult.alertId));
+  }
 
   const insertedItems = await db.insert(quoteItemsTable).values(
     items.map(i => ({
@@ -69,7 +106,7 @@ router.post("/crm/quotes", requireAuth, requireRole(...CRM_WRITE), async (req, r
     }))
   ).returning();
 
-  res.status(201).json(safe({ ...quote, items: insertedItems }));
+  res.status(201).json(safe({ ...quote, items: insertedItems, _conversion: conversionResult }));
 });
 
 router.patch("/crm/quotes/:id/send", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
