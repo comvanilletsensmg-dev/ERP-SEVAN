@@ -32,6 +32,7 @@ import UsersAdmin from "@/pages/admin/Users";
 import LogisticsIntelligence from "@/pages/logistics/Intelligence";
 import CrmLeads from "@/pages/crm/Leads";
 import CrmProspects from "@/pages/crm/Prospects";
+import CrmProspectDetail from "@/pages/crm/ProspectDetail";
 import CrmDeals from "@/pages/crm/Deals";
 import CrmInteractions from "@/pages/crm/Interactions";
 import CrmQuotes from "@/pages/crm/Quotes";
@@ -84,6 +85,11 @@ function Router() {
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
       <Route path="/logistics/intelligence" component={() => <ProtectedRoute component={LogisticsIntelligence} />} />
+      <Route path="/crm/prospects/:id" component={(params: any) => {
+        const id = params?.params?.id ?? params?.id ?? "";
+        const C = () => <CrmProspectDetail id={id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
       <Route path="/crm/prospects" component={() => <ProtectedRoute component={CrmProspects} />} />
       <Route path="/crm/deals" component={() => <ProtectedRoute component={CrmDeals} />} />
       <Route path="/crm/leads" component={() => <ProtectedRoute component={CrmLeads} />} />

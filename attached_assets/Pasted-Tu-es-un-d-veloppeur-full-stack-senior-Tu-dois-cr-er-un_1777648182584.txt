@@ -1,0 +1,535 @@
+Tu es un développeur full-stack senior. Tu dois créer un module CRM complet pour "Vanilla ERP" — export de vanille Madagascar vers l'Europe et l'international.
+
+CONTEXTE :
+- Stack : React + Tailwind + shadcn/ui, Node.js + Express + Prisma + PostgreSQL
+- Le fichier prospect contient des champs spécifiques par pays (ex: TVA intracommunautaire en UE, EIN aux USA, RUT en Uruguay, etc.)
+- Le commercial doit pouvoir : créer un prospect manuellement OU uploader un fichier Excel
+- Le formulaire s'adapte dynamiquement selon le pays sélectionné
+
+================================================================
+1. MODÈLE PRISMA — PROSPECT (champs basés sur fichier réel)
+================================================================
+
+model Prospect {
+  // === IDENTITÉ ENTREPRISE ===
+  id                String   @id @default(uuid())
+  companyName       String   // NOM DU TIERS *
+  altName           String?  // NOM ALTERNATIF
+  type              String   // TYPE : Entreprise, Particulier, Association, Administration
+  clientCode        String?  // CODE CLIENT (auto-généré après conversion)
+  
+  // === ADRESSE ===
+  address           String?
+  postalCode        String?
+  city              String?
+  country           String   // PAYS *
+  region            String?  // DÉPARTEMENT / CANTON / ÉTAT / PROVINCE
+  
+  // === CONTACT ===
+  phone             String?  // TÉLÉPHONE
+  mobile            String?  // TÉL PORTABLE
+  fax               String?  // FAX
+  website           String?  // SITE WEB
+  email             String?  // EMAIL
+  refuseMassEmail   Boolean  @default(false) // REFUSER EMAILS DE MASSE
+  
+  // === IDENTIFIANTS FISCAUX (adaptés par pays) ===
+  proId1            String?  // IDENTIFIANT PRO 1 (SIRET, EIN, CIF, RUT, etc.)
+  proId2            String?  // IDENTIFIANT PRO 2 (numéro de TVA, etc.)
+  vatRegistered     Boolean  @default(false) // ASSUJETTI TVA
+  vatNumber         String?  // NUMÉRO DE TVA
+  
+  // === CATÉGORISATION ===
+  tags              String[] // TAGS / CATÉGORIES (tableau)
+  internalNotes     String?  // NOTES INTERNES
+  
+  // === QUALIFICATION COMMERCIALE ===
+  status            String   @default("new") // new, to_contact, contacted, qualified, converted, lost
+  score             Int      @default(0)
+  assignedTo        String?  // userId du commercial
+  
+  // === DONNÉES MÉTIER VANILLE ===
+  activityType      String?  // importateur, distributeur, transformateur, industriel, artisan, autre
+  estimatedVolume   Float?   // tonnes/an
+  currentSupplier   String?  // fournisseur actuel
+  productsSought    String[] // vanille_gourmet, vanille_tk, extraits, poudre, etc.
+  decisionTimeline  String?  // immediat, 1_3_mois, 3_6_mois, 6_12_mois, inconnu
+  budgetRange       String?  // moins_50, 50_100, 100_200, plus_200 USD/kg
+  
+  // === SPÉCIFICATIONS ACHAT ===
+  preferredCurrency String?  // USD, EUR, GBP
+  preferredIncoterm String?  // FOB, CIF, EXW, DDP
+  paymentTerms      String?  // LC, virement_30j, virement_60j, acompte, contre_remise
+  certifications    String[] // bio, fairtrade, fda, haccp, etc.
+  
+  // === TRACKING ===
+  source            String   // manuel, kompass, salon, referral, web, linkedin, import_excel
+  createdBy         String   // userId
+  createdAt         DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  lastInteraction   DateTime?
+  convertedToClientId String?
+}
+
+================================================================
+2. CHAMPS ADAPTATIFS PAR PAYS (FRONTEND DYNAMIQUE)
+================================================================
+
+Selon le pays sélectionné, afficher les bons champs fiscaux :
+
+HONGRIE (HU) :
+  - proId1 label : "Numéro d'entreprise (Cégjegyzékszám)"
+  - proId2 label : "Numéro de TVA hongrois (HU + 8 chiffres)"
+  - vatNumber format : /^HU[0-9]{8}$/
+
+FRANCE (FR) :
+  - proId1 label : "SIRET (14 chiffres)"
+  - proId2 label : "SIREN (9 chiffres)"
+  - vatNumber format : /^FR[A-Z0-9]{2}[0-9]{9}$/
+
+ALLEMAGNE (DE) :
+  - proId1 label : "Handelsregisternummer"
+  - proId2 label : "Steuernummer"
+  - vatNumber format : /^DE[0-9]{9}$/
+
+USA (US) :
+  - proId1 label : "EIN (Employer Identification Number)"
+  - proId2 label : "DUNS Number"
+  - vatRegistered : caché (pas de TVA aux USA)
+  - vatNumber : caché
+
+ROYAUME-UNI (GB) :
+  - proId1 label : "Company Number"
+  - proId2 label : "VAT Registration Number"
+  - vatNumber format : /^GB[0-9]{9}$/
+
+ITALIE (IT) :
+  - proId1 label : "Codice Fiscale"
+  - proId2 label : "Partita IVA"
+  - vatNumber format : /^IT[0-9]{11}$/
+
+ESPAGNE (ES) :
+  - proId1 label : "NIF"
+  - proId2 label : "CIF"
+  - vatNumber format : /^ES[A-Z][0-9]{8}$/
+
+PAYS-BAS (NL) :
+  - proId1 label : "KVK-nummer"
+  - proId2 label : "BTW-nummer"
+  - vatNumber format : /^NL[0-9]{9}B[0-9]{2}$/
+
+BELGIQUE (BE) :
+  - proId1 label : "Numéro d'entreprise"
+  - proId2 label : "TVA BE"
+  - vatNumber format : /^BE[0-9]{10}$/
+
+SUISSE (CH) :
+  - proId1 label : "UID (Unternehmens-Identifikationsnummer)"
+  - proId2 label : "Numéro IDE"
+  - vatNumber format : /^CHE-[0-9]{9}$/
+
+CANADA (CA) :
+  - proId1 label : "Numéro d'entreprise (Business Number)"
+  - proId2 label : "Numéro de TPS/TVH"
+  - vatRegistered label : "Enregistré TPS/TVH"
+
+JAPON (JP) :
+  - proId1 label : "法人番号 (Hōjin Bangō)"
+  - proId2 label : "事業者登録番号"
+  - vatNumber : caché (pas de TVA traditionnelle)
+
+AUSTRALIE (AU) :
+  - proId1 label : "ABN (Australian Business Number)"
+  - proId2 label : "ACN (Australian Company Number)"
+  - vatNumber label : "GST Registration"
+
+PAYS SANS TVA (ex: certains pays d'Afrique, Moyen-Orient) :
+  - vatRegistered : caché
+  - vatNumber : caché
+  - proId1 label : "Numéro d'enregistrement commercial"
+  - proId2 label : "Autre identifiant"
+
+================================================================
+3. FORMULAIRE UI REACT — 3 ÉTAPES
+================================================================
+
+MODAL : "Nouveau prospect" (style beige/crème #f5f0e8, boutons vert #1a3c2a)
+
+ÉTAPE 1/3 — IDENTITÉ ENTREPRISE
+┌─────────────────────────────────────────────────────────────┐
+│  Entreprise *              │  Nom alternatif                │
+│  [Vanilla Impex Kft.    ]  │  [Vanilla Impex             ]  │
+│                            │                                │
+│  Type *                    │  Code client (auto)            │
+│  [Entreprise         ▼]    │  [CLI-2026-0042             ]  │
+│                            │                                │
+│  Adresse                   │  Code postal                   │
+│  [Csapas utca 7         ]  │  [2011                      ]  │
+│                            │                                │
+│  Ville *                   │  Pays *                        │
+│  [Budakalász            ]  │  [Hongrie              ▼▼▼▼]  │
+│                            │                                │
+│  Région / Département      │                                │
+│  [Pest                  ]  │                                │
+│                            │                                │
+│  [Continuer →]                                             │
+└─────────────────────────────────────────────────────────────┘
+
+ÉTAPE 2/3 — CONTACT & FISCAL (adapté pays Hongrie)
+┌─────────────────────────────────────────────────────────────┐
+│  Téléphone                 │  Tél. portable                 │
+│  [+36 26 340 000        ]  │  [                          ]  │
+│                            │                                │
+│  Fax                       │  Site web                      │
+│  [                      ]  │  [https://www.vanillaimpex.com] │
+│                            │                                │
+│  Email                     │  Refuser emails de masse       │
+│  [info@vanillaimpex.com ]  │  [ ] Non  [✓] Oui              │
+│                            │                                │
+│  ─── IDENTIFIANTS HONGRIE ───                              │
+│  Numéro d'entreprise       │  Numéro de TVA hongrois        │
+│  [                      ]  │  [HU12345678                ]  │
+│                            │                                │
+│  Assujetti TVA             │                                │
+│  [✓] Oui  [ ] Non                                          │
+│                            │                                │
+│  [← Précédent]  [Continuer →]                              │
+└─────────────────────────────────────────────────────────────┘
+
+ÉTAPE 3/3 — QUALIFICATION & TAGS
+┌─────────────────────────────────────────────────────────────┐
+│  Type d'activité *         │  Volume estimé (t/an)          │
+│  [Importateur        ▼]    │  [2-3                       ]  │
+│                            │                                │
+│  Fournisseur actuel        │  Produits recherchés           │
+│  [Indonésie          ▼]    │  [✓] Gousses  [✓] Extraits     │
+│                            │  [ ] Poudre   [ ] Caviar       │
+│                            │                                │
+│  Délai décision            │  Budget indicatif (USD/kg)     │
+│  [1-3 mois           ▼]    │  [80-100                    ]  │
+│                            │                                │
+│  Devise préférée           │  Incoterm préféré              │
+│  [USD                ▼]    │  [CIF                  ▼▼▼▼]    │
+│                            │                                │
+│  Mode de paiement          │  Certifications requises         │
+│  [Virement 30j       ▼]    │  [✓] Bio  [ ] Fairtrade         │
+│                            │  [ ] FDA  [ ] HACCP            │
+│                            │                                │
+│  Tags / Catégories         │                                │
+│  [Vanille] [Importateur] [Distributeur] [Hongrie] [B2B]    │
+│  [+ Ajouter un tag]                                        │
+│                            │                                │
+│  Notes internes                                            │
+│  [Distributeur de vanille ougandaise et malgache en        │
+│   Hongrie. Produits : gousses, poudre, caviar, extraits.   │
+│   Livraison UE depuis stock local. Concurrent direct et    │
+│   potentiel partenaire ou client revendeur.              ] │
+│                            │                                │
+│  [← Précédent]  [Créer le prospect]                        │
+└─────────────────────────────────────────────────────────────┘
+
+================================================================
+4. SCORING AUTOMATIQUE (BACKEND)
+================================================================
+
+function calculateProspectScore(prospect) {
+  let score = 0;
+  
+  // Géographie (30 points)
+  const premiumMarkets = ['Germany', 'France', 'USA', 'Netherlands', 
+                          'Switzerland', 'UK', 'Belgium', 'Japan', 'Canada',
+                          'Hongrie', 'Autriche', 'Italie', 'Espagne'];
+  const goodMarkets = ['Pologne', 'République tchèque', 'Slovaquie',
+                       'Roumanie', 'Bulgarie', 'Croatie', 'Slovénie',
+                       'Portugal', 'Irlande', 'Danemark', 'Suède',
+                       'Norvège', 'Finlande', 'Australie', 'Nouvelle-Zélande',
+                       'Émirats arabes unis', 'Singapour', 'Corée du Sud'];
+  
+  if (premiumMarkets.includes(prospect.country)) score += 30;
+  else if (goodMarkets.includes(prospect.country)) score += 22;
+  else score += 12;
+  
+  // Source (20 points)
+  const sourceScores = {
+    'kompass': 20,
+    'referral': 25,
+    'salon_sial': 20,
+    'salon_vivaness': 20,
+    'import_excel': 18,
+    'site_web': 15,
+    'linkedin': 15,
+    'email_entrant': 15,
+    'manuel': 10
+  };
+  score += sourceScores[prospect.source] || 10;
+  
+  // Type activité (20 points)
+  const activityScores = {
+    'importateur': 20,
+    'distributeur': 18,
+    'transformateur': 15,
+    'industriel': 15,
+    'artisan': 12,
+    'autre': 5
+  };
+  score += activityScores[prospect.activityType] || 5;
+  
+  // Volume (15 points)
+  if (prospect.estimatedVolume >= 5) score += 15;
+  else if (prospect.estimatedVolume >= 2) score += 10;
+  else if (prospect.estimatedVolume >= 0.5) score += 5;
+  else score += 2;
+  
+  // Budget (10 points)
+  const budgetScores = {
+    'plus_200': 10,
+    '100_200': 8,
+    '50_100': 5,
+    'moins_50': 2
+  };
+  score += budgetScores[prospect.budgetRange] || 2;
+  
+  // Complétude (5 points)
+  const hasAllContact = prospect.email && prospect.phone && prospect.website;
+  const hasVat = prospect.vatRegistered && prospect.vatNumber;
+  if (hasAllContact && hasVat) score += 5;
+  else if (hasAllContact) score += 3;
+  else score += 1;
+  
+  return Math.min(score, 100);
+}
+
+================================================================
+5. UPLOAD EXCEL PROSPECTS (FONCTIONNALITÉ CRITIQUE)
+================================================================
+
+PAGE : /crm/prospects/import
+
+┌─────────────────────────────────────────────────────────────┐
+│  Importer des prospects                                     │
+│                                                             │
+│  Glissez-déposez votre fichier Excel ici                  │
+│  ou cliquez pour parcourir                                  │
+│                                                             │
+│  [   📁   ]                                                 │
+│                                                             │
+│  Formats acceptés : .xlsx, .xls, .csv                       │
+│  Modèle requis : téléchargez le modèle Excel                │
+│                                                             │
+│  [Télécharger le modèle Excel]                              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+COLONNES EXCEL ATTENDUES (même noms que le formulaire) :
+
+| Colonne Excel          | Champ Prisma      | Obligatoire |
+|------------------------|-------------------|-------------|
+| NOM DU TIERS           | companyName       | OUI         |
+| NOM ALTERNATIF         | altName           | non         |
+| TYPE                   | type              | OUI         |
+| CODE CLIENT            | clientCode        | auto        |
+| ADRESSE                | address           | non         |
+| CODE POSTAL            | postalCode        | non         |
+| VILLE                  | city              | non         |
+| PAYS                   | country           | OUI         |
+| DÉPARTEMENT / CANTON   | region            | non         |
+| TÉLÉPHONE              | phone             | non         |
+| TÉL PORTABLE           | mobile            | non         |
+| FAX                    | fax               | non         |
+| SITE WEB               | website           | non         |
+| EMAIL                  | email             | non         |
+| REFUSER EMAILS DE MASSE| refuseMassEmail   | non (Non)   |
+| IDENTIFIANT PRO 1      | proId1            | non         |
+| IDENTIFIANT PRO 2      | proId2            | non         |
+| ASSUJETTI TVA          | vatRegistered     | non (Non)   |
+| NUMÉRO DE TVA          | vatNumber         | non         |
+| TAGS / CATÉGORIES      | tags              | non         |
+| NOTES INTERNES         | internalNotes     | non         |
+
+LOGIQUE UPLOAD :
+
+1. Vérifier format fichier (.xlsx, .xls, .csv)
+2. Parser avec xlsx (SheetJS) ou csv-parser
+3. Mapper colonnes → champs Prisma
+4. Validation ligne par ligne :
+   - companyName présent ?
+   - country présent ?
+   - email valide si présent ?
+   - vatNumber format correct selon pays ?
+5. Afficher prévisualisation :
+   ┌─────────────────────────────────────────────────────────┐
+   │  47 prospects détectés                                  │
+   │  ✅ 45 valides  │  ⚠️ 2 erreurs                         │
+   │                                                         │
+   │  Ligne 12 : Email invalide "info@vanillaimpex"          │
+   │  Ligne 38 : Pays inconnu "Hong Kong"                    │
+   │                                                         │
+   │  [Importer les 45 valides]  [Tout annuler]              │
+   └─────────────────────────────────────────────────────────┘
+6. Créer prospects en base (score auto calculé)
+7. Générer rapport d'import
+
+================================================================
+6. API ENDPOINTS
+================================================================
+
+POST   /api/crm/prospects                    // Création manuelle
+POST   /api/crm/prospects/import             // Upload Excel
+GET    /api/crm/prospects                    // Liste avec filtres
+GET    /api/crm/prospects/:id                // Détail
+PUT    /api/crm/prospects/:id                // Modification
+PUT    /api/crm/prospects/:id/convert        // Convertir en client
+POST   /api/crm/prospects/:id/score          // Recalculer score
+GET    /api/crm/prospects/template           // Télécharger modèle Excel
+GET    /api/crm/prospects/kanban             // Données pipeline
+PUT    /api/crm/prospects/:id/status         // Changement statut
+
+================================================================
+7. PIPELINE KANBAN PROSPECTS
+================================================================
+
+Page : /crm/prospects
+
+┌─────────────────────────────────────────────────────────────────┐
+│  Prospects                              [ + Nouveau ] [📁 Import] │
+│  Gestion des prospects — pipeline de qualification              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐   │
+│  │ NOUVEAUX   │ │À CONTACTER │ │ CONTACTÉS  │ │  QUALIFIÉS │   │
+│  │   (12)     │ │   (8)      │ │   (5)      │ │   (3)      │   │
+│  ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤   │
+│  │ 🔥 Vanilla │ │ 🌡️ Chili   │ │ ✅ Hungar. │ │ 💰 Flavor- │   │
+│  │   Impex    │ │   Produkt  │ │   ian      │ │   chem     │   │
+│  │   HU │ 85  │ │   HU │ 72  │ │   Flavours │ │   HU │ 90  │   │
+│  │ Importateur│ │ Fabricant  │ │   HU │ 68  │ │ Fabricant  │   │
+│  │ 2-3 t/an   │ │ Épices     │ │ Importateur│ │ Arômes     │   │
+│  │            │ │            │ │            │ │ 5+ t/an    │   │
+│  │ 🌡️ Aroma   │ │ ❄️ Spice   │ │ ❄️ Euro    │ │ [Convertir │   │
+│  │   Flavors  │ │   Traders  │ │   Vanilla  │ │   en client]│   │
+│  │   HU │ 78  │ │   HU │ 45  │ │   HU │ 55  │ │            │   │
+│  │            │ │            │ │            │ │            │   │
+│  │ ❄️ Food    │ │            │ │            │ │            │   │
+│  │   Base     │ │            │ │            │ │            │   │
+│  │   HU │ 42  │ │            │ │            │ │            │   │
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘   │
+│                                                                 │
+│  Légende : 🔥 ≥80  │  🌡️ 60-79  │  ❄️ <60                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+ACTIONS SUR CARTE (hover) :
+- [📧 Email] → Ouvre template email
+- [📞 Appeler] → Log interaction "call"
+- [💬 WhatsApp] → Ouvre lien wa.me
+- [→] → Avancer dans pipeline
+- [Voir fiche] → Page détail
+
+================================================================
+8. FICHE DÉTAIL PROSPECT
+================================================================
+
+Page : /crm/prospects/:id
+
+┌─────────────────────────────────────────────────────────────────┐
+│  ← Retour aux prospects                                         │
+│                                                                 │
+│  VANILLA IMPEX KFT.                              [Modifier]    │
+│  🔥 Score: 85/100 │ Statut: À contacter │ Source: Import Excel │
+│  🇭🇺 Hongrie │ Importateur │ 2-3 tonnes/an                     │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │  CONTACT    │  │ IDENTIFIANTS│  │    ACTIVITÉS            │ │
+│  │             │  │   FISCAUX   │  │                         │ │
+│  │ Csaba utca 7│  │ Cégjegyzék: │  │ • 02/05 — Import Excel  │ │
+│  │ 2011        │  │ [non renseig]│  │ • 03/05 — Email envoyé  │ │
+│  │ Budakalász  │  │ TVA:        │  │ • [+ Ajouter action]    │ │
+│  │ Pest,       │  │ [non assujetti]│                         │ │
+│  │ Hongrie     │  │             │  │                         │ │
+│  │             │  │             │  │                         │ │
+│  │ 📞 +36 26...│  │             │  │                         │ │
+│  │ ✉️ info@... │  │             │  │                         │ │
+│  │ 🌐 www.v... │  │             │  │                         │ │
+│  │             │  │             │  │                         │ │
+│  │ [📧 Email]  │  │             │  │                         │ │
+│  │ [📞 Appeler]│  │             │  │                         │ │
+│  │ [💬 WhatsApp│  │             │  │                         │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │ QUALIFICATION│  │ SPÉCIFICATIONS│  │   TAGS & NOTES        │ │
+│  │             │  │             │  │                         │ │
+│  │ Type: Import│  │ Devise: USD │  │ Vanille, Importateur,   │ │
+│  │ Volume: 2-3t│  │ Incoterm: CIF│  │ Distributeur, Uganda,   │ │
+│  │ Fournisseur:│  │ Paiement:   │  │ Madagascar, Hongrie,    │ │
+│  │   Indonésie │  │   Virement  │  │ B2B                     │ │
+│  │ Budget: 80$ │  │ Certif:     │  │                         │ │
+│  │ Délai: 1-3m │  │   [aucune]  │  │ NOTES INTERNES:         │ │
+│  │             │  │             │  │ Distributeur de vanille │ │
+│  │             │  │ Produits:   │  │ ougandaise et malgache  │ │
+│  │             │  │   Gousses ✓ │  │ en Hongrie. Produits:   │ │
+│  │             │  │   Extraits ✓│  │ gousses, poudre, caviar,│ │
+│  │             │  │   Poudre ✗  │  │ extraits. Livraison UE  │ │
+│  │             │  │   Caviar ✗  │  │ depuis stock local.     │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│                                                                 │
+│  [Convertir en client]  [Marquer comme perdu]  [🗑️ Supprimer]  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+================================================================
+9. CONVERSION PROSPECT → CLIENT
+================================================================
+
+PUT /api/crm/prospects/:id/convert
+
+LOGIQUE :
+1. Prospect status = "qualified" ET score >= 60
+2. Créer Client avec données du prospect
+3. Générer clientCode : CLI-YYYY-XXXX (auto-incrément)
+4. Prospect status = "converted"
+5. Prospect convertedToClientId = client.id
+6. Créer Deal lié au nouveau client
+7. Créer Reminder "Premier contact client"
+8. Log interaction "Conversion prospect → client"
+
+================================================================
+10. RAPPEL — DESIGN SYSTEM
+================================================================
+
+- Fond modal : #f5f0e8
+- Bouton primaire : #1a3c2a (texte blanc)
+- Bouton secondaire : #ffffff bordure #1a3c2a
+- Texte : #2d2d2d
+- Labels : #6b6b6b
+- Score HOT : #e85d04
+- Score WARM : #f4a261
+- Score COLD : #9ca3af
+- Succès : #16a34a
+- Erreur : #dc2626
+- Bordure champs : #d4d0c8 (focus: #1a3c2a)
+
+================================================================
+11. LIVRABLE ATTENDU
+================================================================
+
+- Formulaire prospect 3 étapes avec champs adaptatifs par pays
+- Upload Excel avec validation ligne par ligne
+- Pipeline Kanban drag & drop
+- Scoring automatique backend
+- Fiche détail prospect complète
+- Conversion prospect → client
+- Modèle Excel téléchargeable
+- Prisma schema complet
+- Seed data (10 prospects variés)
+
+INSTRUCTIONS :
+npx prisma migrate dev
+npx prisma db seed
+npm run dev
+
+COMMENCE PAR :
+1. Prisma schema (Prospect complet)
+2. Service validation fiscale par pays
+3. Formulaire React 3 étapes
+4. Upload Excel avec preview
