@@ -313,18 +313,33 @@ function ImportModal({ onClose }: { onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [importError, setImportError] = useState("");
   const ref = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
   const handleImport = async () => {
     if (!file) return;
     setLoading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    const r = await fetch("/api/crm/prospects/import", { method: "POST", body: fd, credentials: "include" });
-    const data = await r.json();
-    setResult(data);
-    if (data.imported > 0) qc.invalidateQueries({ queryKey: ["prospects"] });
+    setImportError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/crm/prospects/import", { method: "POST", body: fd, credentials: "include" });
+      const data = await r.json().catch(() => ({ error: `Erreur ${r.status}` }));
+      if (!r.ok) {
+        if (r.status === 401) {
+          setImportError("Session expirée — veuillez vous reconnecter (F5 puis Login).");
+        } else {
+          setImportError(data?.error ?? `Erreur serveur (${r.status})`);
+        }
+        setLoading(false);
+        return;
+      }
+      setResult(data);
+      if (data.imported > 0) qc.invalidateQueries({ queryKey: ["prospects"] });
+    } catch (e: any) {
+      setImportError(e?.message ?? "Erreur inattendue lors de l'import");
+    }
     setLoading(false);
   };
 
@@ -360,6 +375,11 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             <a href="/api/crm/prospects/template" download className="block text-center border border-[#1a3c2a] text-[#1a3c2a] text-sm py-2 rounded-lg hover:bg-green-50">
               📥 Télécharger le modèle Excel
             </a>
+            {importError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+                ⚠️ {importError}
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">Annuler</button>
               <button onClick={handleImport} disabled={!file || loading}

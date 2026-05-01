@@ -82,6 +82,7 @@ Only lots with status `ready` can be sold.
 
 Tables:
 - `users` — auth
+- `user_sessions` — sessions persistantes PostgreSQL (connect-pg-simple, expire 7j)
 - `suppliers` — fournisseurs (region, score)
 - `purchases` — achats (weight, pricePerKg, totalAmount, humidity, paymentMethod, lotId)
 - `lots` — lots (code VAN-YYYY-XXXX, weightInitial, weightCurrent, humidity, grade, status)
