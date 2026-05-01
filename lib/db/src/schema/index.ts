@@ -24,3 +24,6 @@ export * from "./price_history";
 export * from "./leads";
 export * from "./crm";
 export * from "./prospects";
+export * from "./deals";
+export * from "./interactions";
+export * from "./quotes";

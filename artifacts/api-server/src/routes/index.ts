@@ -33,6 +33,9 @@ import crmEmailsRouter from "./crm-emails";
 import crmRemindersRouter from "./crm-reminders";
 import crmDashboardRouter from "./crm-dashboard";
 import prospectsRouter from "./prospects";
+import dealsRouter from "./deals";
+import interactionsRouter from "./interactions";
+import quotesRouter from "./quotes";
 
 const router: IRouter = Router();
 
@@ -43,6 +46,9 @@ router.use(purchasesRouter);
 router.use(lotsRouter);
 router.use(clientsRouter);
 router.use(prospectsRouter);
+router.use(dealsRouter);
+router.use(interactionsRouter);
+router.use(quotesRouter);
 router.use(salesRouter);
 router.use(accountingRouter);
 router.use(dashboardRouter);

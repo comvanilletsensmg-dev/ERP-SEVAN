@@ -8,6 +8,7 @@ import {
   BookOpen, LogOut, CreditCard, ArrowLeftRight, UserCheck, CalendarDays,
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
+  Target, Activity,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -40,12 +41,14 @@ const hrNav = [
 ];
 
 const crmNav = [
-  { label: "Prospects",         href: "/crm/prospects",  icon: Globe },
-  { label: "Leads & Pipeline",  href: "/crm/leads",      icon: Users },
-  { label: "Clients",           href: "/clients",         icon: Building2 },
-  { label: "Ventes",            href: "/sales",           icon: TrendingUp },
-  { label: "Templates email",   href: "/crm/templates",   icon: Mail },
-  { label: "Relances",          href: "/crm/reminders",   icon: BellRing },
+  { label: "Prospects",         href: "/crm/prospects",    icon: Globe },
+  { label: "Deals / Pipeline",  href: "/crm/deals",        icon: Target },
+  { label: "Clients",           href: "/clients",           icon: Building2 },
+  { label: "Ventes",            href: "/sales",             icon: TrendingUp },
+  { label: "Devis",             href: "/crm/quotes",        icon: FileText },
+  { label: "Activités",         href: "/crm/interactions",  icon: Activity },
+  { label: "Templates email",   href: "/crm/templates",     icon: Mail },
+  { label: "Relances",          href: "/crm/reminders",     icon: BellRing },
 ];
 
 const adminNav = [

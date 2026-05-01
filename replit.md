@@ -30,11 +30,14 @@ An ERP system for a vanilla export company in Madagascar. Full workflow: ACHAT �
   - **Lot Costs** (`POST /api/lots/:id/costs`): Calculate totalCost = purchaseCost + processCost + transportCost; auto-posts journal entry (Débit 602 / Crédit 401) for transport
 - **CRM Commercial** (SUPER_ADMIN + COMMERCIAL + LOGISTICS_MANAGER)
   - **Prospects** (`/crm/prospects`): pipeline to_contact→contacted→qualified→converted, scoring IA, actions appeler/email/convertir en client, KPIs taux conversion
+  - **Deals/Pipeline** (`/crm/deals`): Kanban drag-and-drop (prospect→contact→negotiation→proposal→won/lost), probabilité auto par stage, valeur pondérée, KPIs pipeline/CA/taux conversion
   - **Leads** (`/crm/leads`): pipeline new→contacted→qualified→proposal→won/lost, scoring IA automatique (pays/secteur/taille/web, max 100), envoi email par lead
+  - **Devis** (`/crm/quotes`): numérotation DEV-YYYY-XXXX, lignes articles, TVA 0% export, blocage >10k USD si pas SUPER_ADMIN, workflow draft→sent→accepted/rejected
+  - **Activités** (`/crm/interactions`): journal chronologique call/email/meeting/whatsapp/note, filtre par type, lien prospect/client/deal
   - **Templates email** (`/crm/templates`): CRUD avec variables `{{name}}`, `{{company}}`, `{{product}}`, `{{invoice}}`, 4 catégories (welcome/followup/reminder/proposal)
   - **Relances** (`/crm/reminders`): créer/envoyer/annuler, bouton "Détecter factures en retard" (cron quotidien auto), envoi Nodemailer (SMTP_HOST/SMTP_USER/SMTP_PASS/SMTP_FROM) ou simulation loggée
-  - **Clients** (`/clients`): accès restreint SUPER_ADMIN + ACCOUNTANT + COMMERCIAL (bloqué LOGISTICS_MANAGER)
-  - **API** : `/api/sales/prospects`, `/api/leads`, `/api/crm/templates`, `/api/crm/email-logs`, `/api/crm/reminders`, `/api/crm/dashboard`, `/api/clients`
+  - **Clients** (`/clients`): accès restreint SUPER_ADMIN + ACCOUNTANT + COMMERCIAL, champs enrichis (riskLevel, creditLimit, paymentTerms, isActive, phone, notes)
+  - **API** : `/api/sales/prospects`, `/api/crm/deals`, `/api/crm/interactions`, `/api/crm/quotes`, `/api/leads`, `/api/crm/templates`, `/api/crm/email-logs`, `/api/crm/reminders`, `/api/crm/dashboard`, `/api/clients`
 - **Logistics nav** : Fournisseurs, Achats, Lots, Paiements, Mouvements stock, Intelligence IA (Clients retiré)
 - **RBAC**: 5 roles — SUPER_ADMIN / ACCOUNTANT / LOGISTICS_MANAGER / HR_MANAGER / COMMERCIAL
 - **User management**: `/admin/users` (SUPER_ADMIN only)

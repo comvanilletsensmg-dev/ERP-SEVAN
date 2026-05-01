@@ -1,0 +1,360 @@
+Tu es un développeur full-stack senior expert en CRM SaaS intégré à un ERP métier. Tu construis un module CRM pour une entreprise d'export de vanille à Madagascar.
+
+CONTEXTE MÉTIER :
+- Export de vanille (gourmet, TK, cuts) vers Europe/USA
+- Clients : importateurs, distributeurs alimentaires
+- Prospection via Kompass, salons, referrals
+- Nécessité de lier ventes au stock de lots traçables
+- Multi-devises (MGA, USD, EUR)
+- Connexion internet instable → UI rapide, peu de données
+
+STACK TECHNIQUE :
+- Backend : Node.js + Express
+- Base de données : PostgreSQL
+- ORM : Prisma
+- Frontend : React + Tailwind CSS
+- Charts : Recharts
+- Email : Nodemailer (SMTP simple)
+- Auth : JWT (déjà en place)
+- Génération PDF : html-pdf ou puppeteer
+
+RÔLES UTILISATEURS (RBAC déjà en place) :
+- SUPER_ADMIN : voit tout
+- COMMERCIAL : CRM complet (prospects, clients, ventes)
+- ACCOUNTANT : voit clients + factures (lecture seule sur pipeline)
+- LOGISTICS_MANAGER : PAS ACCÈS AU CRM (stock uniquement)
+- HR_MANAGER : PAS ACCÈS AU CRM
+
+================================================================
+1. MODÈLES PRISMA À CRÉER
+================================================================
+
+model Prospect {
+  id          String   @id @default(uuid())
+  company     String
+  contact     String?
+  email       String?
+  phone       String?
+  country     String
+  source      String   // kompass, salon, referral, web, manuel
+  status      String   @default("new") // new, to_contact, contacted, qualified, converted, lost
+  score       Int      @default(0)
+  notes       String?
+  assignedTo  String?  // userId du commercial
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  name        String
+  country     String
+  email       String?
+  phone       String?
+  currency    String   @default("USD") // USD, EUR, MGA
+  riskLevel   String   @default("medium") // low, medium, high
+  creditLimit Float?
+  paymentTerms Int     @default(30) // jours
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Deal {
+  id           String   @id @default(uuid())
+  title        String
+  prospectId   String?
+  clientId     String?
+  stage        String   @default("prospect") // prospect, contact, negotiation, proposal, won, lost
+  value        Float
+  currency     String
+  probability  Int      @default(20) // 0-100
+  expectedClose DateTime?
+  notes        String?
+  assignedTo   String   // userId du commercial
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Interaction {
+  id          String   @id @default(uuid())
+  type        String   // call, email, meeting, whatsapp, note
+  note        String
+  prospectId  String?
+  clientId    String?
+  dealId      String?
+  createdBy   String   // userId
+  createdAt   DateTime @default(now())
+}
+
+model Quote {
+  id          String   @id @default(uuid())
+  clientId    String
+  dealId      String?
+  totalHT     Float
+  tva         Float
+  totalTTC    Float
+  currency    String
+  status      String   @default("draft") // draft, sent, accepted, rejected, expired
+  validUntil  DateTime?
+  items       QuoteItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model QuoteItem {
+  id          String   @id @default(uuid())
+  quoteId     String
+  lotId       String?
+  description String
+  quantity    Float
+  unitPrice   Float
+  total       Float
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  clientId    String
+  quoteId     String?
+  dealId      String?
+  totalHT     Float
+  tva         Float
+  totalTTC    Float
+  currency    String
+  status      String   @default("confirmed") // confirmed, prepared, shipped, delivered, cancelled
+  incoterm    String   // FOB, CIF, EXW
+  items       OrderItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  lotId       String
+  quantity    Float
+  unitPrice   Float
+  total       Float
+}
+
+model Reminder {
+  id          String   @id @default(uuid())
+  type        String   // followup, payment, call, quote_expiry
+  prospectId  String?
+  clientId    String?
+  dealId      String?
+  note        String
+  dueDate     DateTime
+  status      String   @default("pending") // pending, done, cancelled
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  subject     String
+  body        String   // variables : {{company}}, {{contact}}, {{product}}, {{price}}
+  category    String   // prospecting, followup, quote, payment
+  createdAt   DateTime @default(now())
+}
+
+model EmailLog {
+  id          String   @id @default(uuid())
+  to          String
+  subject     String
+  templateId  String?
+  status      String   // sent, failed, opened
+  sentAt      DateTime @default(now())
+}
+
+================================================================
+2. ENDPOINTS API À IMPLÉMENTER
+================================================================
+
+ROUTES PROTÉGÉES : /api/crm/* (authMiddleware + authorizeRoles)
+
+PROSPECTS :
+GET    /api/crm/prospects          // liste avec filtres (status, country, assignedTo)
+POST   /api/crm/prospects          // création
+GET    /api/crm/prospects/:id      // détail
+PUT    /api/crm/prospects/:id      // mise à jour
+PUT    /api/crm/prospects/:id/convert  // convertir en client + créer deal
+DELETE /api/crm/prospects/:id      // suppression (admin uniquement)
+
+CLIENTS :
+GET    /api/crm/clients
+POST   /api/crm/clients
+GET    /api/crm/clients/:id
+PUT    /api/crm/clients/:id
+GET    /api/crm/clients/:id/orders
+GET    /api/crm/clients/:id/interactions
+
+DEALS :
+GET    /api/crm/deals              // pipeline complet
+POST   /api/crm/deals
+PUT    /api/crm/deals/:id          // changement de stage
+PUT    /api/crm/deals/:id/assign   // assigner commercial
+
+INTERACTIONS :
+POST   /api/crm/interactions
+GET    /api/crm/interactions
+
+QUOTES :
+POST   /api/crm/quotes             // créer devis
+PUT    /api/crm/quotes/:id/send    // envoyer par email
+PUT    /api/crm/quotes/:id/accept  // convertir en commande
+GET    /api/crm/quotes/:id/pdf     // générer PDF
+
+ORDERS :
+POST   /api/crm/orders
+GET    /api/crm/orders
+PUT    /api/crm/orders/:id/ship
+
+REMINDERS :
+GET    /api/crm/reminders          // alertes du jour
+POST   /api/crm/reminders
+PUT    /api/crm/reminders/:id/done
+
+EMAILS :
+POST   /api/crm/emails/send        // envoi email avec template
+GET    /api/crm/emails/templates
+
+DASHBOARD :
+GET    /api/crm/dashboard          // KPIs commerciaux
+
+================================================================
+3. LOGIQUE MÉTIER CRITIQUE
+================================================================
+
+A. CONVERSION PROSPECT → CLIENT :
+   1. Prospect status = "qualified"
+   2. Créer Client avec données du prospect
+   3. Créer Deal lié au client
+   4. Prospect status = "converted"
+   5. Créer Reminder "premier contact client"
+
+B. CRÉATION DEVIS :
+   1. Vérifier stock disponible (lots status = "ready")
+   2. Calculer TVA 20% (export = 0% si certificat)
+   3. Générer numéro devis : DEV-2026-XXXX
+   4. Créer écriture comptable DRAFT (non comptabilisée)
+
+C. DEVIS → COMMANDE :
+   1. Quote status = "accepted"
+   2. Créer Order
+   3. Réserver lots (status = "reserved")
+   4. Générer facture (module comptabilité)
+   5. Écriture comptable : Débit 411 / Crédit 701
+
+D. SCORING AUTOMATIQUE PROSPECT :
+   score = 0
+   if country in ["USA","France","Germany","Netherlands"] → +30
+   if source == "kompass" → +20
+   if source == "referral" → +25
+   if email && phone → +15
+   if company contains "vanilla" or "spice" or "food" → +20
+   score = min(score, 100)
+
+E. RELANCES AUTOMATIQUES (CRON quotidien) :
+   - Devis non répondus après 7 jours → reminder
+   - Clients sans commande depuis 90 jours → reminder
+   - Factures impayées après échéance → reminder + email
+
+F. VALIDATIONS OBLIGATOIRES :
+   - Vente impossible si stock insuffisant
+   - Devis > 10 000 USD → validation Super Admin
+   - Client risque "high" → alerte avant commande
+
+================================================================
+4. INTÉGRATIONS AVEC AUTRES MODULES
+================================================================
+
+A. STOCK (module logistique) :
+   - GET /api/logistics/lots/available → lots prêts à vendre
+   - Réserver lot lors commande
+   - Libérer lot si commande annulée
+
+B. COMPTABILITÉ (module compta) :
+   - Validation devis → créer facture
+   - Écriture automatique vente
+   - Suivi paiement client
+
+C. EMAIL (Nodemailer) :
+   - SMTP configurable
+   - Templates avec variables
+   - Pièces jointes PDF
+
+================================================================
+5. UI REACT À CRÉER
+================================================================
+
+STRUCTURE PAGES :
+/crm
+  /dashboard          → Vue d'ensemble commerciale
+  /prospects          → Liste + actions (contacter, convertir)
+  /prospects/:id      → Fiche détail prospect
+  /clients            → Liste clients
+  /clients/:id        → Fiche client (historique complet)
+  /deals              → Pipeline Kanban
+  /deals/:id          → Détail deal
+  /quotes             → Liste devis
+  /quotes/:id         → Détail devis + PDF
+  /orders             → Liste commandes
+  /orders/:id         → Suivi commande
+  /interactions       → Journal d'activités
+  /reminders          → Tâches et relances
+
+COMPOSANTS UI :
+- KanbanBoard (pipeline drag & drop)
+- ProspectCard (score, actions rapides)
+- ClientHeader (risque, encours, historique)
+- QuoteForm (sélection lots, calcul auto)
+- InteractionTimeline (fil chronologique)
+- ReminderBadge (alertes urgentes)
+- DashboardKPI (4 cartes + 2 graphiques)
+
+DESIGN :
+- Style SaaS premium (inspiré HubSpot/Pipedrive)
+- Couleurs par stage (gris → bleu → vert → rouge)
+- Responsive mobile
+- Dark mode optionnel
+
+DASHBOARD COMMERCIAL AFFICHER :
+- Prospects à contacter aujourd'hui
+- Deals en négociation (valeur totale)
+- Devis en attente de réponse
+- Commandes du mois
+- Taux de conversion (%)
+- Graphique : pipeline par valeur
+- Graphique : évolution CA mensuel
+
+================================================================
+6. SÉCURITÉ ET CONTRAINTES
+================================================================
+
+- LOGISTICS_MANAGER : 403 sur toutes routes /crm/*
+- ACCOUNTANT : accès GET uniquement sur clients, lecture quotes/orders
+- COMMERCIAL : accès complet mais uniquement sur ses propres deals/prospects
+- SUPER_ADMIN : accès complet + données de tous les commerciaux
+- Validation backend obligatoire (ne jamais se fier au frontend)
+- Logs de toutes les actions commerciales
+
+================================================================
+7. LIVRABLE ATTENDU
+================================================================
+
+- Backend complet avec tous les endpoints
+- Frontend React avec routing
+- Prisma schema complet
+- Seed data (5 prospects, 3 clients, 2 deals)
+- Instructions :
+  npx prisma migrate dev
+  npx prisma db seed
+  npm run dev
+
+COMMENCE PAR :
+1. Prisma schema complet (tous les modèles CRM)
+2. Endpoints prospects + scoring auto
+3. Pipeline deals (Kanban simple)
+4. Dashboard commercial

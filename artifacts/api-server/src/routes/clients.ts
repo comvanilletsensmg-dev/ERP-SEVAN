@@ -1,42 +1,57 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db, clientsTable } from "@workspace/db";
-import { CreateClientBody, GetClientParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole } from "../middlewares/roles";
 
 const router: IRouter = Router();
-
-// Clients access restricted to SUPER_ADMIN, ACCOUNTANT, and COMMERCIAL only
 const CLIENT_ROLES = ["SUPER_ADMIN", "ACCOUNTANT", "COMMERCIAL"] as const;
+const CLIENT_WRITE = ["SUPER_ADMIN", "COMMERCIAL"] as const;
+
+const safe = (c: any) => ({
+  ...c,
+  createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+  updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
+});
 
 router.get("/clients", requireAuth, requireRole(...CLIENT_ROLES), async (_req, res): Promise<void> => {
   const clients = await db.select().from(clientsTable).orderBy(clientsTable.name);
-  res.json(clients);
+  res.json(clients.map(safe));
 });
 
-router.post("/clients", requireAuth, requireRole(...CLIENT_ROLES), async (req, res): Promise<void> => {
-  const parsed = CreateClientBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [client] = await db.insert(clientsTable).values(parsed.data).returning();
-  res.status(201).json(client);
+router.post("/clients", requireAuth, requireRole(...CLIENT_WRITE), async (req, res): Promise<void> => {
+  const { name, country, email, phone, currency, riskLevel, creditLimit, paymentTerms, notes } = req.body;
+  if (!name || !country) { res.status(400).json({ error: "name et country requis" }); return; }
+  const [client] = await db.insert(clientsTable).values({
+    name, country, email: email ?? null, phone: phone ?? null,
+    currency: currency ?? "USD", riskLevel: riskLevel ?? "medium",
+    creditLimit: creditLimit ? Number(creditLimit) : null,
+    paymentTerms: paymentTerms ? Number(paymentTerms) : 30,
+    notes: notes ?? null,
+  }).returning();
+  res.status(201).json(safe(client));
 });
 
 router.get("/clients/:id", requireAuth, requireRole(...CLIENT_ROLES), async (req, res): Promise<void> => {
-  const params = GetClientParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, params.data.id));
+  const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, req.params.id));
   if (!client) { res.status(404).json({ error: "Client introuvable" }); return; }
-  res.json(client);
+  res.json(safe(client));
 });
 
-router.delete("/clients/:id", requireAuth, requireRole(...CLIENT_ROLES), async (req, res): Promise<void> => {
+router.put("/clients/:id", requireAuth, requireRole(...CLIENT_WRITE), async (req, res): Promise<void> => {
+  const { name, country, email, phone, currency, riskLevel, creditLimit, paymentTerms, isActive, notes } = req.body;
+  const [updated] = await db.update(clientsTable).set({
+    name, country, email: email ?? null, phone: phone ?? null, currency, riskLevel,
+    creditLimit: creditLimit !== undefined ? Number(creditLimit) : undefined,
+    paymentTerms: paymentTerms !== undefined ? Number(paymentTerms) : undefined,
+    isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+    notes: notes ?? null, updatedAt: new Date(),
+  }).where(eq(clientsTable.id, req.params.id)).returning();
+  if (!updated) { res.status(404).json({ error: "Client introuvable" }); return; }
+  res.json(safe(updated));
+});
+
+router.delete("/clients/:id", requireAuth, requireRole(...CLIENT_WRITE), async (req, res): Promise<void> => {
   const deleted = await db.delete(clientsTable).where(eq(clientsTable.id, req.params.id)).returning();
   if (!deleted.length) { res.status(404).json({ error: "Client introuvable" }); return; }
   res.json({ success: true });
