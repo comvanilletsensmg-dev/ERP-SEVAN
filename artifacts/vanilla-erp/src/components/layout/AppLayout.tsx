@@ -96,9 +96,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border hidden md:flex flex-col">
-        <div className="p-6">
+    <div className="h-screen flex bg-background overflow-hidden">
+      <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border hidden md:flex flex-col h-screen">
+        <div className="p-6 shrink-0">
           <h1 className="text-xl font-serif font-bold tracking-tight text-sidebar-primary">Vanilla ERP</h1>
           <p className="text-xs text-sidebar-foreground/70 mt-1">Madagascar Operations</p>
         </div>
@@ -127,7 +127,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           )}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border shrink-0">
           <div className="mb-4 px-2">
             <p className="text-sm font-medium truncate">{user?.name ?? user?.email}</p>
             <p className="text-xs text-sidebar-foreground/70">{ROLE_LABELS[role] ?? role}</p>
