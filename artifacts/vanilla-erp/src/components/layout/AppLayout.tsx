@@ -43,7 +43,7 @@ const hrNav = [
 const crmNav = [
   { label: "Prospects",         href: "/crm/prospects",    icon: Globe },
   { label: "Deals / Pipeline",  href: "/crm/deals",        icon: Target },
-  { label: "Clients",           href: "/clients",           icon: Building2 },
+  { label: "Clients CRM",       href: "/crm/clients",       icon: Building2 },
   { label: "Ventes",            href: "/sales",             icon: TrendingUp },
   { label: "Devis",             href: "/crm/quotes",        icon: FileText },
   { label: "Activités",         href: "/crm/interactions",  icon: Activity },
