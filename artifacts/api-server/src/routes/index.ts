@@ -28,6 +28,10 @@ import usersRouter from "./users";
 import lotCostsRouter from "./lot-costs";
 import aiPredictionRouter from "./ai-prediction";
 import logisticsDashboardRouter from "./logistics-dashboard";
+import leadsRouter from "./leads";
+import crmEmailsRouter from "./crm-emails";
+import crmRemindersRouter from "./crm-reminders";
+import crmDashboardRouter from "./crm-dashboard";
 
 const router: IRouter = Router();
 
@@ -60,5 +64,9 @@ router.use(usersRouter);
 router.use(lotCostsRouter);
 router.use(aiPredictionRouter);
 router.use(logisticsDashboardRouter);
+router.use(leadsRouter);
+router.use(crmEmailsRouter);
+router.use(crmRemindersRouter);
+router.use(crmDashboardRouter);
 
 export default router;

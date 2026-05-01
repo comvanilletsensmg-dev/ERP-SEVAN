@@ -21,3 +21,5 @@ export * from "./bank_transactions";
 export * from "./fixed_assets";
 export * from "./lot_costs";
 export * from "./price_history";
+export * from "./leads";
+export * from "./crm";

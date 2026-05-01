@@ -28,6 +28,11 @@ An ERP system for a vanilla export company in Madagascar. Full workflow: ACHAT �
 - **Logistics Advanced**: Suppliers, purchases, lots, clients, sales, payments, stock movements
   - **Intelligence IA** (`/logistics/intelligence`): AI price prediction (30-day moving average + linear trend), price history CRUD, cost vs price charts, opportunity/drop alerts
   - **Lot Costs** (`POST /api/lots/:id/costs`): Calculate totalCost = purchaseCost + processCost + transportCost; auto-posts journal entry (Débit 602 / Crédit 401) for transport
+- **CRM Commercial** (SUPER_ADMIN + LOGISTICS_MANAGER)
+  - **Leads** (`/crm/leads`): pipeline new→contacted→qualified→proposal→won/lost, scoring IA automatique (pays/secteur/taille/web, max 100), envoi email par lead
+  - **Templates email** (`/crm/templates`): CRUD avec variables `{{name}}`, `{{company}}`, `{{product}}`, `{{invoice}}`, 4 catégories (welcome/followup/reminder/proposal)
+  - **Relances** (`/crm/reminders`): créer/envoyer/annuler, bouton "Détecter factures en retard" (cron quotidien auto), envoi Nodemailer (SMTP_HOST/SMTP_USER/SMTP_PASS/SMTP_FROM) ou simulation loggée
+  - **API** : `/api/leads`, `/api/crm/templates`, `/api/crm/email-logs`, `/api/crm/reminders`, `/api/crm/dashboard`
 - **RBAC**: 4 roles — SUPER_ADMIN / ACCOUNTANT / LOGISTICS_MANAGER / HR_MANAGER
 - **User management**: `/admin/users` (SUPER_ADMIN only)
 
