@@ -15,8 +15,6 @@ const logisticsNav = [
   { label: "Fournisseurs",        href: "/suppliers",                 icon: Users },
   { label: "Achats",              href: "/purchases",                 icon: ShoppingCart },
   { label: "Lots",                href: "/lots",                      icon: Package },
-  { label: "Clients",             href: "/clients",                   icon: Globe },
-  { label: "Ventes",              href: "/sales",                     icon: TrendingUp },
   { label: "Paiements",           href: "/payments",                  icon: CreditCard },
   { label: "Mouvements stock",    href: "/stock-movements",           icon: ArrowLeftRight },
   { label: "Intelligence IA",     href: "/logistics/intelligence",    icon: Cpu },
@@ -42,9 +40,12 @@ const hrNav = [
 ];
 
 const crmNav = [
-  { label: "Leads & Pipeline",  href: "/crm/leads",     icon: Users },
-  { label: "Templates email",   href: "/crm/templates",  icon: Mail },
-  { label: "Relances",          href: "/crm/reminders",  icon: BellRing },
+  { label: "Prospects",         href: "/crm/prospects",  icon: Globe },
+  { label: "Leads & Pipeline",  href: "/crm/leads",      icon: Users },
+  { label: "Clients",           href: "/clients",         icon: Building2 },
+  { label: "Ventes",            href: "/sales",           icon: TrendingUp },
+  { label: "Templates email",   href: "/crm/templates",   icon: Mail },
+  { label: "Relances",          href: "/crm/reminders",   icon: BellRing },
 ];
 
 const adminNav = [
@@ -117,7 +118,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <NavSection title="Ressources Humaines" items={hrNav} location={location} />
           )}
 
-          {(canAccess(role, "logistics") || role === "SUPER_ADMIN") && (
+          {canAccess(role, "crm") && (
             <NavSection title="Commercial / CRM" items={crmNav} location={location} />
           )}
 

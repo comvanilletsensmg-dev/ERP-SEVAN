@@ -31,6 +31,7 @@ import AccountingReports from "@/pages/accounting/Reports";
 import UsersAdmin from "@/pages/admin/Users";
 import LogisticsIntelligence from "@/pages/logistics/Intelligence";
 import CrmLeads from "@/pages/crm/Leads";
+import CrmProspects from "@/pages/crm/Prospects";
 import CrmTemplates from "@/pages/crm/Templates";
 import CrmReminders from "@/pages/crm/Reminders";
 
@@ -80,6 +81,7 @@ function Router() {
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
       <Route path="/logistics/intelligence" component={() => <ProtectedRoute component={LogisticsIntelligence} />} />
+      <Route path="/crm/prospects" component={() => <ProtectedRoute component={CrmProspects} />} />
       <Route path="/crm/leads" component={() => <ProtectedRoute component={CrmLeads} />} />
       <Route path="/crm/templates" component={() => <ProtectedRoute component={CrmTemplates} />} />
       <Route path="/crm/reminders" component={() => <ProtectedRoute component={CrmReminders} />} />

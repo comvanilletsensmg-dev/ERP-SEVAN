@@ -1,0 +1,156 @@
+Tu es un développeur full-stack expert en ERP sécurisé.
+
+Objectif :
+Corriger l’architecture des modules pour respecter les rôles métiers :
+
+- supprimer l’accès aux clients dans le module logistique
+- ajouter module PROSPECTS dans commercial
+- limiter accès clients à :
+  - ACCOUNTANT
+  - COMMERCIAL
+  - SUPER_ADMIN
+
+-----------------------------------
+1. MISE À JOUR DES RÔLES
+-----------------------------------
+
+Ajouter rôle :
+
+COMMERCIAL
+
+Rôles finaux :
+
+- SUPER_ADMIN
+- ACCOUNTANT
+- LOGISTICS_MANAGER
+- HR_MANAGER
+- COMMERCIAL
+
+-----------------------------------
+2. SUPPRESSION ACCÈS CLIENT LOGISTIQUE
+-----------------------------------
+
+Dans backend :
+
+Supprimer toute route client dans :
+
+/api/logistics
+
+Si existant :
+- DELETE routes clients dans logistics
+
+-----------------------------------
+3. CRÉER MODULE PROSPECTS
+-----------------------------------
+
+Model Prisma :
+
+model Prospect {
+  id        String   @id @default(uuid())
+  company   String
+  contact   String?
+  email     String?
+  phone     String?
+  country   String
+  source    String   // Kompass, manuel
+  status    String   // new, to_contact, contacted, qualified
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+-----------------------------------
+4. ENDPOINTS PROSPECTS
+-----------------------------------
+
+POST /api/sales/prospects
+GET /api/sales/prospects
+PUT /api/sales/prospects/:id
+
+-----------------------------------
+5. LOGIQUE MÉTIER PROSPECT
+-----------------------------------
+
+- statut initial = "to_contact"
+- commercial doit contacter
+- après contact → "contacted"
+- si intéressant → "qualified" → devient Lead
+
+-----------------------------------
+6. ACCÈS AUX CLIENTS
+-----------------------------------
+
+Routes clients :
+
+/api/sales/clients
+
+Autoriser :
+
+authorizeRoles(
+  "SUPER_ADMIN",
+  "ACCOUNTANT",
+  "COMMERCIAL"
+)
+
+-----------------------------------
+7. FRONTEND – SIDEBAR
+-----------------------------------
+
+LOGISTIQUE :
+
+❌ supprimer "Clients"
+
+COMMERCIAL :
+
+Ajouter :
+
+- Prospects
+- Leads
+- Clients
+- Ventes
+
+-----------------------------------
+8. UI PAGE PROSPECTS
+-----------------------------------
+
+Table :
+
+- entreprise
+- pays
+- statut
+- score
+- action : contacter
+
+Boutons :
+- appeler
+- email
+- convertir en client
+
+-----------------------------------
+9. DASHBOARD COMMERCIAL (UPDATE)
+-----------------------------------
+
+Ajouter KPI :
+
+- prospects à contacter
+- prospects convertis
+- taux conversion
+
+-----------------------------------
+10. SÉCURITÉ
+-----------------------------------
+
+- aucun accès client dans logistique
+- backend bloque toute requête non autorisée
+
+-----------------------------------
+11. LIVRABLE
+-----------------------------------
+
+- module prospects
+- accès corrigé
+- UI mise à jour
+
+Commence par :
+1. modèle Prospect
+2. routes sécurisées
+3. UI prospects

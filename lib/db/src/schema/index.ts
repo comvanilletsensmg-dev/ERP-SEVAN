@@ -23,3 +23,4 @@ export * from "./lot_costs";
 export * from "./price_history";
 export * from "./leads";
 export * from "./crm";
+export * from "./prospects";
