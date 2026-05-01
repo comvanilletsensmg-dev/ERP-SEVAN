@@ -1,0 +1,589 @@
+// ============================================
+// CONFIGURATION FISCALE PAR PAYS
+// ============================================
+
+export const COUNTRY_TAX_CONFIG = {
+  // === EUROPE ===
+  
+  FR: {
+    name: "France",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "SIRET",
+      proId1Placeholder: "123 456 789 00012",
+      proId1Help: "14 chiffres",
+      proId2: "SIREN",
+      proId2Placeholder: "123 456 789",
+      proId2Help: "9 chiffres",
+      vatLabel: "Numéro de TVA",
+      vatPlaceholder: "FR12345678901",
+      vatHelp: "FR + 11 caractères alphanumériques"
+    },
+    regex: {
+      proId1: /^\d{14}$/,                    // SIRET: 14 chiffres
+      proId2: /^\d{9}$/,                     // SIREN: 9 chiffres
+      vat: /^FR[A-HJ-NP-Z0-9]{2}\d{9}$/      // TVA: FR + 2 clés + 9 chiffres
+    },
+    formatters: {
+      proId1: (val) => val.replace(/(\d{3})(?=\d)/g, '$1 ').trim(),
+      vat: (val) => val.toUpperCase()
+    },
+    validators: {
+      proId1: (val) => {
+        // Algorithme de Luhn pour SIRET
+        if (!/^\d{14}$/.test(val)) return false;
+        let sum = 0;
+        for (let i = 0; i < 14; i++) {
+          let digit = parseInt(val[i]);
+          if (i % 2 === 0) digit *= 2;
+          if (digit > 9) digit -= 9;
+          sum += digit;
+        }
+        return sum % 10 === 0;
+      }
+    }
+  },
+
+  DE: {
+    name: "Allemagne",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "Handelsregisternummer",
+      proId1Placeholder: "HRB 123456",
+      proId1Help: "Numéro du registre du commerce",
+      proId2: "Steuernummer",
+      proId2Placeholder: "123 456 789 0123",
+      proId2Help: "13 chiffres (format fédéral)",
+      vatLabel: "USt-IdNr.",
+      vatPlaceholder: "DE123456789",
+      vatHelp: "DE + 9 chiffres"
+    },
+    regex: {
+      proId1: /^[A-Z]{2}\s?\d{1,6}[A-Z]?$/,  // HRB/HRN + numéro
+      proId2: /^\d{13}$/,                     // Steuernummer: 13 chiffres
+      vat: /^DE\d{9}$/                        // USt-IdNr: DE + 9 chiffres
+    },
+    formatters: {
+      proId2: (val) => val.match(/.{1,3}/g)?.join(' ') || val,
+      vat: (val) => val.toUpperCase()
+    }
+  },
+
+  HU: {
+    name: "Hongrie",
+    currency: "HUF",
+    euMember: true,
+    labels: {
+      proId1: "Cégjegyzékszám",
+      proId1Placeholder: "01-09-123456",
+      proId1Help: "Format: CC-FF-NNNNNN (cour, forme, numéro)",
+      proId2: "Adószám",
+      proId2Placeholder: "12345678-1-23",
+      proId2Help: "8 chiffres + törzsszám + kód",
+      vatLabel: "Közösségi adószám",
+      vatPlaceholder: "HU12345678",
+      vatHelp: "HU + 8 chiffres"
+    },
+    regex: {
+      proId1: /^\d{2}-\d{2}-\d{6}$/,          // Cégjegyzékszám
+      proId2: /^\d{8}-\d{1}-\d{2}$/,          // Adószám
+      vat: /^HU\d{8}$/                        // TVA intracom: HU + 8 chiffres
+    },
+    formatters: {
+      proId1: (val) => {
+        const clean = val.replace(/\D/g, '');
+        if (clean.length === 10) return `${clean.slice(0,2)}-${clean.slice(2,4)}-${clean.slice(4)}`;
+        return val;
+      },
+      proId2: (val) => {
+        const clean = val.replace(/\D/g, '');
+        if (clean.length === 11) return `${clean.slice(0,8)}-${clean.slice(8,9)}-${clean.slice(9)}`;
+        return val;
+      }
+    }
+  },
+
+  IT: {
+    name: "Italie",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "Codice Fiscale",
+      proId1Placeholder: "RSSMRA85T10A562S",
+      proId1Help: "16 caractères alphanumériques",
+      proId2: "Partita IVA",
+      proId2Placeholder: "12345678901",
+      proId2Help: "11 chiffres",
+      vatLabel: "Partita IVA (TVA)",
+      vatPlaceholder: "IT12345678901",
+      vatHelp: "IT + 11 chiffres"
+    },
+    regex: {
+      proId1: /^[A-Z]{6}\d{2}[A-EHLMPR-T]\d{2}[A-Z]\d{3}[A-Z]$/,
+      proId2: /^\d{11}$/,
+      vat: /^IT\d{11}$/
+    },
+    validators: {
+      proId1: (val) => {
+        // Vérification checksum Codice Fiscale
+        const odds = {0:1,1:0,2:5,3:7,4:9,5:13,6:15,7:17,8:19,9:21,
+                      A:1,B:0,C:5,D:7,E:9,F:13,G:15,H:17,I:19,J:21,
+                      K:2,L:4,M:18,N:20,O:11,P:3,Q:6,R:8,S:12,T:14,
+                      U:16,V:10,W:22,X:25,Y:24,Z:23};
+        const evens = {0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,
+                       A:0,B:1,C:2,D:3,E:4,F:5,G:6,H:7,I:8,J:9,
+                       K:10,L:11,M:12,N:13,O:14,P:15,Q:16,R:17,
+                       S:18,T:19,U:20,V:21,W:22,X:23,Y:24,Z:25};
+        let sum = 0;
+        for (let i = 0; i < 15; i++) {
+          const char = val[i];
+          sum += i % 2 === 0 ? odds[char] : evens[char];
+        }
+        const check = String.fromCharCode(65 + (sum % 26));
+        return val[15] === check;
+      }
+    }
+  },
+
+  ES: {
+    name: "Espagne",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "NIF",
+      proId1Placeholder: "B12345678",
+      proId1Help: "Letre + 8 chiffres",
+      proId2: "CIF",
+      proId2Placeholder: "A12345678",
+      proId2Help: "Letre + 8 chiffres",
+      vatLabel: "NIF / TVA",
+      vatPlaceholder: "ESB12345678",
+      vatHelp: "ES + type + 8 chiffres"
+    },
+    regex: {
+      proId1: /^[A-Z]\d{8}$/,
+      proId2: /^[A-Z]\d{8}$/,
+      vat: /^ES[A-Z]\d{8}$/
+    },
+    validators: {
+      proId1: (val) => {
+        const letter = val[0];
+        const number = val.slice(1);
+        const checkLetters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+        const check = checkLetters[parseInt(number) % 23];
+        return letter === check;
+      }
+    }
+  },
+
+  NL: {
+    name: "Pays-Bas",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "KVK-nummer",
+      proId1Placeholder: "12345678",
+      proId1Help: "8 chiffres",
+      proId2: "RSIN",
+      proId2Placeholder: "123456789",
+      proId2Help: "9 chiffres",
+      vatLabel: "BTW-nummer",
+      vatPlaceholder: "NL123456789B01",
+      vatHelp: "NL + 9 chiffres + B + 2 chiffres"
+    },
+    regex: {
+      proId1: /^\d{8}$/,
+      proId2: /^\d{9}$/,
+      vat: /^NL\d{9}B\d{2}$/
+    }
+  },
+
+  BE: {
+    name: "Belgique",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "Numéro d'entreprise",
+      proId1Placeholder: "0123.456.789",
+      proId1Help: "10 chiffres",
+      proId2: "Numéro de registre",
+      proId2Placeholder: "0123.456.789",
+      proId2Help: "Identique au numéro d'entreprise",
+      vatLabel: "TVA BE",
+      vatPlaceholder: "BE0123456789",
+      vatHelp: "BE + 10 chiffres"
+    },
+    regex: {
+      proId1: /^\d{10}$/,
+      proId2: /^\d{10}$/,
+      vat: /^BE\d{10}$/
+    },
+    validators: {
+      proId1: (val) => {
+        // Modulo 97 pour numéro belge
+        const mod = parseInt(val.slice(0, -2)) % 97;
+        return mod === parseInt(val.slice(-2));
+      }
+    }
+  },
+
+  CH: {
+    name: "Suisse",
+    currency: "CHF",
+    euMember: false,
+    labels: {
+      proId1: "UID",
+      proId1Placeholder: "CHE-123.456.789",
+      proId1Help: "CHE-XXX.XXX.XXX",
+      proId2: "IDE",
+      proId2Placeholder: "CHE-123.456.789 MWST",
+      proId2Help: "Avec suffixe TVA",
+      vatLabel: "Numéro TVA",
+      vatPlaceholder: "CHE-123456789",
+      vatHelp: "CHE + 9 chiffres"
+    },
+    regex: {
+      proId1: /^CHE-\d{3}\.\d{3}\.\d{3}$/,
+      proId2: /^CHE-\d{3}\.\d{3}\.\d{3}(\sMWST)?$/,
+      vat: /^CHE-\d{9}$/
+    },
+    formatters: {
+      proId1: (val) => {
+        const clean = val.replace(/\D/g, '');
+        if (clean.length === 9) return `CHE-${clean.slice(0,3)}.${clean.slice(3,6)}.${clean.slice(6)}`;
+        return val;
+      }
+    }
+  },
+
+  AT: {
+    name: "Autriche",
+    currency: "EUR",
+    euMember: true,
+    labels: {
+      proId1: "Firmenbuchnummer",
+      proId1Placeholder: "FN 123456a",
+      proId1Help: "FN + numéro + lettre",
+      proId2: "UID-Nummer",
+      proId2Placeholder: "ATU12345678",
+      proId2Help: "ATU + 8 chiffres",
+      vatLabel: "UID (TVA)",
+      vatPlaceholder: "ATU12345678",
+      vatHelp: "ATU + 8 chiffres"
+    },
+    regex: {
+      proId1: /^FN\s?\d+[a-z]?$/i,
+      proId2: /^ATU\d{8}$/,
+      vat: /^ATU\d{8}$/
+    }
+  },
+
+  PL: {
+    name: "Pologne",
+    currency: "PLN",
+    euMember: true,
+    labels: {
+      proId1: "REGON",
+      proId1Placeholder: "123456785",
+      proId1Help: "9 ou 14 chiffres",
+      proId2: "KRS",
+      proId2Placeholder: "0000123456",
+      proId2Help: "10 chiffres",
+      vatLabel: "NIP (TVA)",
+      vatPlaceholder: "PL1234567890",
+      vatHelp: "PL + 10 chiffres"
+    },
+    regex: {
+      proId1: /^\d{9}(\d{5})?$/,
+      proId2: /^\d{10}$/,
+      vat: /^PL\d{10}$/
+    },
+    validators: {
+      proId1: (val) => {
+        // Vérification REGON
+        const weights9 = [8,9,2,3,4,5,6,7];
+        const weights14 = [2,4,8,5,0,9,7,3,6,1,2,4,8];
+        const digits = val.split('').map(Number);
+        if (digits.length === 9) {
+          let sum = digits.slice(0,8).reduce((s,d,i) => s + d * weights9[i], 0);
+          return (sum % 11 === 10 ? 0 : sum % 11) === digits[8];
+        }
+        return true; // Simplifié pour 14
+      }
+    }
+  },
+
+  // === AMÉRIQUES ===
+
+  US: {
+    name: "États-Unis",
+    currency: "USD",
+    euMember: false,
+    labels: {
+      proId1: "EIN",
+      proId1Placeholder: "12-3456789",
+      proId1Help: "XX-XXXXXXX (9 chiffres)",
+      proId2: "DUNS Number",
+      proId2Placeholder: "123456789",
+      proId2Help: "9 chiffres",
+      vatLabel: null,      // Pas de TVA aux USA
+      vatPlaceholder: null,
+      vatHelp: null
+    },
+    regex: {
+      proId1: /^\d{2}-?\d{7}$/,
+      proId2: /^\d{9}$/
+    },
+    formatters: {
+      proId1: (val) => {
+        const clean = val.replace(/\D/g, '');
+        if (clean.length === 9) return `${clean.slice(0,2)}-${clean.slice(2)}`;
+        return val;
+      }
+    },
+    hideVat: true
+  },
+
+  CA: {
+    name: "Canada",
+    currency: "CAD",
+    euMember: false,
+    labels: {
+      proId1: "Business Number",
+      proId1Placeholder: "123456789RC0001",
+      proId1Help: "9 chiffres + compte",
+      proId2: "Corporation Number",
+      proId2Placeholder: "123456-7",
+      proId2Help: "Numéro provincial",
+      vatLabel: "GST/HST Number",
+      vatPlaceholder: "123456789RT0001",
+      vatHelp: "BN + RT + compte"
+    },
+    regex: {
+      proId1: /^\d{9}[A-Z]{2}\d{4}$/,
+      vat: /^\d{9}RT\d{4}$/
+    }
+  },
+
+  // === ASIE ===
+
+  JP: {
+    name: "Japon",
+    currency: "JPY",
+    euMember: false,
+    labels: {
+      proId1: "法人番号 (Hōjin Bangō)",
+      proId1Placeholder: "1234567890123",
+      proId1Help: "13 chiffres",
+      proId2: "事業者登録番号",
+      proId2Placeholder: "T1234567890123",
+      proId2Help: "T + 13 chiffres",
+      vatLabel: null,      // Consumption tax = pas de numéro structuré
+      vatPlaceholder: null,
+      vatHelp: null
+    },
+    regex: {
+      proId1: /^\d{13}$/,
+      proId2: /^T\d{13}$/
+    },
+    hideVat: true
+  },
+
+  // === OCÉANIE ===
+
+  AU: {
+    name: "Australie",
+    currency: "AUD",
+    euMember: false,
+    labels: {
+      proId1: "ABN",
+      proId1Placeholder: "12 345 678 901",
+      proId1Help: "11 chiffres",
+      proId2: "ACN",
+      proId2Placeholder: "123 456 789",
+      proId2Help: "9 chiffres",
+      vatLabel: "GST Registration",
+      vatPlaceholder: "12345678901",
+      vatHelp: "Même que ABN"
+    },
+    regex: {
+      proId1: /^\d{11}$/,
+      proId2: /^\d{9}$/,
+      vat: /^\d{11}$/
+    },
+    validators: {
+      proId1: (val) => {
+        const weights = [10,1,3,5,7,9,11,13,15,17,19];
+        let sum = 0;
+        for (let i = 0; i < 11; i++) {
+          sum += parseInt(val[i]) * weights[i];
+        }
+        return sum % 89 === 0;
+      }
+    }
+  },
+
+  // === AFRIQUE ===
+
+  MG: {
+    name: "Madagascar",
+    currency: "MGA",
+    euMember: false,
+    labels: {
+      proId1: "NIF (Numéro d'Identification Fiscale)",
+      proId1Placeholder: "1234567890",
+      proId1Help: "10 chiffres",
+      proId2: "RCS",
+      proId2Placeholder: "12345 B",
+      proId2Help: "Numéro + tribunal",
+      vatLabel: null,
+      vatPlaceholder: null,
+      vatHelp: null
+    },
+    regex: {
+      proId1: /^\d{10}$/,
+      proId2: /^\d+\s[A-Z]$/
+    },
+    hideVat: true
+  },
+
+  // === MOYEN-ORIENT ===
+
+  AE: {
+    name: "Émirats arabes unis",
+    currency: "AED",
+    euMember: false,
+    labels: {
+      proId1: "Trade License Number",
+      proId1Placeholder: "1234567",
+      proId1Help: "Numéro de licence commerciale",
+      proId2: "Chamber of Commerce ID",
+      proId2Placeholder: "123456",
+      proId2Help: "Numéro chambre de commerce",
+      vatLabel: "TRN (Tax Registration Number)",
+      vatPlaceholder: "1234567890123",
+      vatHelp: "15 chiffres"
+    },
+    regex: {
+      proId1: /^\d{7}$/,
+      vat: /^\d{15}$/
+    }
+  },
+
+  // === DEFAULT / AUTRES ===
+
+  OTHER: {
+    name: "Autre pays",
+    currency: "USD",
+    euMember: false,
+    labels: {
+      proId1: "Numéro d'enregistrement commercial",
+      proId1Placeholder: "À renseigner",
+      proId1Help: "Selon le pays",
+      proId2: "Autre identifiant",
+      proId2Placeholder: "À renseigner",
+      proId2Help: "Facultatif",
+      vatLabel: "Numéro de TVA / Taxe",
+      vatPlaceholder: "À renseigner",
+      vatHelp: "Si applicable"
+    },
+    regex: {
+      proId1: /^.{3,50}$/,
+      proId2: /^.{0,50}$/,
+      vat: /^.{0,50}$/
+    }
+  }
+};
+
+// ============================================
+// FONCTIONS UTILITAIRES
+// ============================================
+
+/**
+ * Récupère la configuration pour un pays
+ */
+export function getCountryConfig(countryCode) {
+  return COUNTRY_TAX_CONFIG[countryCode?.toUpperCase()] || COUNTRY_TAX_CONFIG.OTHER;
+}
+
+/**
+ * Liste des pays disponibles (pour dropdown)
+ */
+export function getAvailableCountries() {
+  return Object.entries(COUNTRY_TAX_CONFIG)
+    .filter(([code]) => code !== 'OTHER')
+    .map(([code, config]) => ({
+      code,
+      name: config.name,
+      euMember: config.euMember,
+      currency: config.currency
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Valide un champ fiscal selon le pays
+ */
+export function validateTaxField(countryCode, fieldName, value) {
+  const config = getCountryConfig(countryCode);
+  const regex = config.regex?.[fieldName];
+  const validator = config.validators?.[fieldName];
+  
+  if (!value || value.trim() === '') {
+    return { valid: true, message: null }; // Champ vide = OK (sauf si required)
+  }
+  
+  // Test regex
+  if (regex && !regex.test(value)) {
+    return {
+      valid: false,
+      message: `Format invalide. ${config.labels?.[`${fieldName}Help`] || ''}`
+    };
+  }
+  
+  // Test validateur custom
+  if (validator && !validator(value)) {
+    return {
+      valid: false,
+      message: `Numéro invalide (vérification de contrôle échouée)`
+    };
+  }
+  
+  return { valid: true, message: null };
+}
+
+/**
+ * Formate un champ fiscal pour affichage
+ */
+export function formatTaxField(countryCode, fieldName, value) {
+  const config = getCountryConfig(countryCode);
+  const formatter = config.formatters?.[fieldName];
+  if (formatter && value) {
+    return formatter(value);
+  }
+  return value;
+}
+
+/**
+ * Détermine si le pays a la TVA
+ */
+export function hasVat(countryCode) {
+  const config = getCountryConfig(countryCode);
+  return !config.hideVat;
+}
+
+/**
+ * Détecte le pays depuis un numéro de TVA
+ */
+export function detectCountryFromVat(vatNumber) {
+  if (!vatNumber) return null;
+  const prefix = vatNumber.substring(0, 2).toUpperCase();
+  const country = Object.entries(COUNTRY_TAX_CONFIG).find(([code, config]) => {
+    if (config.hideVat) return false;
+    const vatPrefix = config.vatPlaceholder?.substring(0, 2);
+    return vatPrefix === prefix;
+  });
+  return country?.[0] || null;
+}

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { COUNTRY_LIST, getCountryFiscal } from "../../lib/country-fiscal";
+import { COUNTRY_LIST } from "../../lib/country-fiscal";
+import { getFormLabels } from "../../config/countryTax";
 
 interface Prospect {
   id: string;
@@ -126,7 +127,7 @@ export default function ProspectDetail({ id }: { id: string }) {
     </div>
   );
 
-  const fiscal = getCountryFiscal(p.country);
+  const fiscal = getFormLabels(p.country);
   const countryName = COUNTRY_LIST.find(c => c.code === p.country)?.name ?? p.country;
   const tags = parseTags(p.tags);
   const products = parseTags(p.productsSought);
@@ -208,12 +209,12 @@ export default function ProspectDetail({ id }: { id: string }) {
           <div className="bg-white rounded-xl border border-amber-100 p-4">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">🏢 Identifiants fiscaux</h3>
             {p.proId1 ? (
-              <InfoRow label={fiscal.proId1Label} value={p.proId1} />
-            ) : <p className="text-xs text-gray-300 italic">{fiscal.proId1Label} : non renseigné</p>}
-            {p.proId2 && <InfoRow label={fiscal.proId2Label} value={p.proId2} />}
+              <InfoRow label={fiscal.proId1} value={p.proId1} />
+            ) : <p className="text-xs text-gray-300 italic">{fiscal.proId1} : non renseigné</p>}
+            {p.proId2 && fiscal.proId2 && <InfoRow label={fiscal.proId2} value={p.proId2} />}
             {fiscal.showVat && (
               <>
-                <InfoRow label={fiscal.vatRegisteredLabel ?? "Assujetti TVA"} value={p.vatRegistered ? "Oui" : "Non"} />
+                <InfoRow label="Assujetti TVA" value={p.vatRegistered ? "Oui" : "Non"} />
                 {p.vatRegistered && p.vatNumber && <InfoRow label={fiscal.vatLabel ?? "Numéro de TVA"} value={p.vatNumber} />}
               </>
             )}

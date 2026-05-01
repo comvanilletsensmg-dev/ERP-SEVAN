@@ -1,0 +1,384 @@
+Tu es un développeur full-stack senior. Tu crées le module CLIENT d'un CRM pour "Vanilla ERP" — export de vanille Madagascar.
+
+CONTEXTE :
+- Un client = un prospect converti OU créé manuellement
+- Conversion : prospect qualifié → client avec historique complet
+- Le formulaire client reprend la structure du formulaire prospect + données commerciales
+- Adaptation fiscale par pays (même système que prospects)
+- Stack : React + Tailwind + shadcn/ui, Node.js + Express + Prisma + PostgreSQL
+
+================================================================
+1. MODÈLE PRISMA — CLIENT (étendu du prospect)
+================================================================
+
+model Client {
+  // === IDENTITÉ (hérité prospect) ===
+  id                String   @id @default(uuid())
+  companyName       String   // NOM DU TIERS *
+  altName           String?  // NOM ALTERNATIF
+  type              String   // Entreprise, Particulier, Association, Administration
+  clientCode        String   @unique // CODE CLIENT auto: CLI-YYYY-XXXX
+  
+  // === ADRESSE ===
+  address           String?
+  postalCode        String?
+  city              String?
+  country           String   // PAYS *
+  region            String?  // Département / État / Province
+  
+  // === CONTACT ===
+  phone             String?
+  mobile            String?
+  fax               String?
+  website           String?
+  email             String?
+  refuseMassEmail   Boolean  @default(false)
+  
+  // === IDENTIFIANTS FISCAUX (adaptés par pays) ===
+  proId1            String?  // SIRET, EIN, Cégjegyzékszám, etc.
+  proId2            String?  // SIREN, Adószám, etc.
+  vatRegistered     Boolean  @default(false)
+  vatNumber         String?  // TVA intracommunautaire, GST, etc.
+  
+  // === ORIGINE ===
+  source            String   // kompass, salon, referral, web, import_excel, converted_prospect
+  convertedFromId   String?  // ID du prospect d'origine (si conversion)
+  
+  // === CATÉGORISATION ===
+  tags              String[] // Vanille, Importateur, Distributeur, B2B, etc.
+  internalNotes     String?  // Notes internes commerciales
+  
+  // === DONNÉES COMMERCIALES ===
+  activityType      String?  // importateur, distributeur, transformateur, industriel, artisan, autre
+  riskLevel         String   @default("medium") // low, medium, high, blocked
+  creditLimit       Float?   // Limite de crédit en devise principale
+  paymentTerms      Int      @default(30) // Jours de paiement
+  preferredCurrency String   @default("USD") // USD, EUR, GBP
+  preferredIncoterm String?  // FOB, CIF, EXW, DDP
+  
+  // === CONTACTS MULTIPLES (nouveau) ===
+  contacts          Contact[] // Plusieurs contacts par client
+  
+  // === HISTORIQUE ===
+  totalOrders       Int      @default(0)
+  totalRevenue      Float    @default(0) // Cumulé toutes commandes
+  lastOrderDate     DateTime?
+  averageOrderValue Float    @default(0)
+  
+  // === STATUT ===
+  isActive          Boolean  @default(true)
+  createdBy         String   // userId
+  assignedTo        String?  // Commercial responsable
+  
+  // === TIMESTAMPS ===
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // === RELATIONS ===
+  deals             Deal[]
+  quotes            Quote[]
+  orders            Order[]
+  invoices          Invoice[]
+  interactions      Interaction[]
+}
+
+model Contact {
+  id          String   @id @default(uuid())
+  clientId    String
+  firstName   String
+  lastName    String
+  role        String?  // Directeur commercial, Acheteur, PDG, etc.
+  email       String?
+  phone       String?
+  mobile      String?
+  isPrimary   Boolean  @default(false) // Contact principal
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  client      Client   @relation(fields: [clientId], references: [id])
+}
+
+================================================================
+2. CONVERSION PROSPECT → CLIENT (LOGIQUE MÉTIER)
+================================================================
+
+ENDPOINT : PUT /api/crm/prospects/:id/convert
+
+CONDITIONS DE CONVERSION :
+1. Prospect.status = "qualified" ET score >= 60
+2. OU Prospect.status = "contacted" avec interaction positive
+3. OU validation manuelle par Super Admin (override)
+
+PROCESSUS DE CONVERSION :
+
+Étape 1 — Vérification
+  - Prospect existe et non déjà converti
+  - Prospect.convertedToClientId = null
+  
+Étape 2 — Création Client
+  - Copier tous les champs identiques (companyName, address, etc.)
+  - Générer clientCode : CLI-YYYY-NNNN (auto-incrément annuel)
+  - Source = "converted_prospect"
+  - convertedFromId = prospect.id
+  
+Étape 3 — Migration données liées
+  - Déplacer interactions prospect → client
+  - Déplacer deals prospect → client
+  - Déplacer quotes prospect → client
+  - Créer contact principal depuis prospect.contact
+  
+Étape 4 — Mise à jour Prospect
+  - status = "converted"
+  - convertedToClientId = client.id
+  
+Étape 5 — Actions automatiques
+  - Créer Deal "Première commande" si aucun deal existant
+  - Créer Reminder "Onboarding client" (7 jours)
+  - Log interaction "Conversion prospect → client"
+  - Notification au commercial assigné
+
+RÉPONSE API :
+{
+  success: true,
+  client: { ... },
+  message: "Prospect converti en client CLI-2026-0042",
+  nextSteps: ["Créer un devis", "Planifier appel onboarding"]
+}
+
+================================================================
+3. CONVERSION AUTOMATIQUE (COMMANDE/DEVIS VALIDÉ)
+================================================================
+
+ENDPOINT : POST /api/crm/orders (création commande)
+
+LOGIQUE AUTO-CONVERSION :
+
+Si commande créée avec prospectId (pas clientId) :
+  1. Vérifier prospect.status = "qualified" ou "contacted"
+  2. Exécuter conversion silencieuse
+  3. Remplacer prospectId par clientId dans la commande
+  4. Continuer création commande normalement
+
+Si devis accepté (quote.status = "accepted") :
+  1. Vérifier prospect lié au devis
+  2. Convertir prospect → client
+  3. Créer commande liée au nouveau client
+
+================================================================
+4. FORMULAIRE CLIENT — 3 ÉTAPES (UI REACT)
+================================================================
+
+MODAL : "Nouveau client" / "Modifier client"
+Style : beige #f5f0e8, boutons vert #1a3c2a
+
+ÉTAPE 1/3 — IDENTITÉ & FISCALITÉ
+┌─────────────────────────────────────────────────────────────┐
+│  Étape 1/3 — Identité entreprise                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Entreprise *              │  Nom alternatif                 │
+│  [Vanilla Impex Kft.    ]  │  [Vanilla Impex              ]  │
+│                            │                                 │
+│  Type *                    │  Code client                  │
+│  [Entreprise         ▼]    │  [CLI-2026-0042             ]  │
+│                            │  🔒 Auto-généré                │
+│                            │                                 │
+│  Adresse                   │  Code postal                    │
+│  [Csapas utca 7         ]  │  [2011                      ]  │
+│                            │                                 │
+│  Ville *                   │  Pays *                         │
+│  [Budakalász            ]  │  [Hongrie              ▼▼▼▼]   │
+│                            │                                 │
+│  Région / Département      │                                 │
+│  [Pest                  ]  │                                 │
+│                            │                                 │
+│  [Continuer →]                                              │
+└─────────────────────────────────────────────────────────────┘
+
+ÉTAPE 2/3 — CONTACT & FISCAL (ADAPTÉ HONGRIE)
+┌─────────────────────────────────────────────────────────────┐
+│  Étape 2/3 — Contact & Identifiants fiscaux                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Téléphone                 │  Tél. portable                  │
+│  [+36 26 340 000        ]  │  [+36 30 123 4567           ]  │
+│                            │                                 │
+│  Fax                       │  Site web                        │
+│  [                      ]  │  [https://www.vanillaimpex.com]  │
+│                            │                                 │
+│  Email                     │  Refuser emails de masse         │
+│  [info@vanillaimpex.com ]  │  [ ] Non  [✓] Oui               │
+│                            │                                 │
+│  ─── IDENTIFIANTS HONGRIE ───                              │
+│  Cégjegyzékszám            │  Adószám                         │
+│  [01-09-123456          ]  │  [12345678-1-23               ]  │
+│                            │                                 │
+│  Assujetti TVA             │  Numéro de TVA                   │
+│  [✓] Oui  [ ] Non          │  [HU12345678                ]   │
+│                            │                                 │
+│  [← Précédent]  [Continuer →]                              │
+└─────────────────────────────────────────────────────────────┘
+
+ÉTAPE 3/3 — DONNÉES COMMERCIALES & CONTACTS
+┌─────────────────────────────────────────────────────────────┐
+│  Étape 3/3 — Données commerciales                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Type d'activité *         │  Niveau de risque               │
+│  [Importateur        ▼]    │  [Moyen             ▼]          │
+│                            │                                 │
+│  Limite de crédit (USD)    │  Délai de paiement (jours)      │
+│  [50 000                ]  │  [30                        ]   │
+│                            │                                 │
+│  Devise préférée           │  Incoterm préféré               │
+│  [USD                ▼]    │  [CIF                  ▼▼▼▼]    │
+│                            │                                 │
+│  ─── CONTACTS CLIENT ───                                   │
+│                                                             │
+│  Contact principal                                         │
+│  Prénom          │  Nom           │  Rôle                    │
+│  [Jean          ]  │  [Martin     ]  │  [Directeur commercial▼] │
+│  Email           │  Téléphone     │  Mobile                  │
+│  [jean@...     ]  │  [+33...    ]  │  [+33...              ]  │
+│                            │                                 │
+│  [+ Ajouter un contact]                                    │
+│                                                            │
+│  ─── TAGS & NOTES ───                                      │
+│                                                            │
+│  Tags : [Vanille] [Importateur] [Hongrie] [B2B] [+ Ajouter] │
+│                                                            │
+│  Notes internes                                            │
+│  [Distributeur de vanille ougandaise et malgache en       │
+│   Hongrie. Livraison UE depuis stock local.                 │
+│   Concurrent direct et potentiel partenaire.             ] │
+│                            │                                 │
+│  [← Précédent]  [Créer le client]                          │
+└─────────────────────────────────────────────────────────────┘
+
+================================================================
+5. FICHE CLIENT DÉTAILLÉE (PAGE COMPLÈTE)
+================================================================
+
+Page : /crm/clients/:id
+
+┌─────────────────────────────────────────────────────────────────┐
+│  ← Retour aux clients                                           │
+│                                                                 │
+│  VANILLA IMPEX KFT.                              [Modifier]    │
+│  🔥 Client actif │ Code: CLI-2026-0042 │ Risque: Moyen 🟡    │
+│  🇭🇺 Hongrie │ Importateur │ Crédit: 50 000 USD                │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │  CONTACTS   │  │ IDENTIFIANTS│  │    CHIFFRES CLÉS        │ │
+│  │             │  │   FISCAUX   │  │                         │ │
+│  │ • Jean      │  │ Cégjegyzék: │  │ CA total: 125 000 USD   │ │
+│  │   Martin    │  │ [non renseig]│  │ Commandes: 8            │ │
+│  │   Dir. Com. │  │             │  │ Panier moyen: 15 625 USD│ │
+│  │   📞 📧 💬  │  │ Adószám:    │  │ Dernière cmd: 15/04/26  │ │
+│  │             │  │ 12345678-1-23│  │                         │ │
+│  │ • + Ajouter │  │             │  │ Solde impayé: 0 USD ✅  │ │
+│  │   contact   │  │ TVA:        │  │                         │ │
+│  │             │  │ HU12345678  │  │                         │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ ONGLET: Commandes │ Devis │ Interactions │ Documents │ Notes ││
+│  ├─────────────────────────────────────────────────────────────┤│
+│  │                                                             ││
+│  │  N° Commande    │ Date      │ Montant   │ Statut    │ Lots ││
+│  │  ─────────────────────────────────────────────────────────  ││
+│  │  CMD-2026-0012 │ 15/04/26  │ 24 000 $  │ Livrée ✅ │ 3    ││
+│  │  CMD-2026-0008 │ 02/03/26  │ 18 500 $  │ Payée ✅  │ 2    ││
+│  │  CMD-2026-0003 │ 10/01/26  │ 32 000 $  │ Payée ✅  │ 5    ││
+│  │                                                             ││
+│  │  [+ Nouvelle commande]  [Voir tout l'historique]           ││
+│  │                                                             ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  [📧 Email] [📞 Appeler] [💬 WhatsApp] [📄 Nouveau devis]      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+================================================================
+6. ENDPOINTS API CLIENT
+================================================================
+
+CLIENTS :
+GET    /api/crm/clients                    // Liste avec filtres/pagination
+POST   /api/crm/clients                    // Création manuelle
+GET    /api/crm/clients/:id                // Détail complet
+PUT    /api/crm/clients/:id                // Modification
+DELETE /api/crm/clients/:id                // Désactivation (soft delete)
+
+CONTACTS CLIENT :
+POST   /api/crm/clients/:id/contacts      // Ajouter contact
+PUT    /api/crm/clients/:id/contacts/:cid  // Modifier contact
+DELETE /api/crm/clients/:id/contacts/:cid  // Supprimer contact
+PUT    /api/crm/clients/:id/contacts/:cid/primary // Définir principal
+
+CONVERSION :
+PUT    /api/crm/prospects/:id/convert      // Convertir prospect → client
+
+STATS CLIENT :
+GET    /api/crm/clients/:id/stats          // CA, commandes, solde
+
+================================================================
+7. RÈGLES MÉTIER & SÉCURITÉ
+================================================================
+
+CRÉATION CLIENT :
+- Code client unique et auto-généré
+- Email unique par client (si renseigné)
+- Vérification TVA si pays UE et vatRegistered=true
+
+MODIFICATION CLIENT :
+- Super Admin : tout modifiable
+- Commercial assigné : contacts, notes, tags modifiables
+- Comptable : données fiscales modifiables
+- Log de toutes modifications (audit trail)
+
+RISQUE CLIENT :
+- low : paiement dans les 15j, pas de litige
+- medium : paiement 30j standard
+- high : retard paiement > 60j, litige en cours
+- blocked : impayé > 90j, aucune commande possible
+
+CONVERSION :
+- Prospect doit avoir score >= 60 OU validation admin
+- Historique prospect conservé (archivé, pas supprimé)
+- Interactions migrées vers client
+
+================================================================
+8. DESIGN SYSTEM (CONSISTENT ERP)
+================================================================
+
+- Fond : #f5f0e8 (beige crème)
+- Bouton primaire : #1a3c2a (vert foncé), texte blanc
+- Bouton secondaire : #ffffff, bordure #1a3c2a
+- Texte : #2d2d2d
+- Labels : #6b6b6b, 12px uppercase
+- Succès : #16a34a
+- Alerte : #f4a261 (risque moyen), #e85d04 (risque élevé), #dc2626 (bloqué)
+- Badge client actif : fond vert clair, texte vert foncé
+- Badge prospect converti : fond bleu clair, texte bleu foncé
+
+================================================================
+9. LIVRABLE ATTENDU
+================================================================
+
+- Backend : modèles Prisma + API clients + conversion
+- Frontend : formulaire 3 étapes + fiche client + liste
+- Logique scoring/fiscalité réutilisée depuis module prospect
+- Seed data : 5 clients avec historique commandes
+- Documentation conversion prospect → client
+
+INSTRUCTIONS :
+npx prisma migrate dev
+npx prisma db seed
+npm run dev
+
+COMMENCE PAR :
+1. Modèle Prisma Client (étendu Prospect)
+2. API conversion prospect → client
+3. Formulaire client 3 étapes
+4. Fiche client détaillée

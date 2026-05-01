@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { COUNTRY_LIST, getCountryFiscal } from "../../lib/country-fiscal";
+import { COUNTRY_LIST } from "../../lib/country-fiscal";
+import { useTaxValidation } from "../../hooks/useTaxValidation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Prospect {
@@ -177,56 +178,110 @@ function Step1({ form, setForm }: { form: FormState; setForm: (f: FormState) => 
 }
 
 // ─── Step 2 ───────────────────────────────────────────────────────────────────
+function FiscalInput({
+  label, value, placeholder, help, error, onChange, onBlur,
+}: {
+  label: string; value: string; placeholder?: string | null; help?: string | null;
+  error?: string | null; onChange: (v: string) => void; onBlur?: () => void;
+}) {
+  const hasError = !!error;
+  const cls = `w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 ${
+    hasError ? "border-red-400 focus:ring-red-300" : "border-gray-200 focus:ring-[#1a3c2a]/30"
+  }`;
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-gray-700">{label}</label>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder ?? ""}
+        className={cls}
+      />
+      {error && <p className="text-xs text-red-600">⚠ {error}</p>}
+      {!error && help && <p className="text-xs text-gray-400">{help}</p>}
+    </div>
+  );
+}
+
 function Step2({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
-  const f = (k: keyof FormState, v: any) => setForm({ ...form, [k]: v });
-  const fiscal = getCountryFiscal(form.country);
+  const upd = (k: keyof FormState, v: any) => setForm({ ...form, [k]: v });
   const countryName = COUNTRY_LIST.find(c => c.code === form.country)?.name ?? form.country;
+  const { labels, errors, showVat, validateField, formatField } = useTaxValidation(form.country);
+
+  const handleBlur = (field: "proId1" | "proId2" | "vat") => {
+    validateField(field, field === "vat" ? form.vatNumber : form[field]);
+    const formatted = formatField(field, field === "vat" ? form.vatNumber : form[field]);
+    if (field === "vat") upd("vatNumber", formatted);
+    else upd(field, formatted);
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-[#1a3c2a] border-b border-amber-200 pb-2">Étape 2 — Contact & identifiants fiscaux</h3>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Téléphone">
-          <input value={form.phone} onChange={e => f("phone", e.target.value)} className={inputCls} placeholder="+33 1 23 45 67 89" />
+          <input value={form.phone} onChange={e => upd("phone", e.target.value)} className={inputCls} placeholder="+33 1 23 45 67 89" />
         </Field>
         <Field label="Tél. portable">
-          <input value={form.mobile} onChange={e => f("mobile", e.target.value)} className={inputCls} />
+          <input value={form.mobile} onChange={e => upd("mobile", e.target.value)} className={inputCls} />
         </Field>
         <Field label="Fax">
-          <input value={form.fax} onChange={e => f("fax", e.target.value)} className={inputCls} />
+          <input value={form.fax} onChange={e => upd("fax", e.target.value)} className={inputCls} />
         </Field>
         <Field label="Site web">
-          <input value={form.website} onChange={e => f("website", e.target.value)} className={inputCls} placeholder="https://" />
+          <input value={form.website} onChange={e => upd("website", e.target.value)} className={inputCls} placeholder="https://" />
         </Field>
         <Field label="Email">
-          <input type="email" value={form.email} onChange={e => f("email", e.target.value)} className={inputCls} />
+          <input type="email" value={form.email} onChange={e => upd("email", e.target.value)} className={inputCls} />
         </Field>
         <div className="flex items-center gap-3 pt-5">
-          <input type="checkbox" id="refusemail" checked={form.refuseMassEmail} onChange={e => f("refuseMassEmail", e.target.checked)} className="w-4 h-4 accent-[#1a3c2a]" />
+          <input type="checkbox" id="refusemail" checked={form.refuseMassEmail} onChange={e => upd("refuseMassEmail", e.target.checked)} className="w-4 h-4 accent-[#1a3c2a]" />
           <label htmlFor="refusemail" className="text-sm text-gray-700">Refuser emails de masse</label>
         </div>
       </div>
 
       <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-        <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-3">🏢 Identifiants fiscaux — {countryName}</h4>
+        <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-3">
+          🏢 Identifiants fiscaux — {countryName}
+        </h4>
         <div className="grid grid-cols-2 gap-4">
-          <Field label={fiscal.proId1Label}>
-            <input value={form.proId1} onChange={e => f("proId1", e.target.value)} className={inputCls} />
-          </Field>
-          {fiscal.proId2Label && (
-            <Field label={fiscal.proId2Label}>
-              <input value={form.proId2} onChange={e => f("proId2", e.target.value)} className={inputCls} />
-            </Field>
+          <FiscalInput
+            label={labels.proId1}
+            value={form.proId1 ?? ""}
+            placeholder={labels.proId1Placeholder}
+            help={labels.proId1Help}
+            error={errors.proId1}
+            onChange={v => upd("proId1", v)}
+            onBlur={() => handleBlur("proId1")}
+          />
+          {labels.proId2 && (
+            <FiscalInput
+              label={labels.proId2}
+              value={form.proId2 ?? ""}
+              placeholder={labels.proId2Placeholder}
+              help={labels.proId2Help}
+              error={errors.proId2}
+              onChange={v => upd("proId2", v)}
+              onBlur={() => handleBlur("proId2")}
+            />
           )}
-          {fiscal.showVat && (
+          {showVat && (
             <>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" id="vatReg" checked={form.vatRegistered} onChange={e => f("vatRegistered", e.target.checked)} className="w-4 h-4 accent-[#1a3c2a]" />
-                <label htmlFor="vatReg" className="text-sm text-gray-700">{fiscal.vatRegisteredLabel ?? "Assujetti TVA"}</label>
+              <div className="flex items-center gap-3 col-span-1">
+                <input type="checkbox" id="vatReg" checked={form.vatRegistered} onChange={e => upd("vatRegistered", e.target.checked)} className="w-4 h-4 accent-[#1a3c2a]" />
+                <label htmlFor="vatReg" className="text-sm text-gray-700">Assujetti TVA</label>
               </div>
               {form.vatRegistered && (
-                <Field label={fiscal.vatLabel ?? "Numéro de TVA"}>
-                  <input value={form.vatNumber} onChange={e => f("vatNumber", e.target.value)} className={inputCls} />
-                </Field>
+                <FiscalInput
+                  label={labels.vatLabel ?? "Numéro de TVA"}
+                  value={form.vatNumber ?? ""}
+                  placeholder={labels.vatPlaceholder}
+                  help={labels.vatHelp}
+                  error={errors.vat}
+                  onChange={v => upd("vatNumber", v)}
+                  onBlur={() => handleBlur("vat")}
+                />
               )}
             </>
           )}
