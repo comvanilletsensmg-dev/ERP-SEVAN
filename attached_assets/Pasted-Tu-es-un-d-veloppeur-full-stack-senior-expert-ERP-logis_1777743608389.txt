@@ -1,0 +1,244 @@
+Tu es un développeur full-stack senior expert ERP logistique agro (vanille).
+
+Objectif :
+Créer un module de gestion des STATUTS VANILLE avec :
+- suivi des états des lots (workflow complet)
+- historique qualité (humidité, poids, notes)
+- règles métier (blocage vente, alertes)
+- IA simple de détection des lots à risque
+- dashboard + UI premium
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind + Recharts
+- Validation : Zod
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+enum LotStatus {
+  RAW
+  CURING
+  SORTING
+  READY
+  AVAILABLE
+  SHIPPED
+  PHENOLED
+  MOLDY
+  DOWNGRADED
+}
+
+model Lot {
+  id            String    @id @default(uuid())
+  productId     String
+  weightCurrent Float
+  humidity      Float
+  status        LotStatus
+  riskScore     Float     @default(0)
+  isBlocked     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  histories     LotHistory[]
+}
+
+model LotHistory {
+  id        String    @id @default(uuid())
+  lotId     String
+  status    LotStatus
+  humidity  Float
+  weight    Float
+  note      String?
+  createdAt DateTime  @default(now())
+
+  lot Lot @relation(fields: [lotId], references: [id])
+}
+
+-----------------------------------
+2. WORKFLOW STATUT (RÈGLES)
+-----------------------------------
+
+Transitions autorisées :
+
+RAW → CURING → SORTING → READY → AVAILABLE → SHIPPED
+
+CAS EXCEPTION :
+
+- si problème :
+  → PHENOLED
+  → MOLDY
+  → DOWNGRADED
+
+-----------------------------------
+3. RÈGLES MÉTIER CRITIQUES
+-----------------------------------
+
+- PHENOLED → vente interdite
+- MOLDY → vente interdite
+- humidity > 35 → blocage export
+- weight <= 0 → invalide
+
+Mettre :
+
+lot.isBlocked = true si condition critique
+
+-----------------------------------
+4. API BACKEND
+-----------------------------------
+
+POST /api/lots/update-status
+
+Body :
+
+{
+  lotId,
+  status,
+  humidity,
+  weight,
+  note
+}
+
+LOGIQUE :
+
+- vérifier transition valide
+- créer LotHistory
+- mettre à jour Lot
+
+-----------------------------------
+5. IA DÉTECTION LOT À RISQUE
+-----------------------------------
+
+Créer fonction :
+
+calculateRisk(lot)
+
+LOGIQUE :
+
+score = 0
+
+if humidity > 35 → +40
+if humidity variation > 5 → +20
+if weight loss > 10% → +20
+if status = CURING > 30 jours → +20
+
+RESULT :
+
+0–30 = LOW  
+30–60 = MEDIUM  
+60+ = HIGH
+
+-----------------------------------
+6. API IA
+-----------------------------------
+
+GET /api/lots/risk
+
+Retour :
+
+{
+  lotId,
+  riskScore,
+  level: "LOW | MEDIUM | HIGH"
+}
+
+-----------------------------------
+7. AUTOMATISATION
+-----------------------------------
+
+CRON quotidien :
+
+- recalcul riskScore
+- mettre isBlocked si HIGH
+
+-----------------------------------
+8. DASHBOARD LOGISTIQUE
+-----------------------------------
+
+GET /api/logistics/dashboard
+
+Ajouter :
+
+{
+  "totalLots": 120,
+  "readyLots": 40,
+  "blockedLots": 10,
+  "riskLots": 15
+}
+
+-----------------------------------
+9. UI REACT
+-----------------------------------
+
+Pages :
+
+/logistics/lots
+/logistics/risk
+
+-----------------------------------
+10. UI TABLE LOTS
+-----------------------------------
+
+Colonnes :
+
+- code
+- statut (badge)
+- humidité
+- risque (couleur)
+- blocage
+
+Couleurs :
+
+- vert = OK
+- jaune = risque
+- rouge = critique
+
+-----------------------------------
+11. PAGE RISQUE
+-----------------------------------
+
+Afficher :
+
+- lots HIGH risk
+- alertes
+
+Graph :
+
+- évolution humidité
+- pertes
+
+-----------------------------------
+12. ALERTES
+-----------------------------------
+
+- lot à risque élevé
+- humidité critique
+- perte anormale
+
+-----------------------------------
+13. SÉCURITÉ
+-----------------------------------
+
+- modification statut → LOGISTICS_MANAGER uniquement
+- audit log obligatoire
+
+-----------------------------------
+14. BONUS
+-----------------------------------
+
+- suggestions IA :
+  "sécher davantage"
+  "vérifier stockage"
+
+-----------------------------------
+15. LIVRABLE
+-----------------------------------
+
+- module complet statuts
+- IA simple fonctionnelle
+- UI claire
+
+Commence par :
+1. modèles Prisma
+2. update-status API
+3. calcul risk

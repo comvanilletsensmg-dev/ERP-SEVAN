@@ -1,4 +1,4 @@
-import { pgTable, text, real, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, real, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { suppliersTable } from "./suppliers";
@@ -16,7 +16,14 @@ export const lotsTable = pgTable("lots", {
   grade: text("grade"),
   region: text("region"),
   warehouse: text("warehouse"),
-  status: text("status").notNull().default("raw"), // raw | curing | drying | ready | sold
+  // Status: RAW | CURING | SORTING | READY | AVAILABLE | SHIPPED | PHENOLED | MOLDY | DOWNGRADED
+  // Legacy lowercase still accepted: raw, curing, drying, ready, sold
+  status: text("status").notNull().default("RAW"),
+  riskScore: real("risk_score").notNull().default(0),
+  riskLevel: text("risk_level").notNull().default("LOW"), // LOW | MEDIUM | HIGH
+  isBlocked: boolean("is_blocked").notNull().default(false),
+  blockedReason: text("blocked_reason"),
+  lastRiskCheck: timestamp("last_risk_check"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   productIdIdx: index("lots_product_id_idx").on(t.productId),

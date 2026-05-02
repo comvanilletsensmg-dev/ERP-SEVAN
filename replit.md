@@ -81,6 +81,23 @@ Only lots with status `ready` can be sold.
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only); use `--force` for destructive changes
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Module: STATUTS VANILLE (lot status workflow + AI risk)
+
+**Backend**
+- `lib/lot-risk.ts` — pure `calculateRisk(lot)` returns `{ score, level, reasons[], suggestions[], shouldBlock, blockedReason }`. Rules: humidity>35 +40, humidity variation>5 +20, weight loss>10% +20, CURING>30 days +20. Levels: LOW (<30), MEDIUM (30-60), HIGH (≥60). Blocking: PHENOLED/MOLDY ban sale, humidity>35 blocks export, weight≤0 invalid, HIGH score auto-blocks. Includes `isValidTransition(from,to)` and `normalizeStatus`.
+- `lib/lot-risk-cron.ts` — daily recalc of all lots, persists riskScore/riskLevel/isBlocked.
+- `routes/lot-status.ts` — must be mounted **BEFORE** lotsRouter in routes/index.ts (otherwise `/lots/:id` swallows `/lots/risk`).
+  - `POST /api/lots/update-status` (SUPER_ADMIN | LOGISTICS_MANAGER) — body `{ lotId, status, humidity, weight, note }`. Wrapped in `db.transaction`: validates transition, computes risk on-the-fly with current+new history, inserts LotHistory, updates lot atomically.
+  - `GET /api/lots/risk` — live risk for all lots (for the /logistics/risk page).
+  - `GET /api/lots/:id/history` — chronological audit trail.
+- `routes/logistics-dashboard.ts` — extended with `totalLots`, `readyLots` (READY+AVAILABLE), `blockedLots`, `riskLots` (HIGH only).
+- `routes/sales.ts` — sale gate: blocks if `lot.isBlocked === true` (409) or status not in `[ready, READY, AVAILABLE]`.
+- Cron registered in `index.ts` — runs once at startup (after 5s) + every 24h.
+
+**Frontend** — pages `/logistics/lots-status` and `/logistics/risk`, sidebar entries "Statuts vanille" (Workflow icon) and "Lots à risque" (ShieldAlert icon).
+
+**E2E validation passed**: valid transition, invalid transition (CURING→SHIPPED → 409), critical humidity (40%) auto-blocks, PHENOLED bans sale (409), full RAW→CURING→SORTING→READY→AVAILABLE chain works, sale succeeds on AVAILABLE, dashboard counters correct, history audit chronological, weight≤0 rejected by Zod, /lots/:id regression OK.
+
 ## Architecture
 
 - `lib/api-spec/openapi.yaml` — API contract (source of truth)
@@ -118,6 +135,8 @@ Tables:
 - `bonuses` — primes production (employeeId, lotId, quantity kg, rate MGA/kg, amount)
 - `candidates` — recrutement (name, position, status: new|interview|hired|rejected, phone, notes)
 - `onboarding_tasks` — onboarding (employeeId, title, status: pending|done)
+- `lots` (extended) — adds `riskScore`, `riskLevel` (LOW|MEDIUM|HIGH), `isBlocked`, `blockedReason`, `lastRiskCheck`. Status now stored UPPERCASE: RAW | CURING | SORTING | READY | AVAILABLE | SHIPPED | PHENOLED | MOLDY | DOWNGRADED (legacy lowercase still accepted for back-compat).
+- `lot_histories` — audit trail (lotId FK CASCADE, status, humidity, weight, note, createdBy, createdAt, indexed by lotId + createdAt DESC).
 
 ## Frontend Pages
 
@@ -125,6 +144,8 @@ Tables:
 - `/suppliers` — CRUD fournisseurs
 - `/purchases` — création achat (auto-génère lot)
 - `/lots` — liste + transformation lot (mise à jour poids/statut)
+- `/logistics/lots-status` — workflow STATUTS VANILLE : tableau lots avec badge statut, humidité (rouge si > 35%), score de risque, blocage. Modal de mise à jour (statut + humidité + poids + note) gardée par rôle SUPER_ADMIN/LOGISTICS_MANAGER. Modal historique d'audit complet par lot.
+- `/logistics/risk` — détection IA des lots à risque : 4 KPI (analysés/HIGH/MEDIUM/bloqués), alertes HIGH + humidité critique, 2 graphiques Recharts (top humidité avec seuil 35%, top pertes %), tableau détaillé HIGH + MEDIUM avec causes et suggestions IA.
 - `/clients` — CRUD clients
 - `/sales` — création vente export (lots ready uniquement)
 - `/payments` — enregistrement paiement client

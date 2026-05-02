@@ -8,6 +8,7 @@ import {
   lotsTable,
   suppliersTable,
   stockMovementsTable,
+  lotHistoriesTable,
   journalEntriesTable,
   journalLinesTable,
   accountsTable,
@@ -86,7 +87,14 @@ router.post("/sales", requireAuth, async (req, res): Promise<void> => {
       return;
     }
 
-    if (lot.status !== "ready") {
+    if ((lot as any).isBlocked) {
+      res.status(409).json({
+        error: `Le lot ${lot.code} est bloqué : ${(lot as any).blockedReason ?? "raison inconnue"}.`,
+      });
+      return;
+    }
+    const okStatuses = ["ready", "READY", "AVAILABLE"];
+    if (!okStatuses.includes(lot.status)) {
       res.status(400).json({
         error: `Le lot ${lot.code} n'est pas prêt à la vente (statut actuel: ${lot.status}). Statut requis: "ready".`,
       });
@@ -127,9 +135,10 @@ router.post("/sales", requireAuth, async (req, res): Promise<void> => {
     // Insert sale item
     await db.insert(saleItemsTable).values({ saleId: sale.id, lotId: item.lotId, quantity: item.quantity, price: item.price });
 
-    // Decrement lot weight
+    // Decrement lot weight; if depleted, advance status to canonical SHIPPED
     const newWeight = Math.round((lot.weightCurrent - item.quantity) * 100) / 100;
-    const newStatus = newWeight <= 0 ? "sold" : lot.status;
+    const isDepleted = newWeight <= 0;
+    const newStatus = isDepleted ? "SHIPPED" : lot.status;
     await db.update(lotsTable).set({ weightCurrent: newWeight, status: newStatus }).where(eq(lotsTable.id, item.lotId));
 
     // Create OUT stock movement
@@ -139,6 +148,18 @@ router.post("/sales", requireAuth, async (req, res): Promise<void> => {
       quantity: item.quantity,
       note: `Vente ${sale.id.slice(0, 8).toUpperCase()} — ${item.quantity}kg @ ${item.price} ${currency}`,
     });
+
+    // STATUTS VANILLE: audit history entry on every state change (esp. SHIPPED)
+    if (isDepleted) {
+      await db.insert(lotHistoriesTable).values({
+        lotId: item.lotId,
+        status: "SHIPPED",
+        humidity: lot.humidity,
+        weight: newWeight,
+        note: `Lot expédié — vente ${sale.id.slice(0, 8).toUpperCase()}`,
+        createdBy: (req as any).session?.userId ?? null,
+      });
+    }
 
     console.log(`[STOCK] Movement OUT: -${item.quantity}kg for lot ${lot.code} (new weight: ${newWeight}kg, status: ${newStatus})`);
   }

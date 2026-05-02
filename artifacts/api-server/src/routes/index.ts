@@ -42,6 +42,7 @@ import importLotsRouter from "./import-lots";
 import importProductsRouter from "./import-products";
 import productsRouter from "./products";
 import productStockRouter from "./product-stock";
+import lotStatusRouter from "./lot-status";
 
 const router: IRouter = Router();
 
@@ -49,6 +50,8 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(suppliersRouter);
 router.use(purchasesRouter);
+// lot-status must come BEFORE lots: /lots/risk would otherwise be captured by /lots/:id
+router.use(lotStatusRouter);
 router.use(lotsRouter);
 router.use(clientsRouter);
 router.use(prospectsRouter);

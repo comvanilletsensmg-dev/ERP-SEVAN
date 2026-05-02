@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, lotsTable, lotCostsTable, priceHistoryTable } from "@workspace/db";
-import { desc, eq, avg } from "drizzle-orm";
+import { desc, eq, avg, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { normalizeStatus } from "../lib/lot-risk";
 
 const router: IRouter = Router();
 
@@ -20,6 +21,26 @@ function computePrediction(history: { date: Date; price: number }[], forecastDay
 }
 
 router.get("/logistics/dashboard", requireAuth, async (_req, res): Promise<void> => {
+  // ─── Lot status counters (uses persisted riskLevel/isBlocked from cron) ──
+  // We only fetch the columns we need; risk recomputation is delegated to the
+  // daily cron + per-update transaction, so this stays O(N rows) with no joins.
+  const lotRows = await db
+    .select({
+      status: lotsTable.status,
+      isBlocked: lotsTable.isBlocked,
+      riskLevel: lotsTable.riskLevel,
+    })
+    .from(lotsTable);
+
+  let totalLots = 0, readyLots = 0, blockedLots = 0, riskLots = 0;
+  for (const lot of lotRows) {
+    totalLots += 1;
+    const norm = normalizeStatus(lot.status);
+    if (norm === "READY" || norm === "AVAILABLE") readyLots += 1;
+    if (lot.isBlocked) blockedLots += 1;
+    if (lot.riskLevel === "HIGH") riskLots += 1;
+  }
+
   // Average cost per kg across all lots with cost data
   const [avgCostRow] = await db.select({ val: avg(lotCostsTable.costPerKg) }).from(lotCostsTable);
   const avgCostPerKg = Number(avgCostRow?.val ?? 0);
@@ -73,6 +94,10 @@ router.get("/logistics/dashboard", requireAuth, async (_req, res): Promise<void>
   }));
 
   res.json({
+    totalLots,
+    readyLots,
+    blockedLots,
+    riskLots,
     avgCostPerKg: Math.round(avgCostPerKg),
     predictedPrice: Math.round(predictedPrice),
     currentPrice: Math.round(currentPrice),

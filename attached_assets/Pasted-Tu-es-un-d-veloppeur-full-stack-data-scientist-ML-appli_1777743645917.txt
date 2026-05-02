@@ -1,0 +1,222 @@
+Tu es un développeur full-stack + data scientist (ML appliqué ERP agro).
+
+Objectif :
+Implémenter une IA avancée pour la vanille avec :
+- prévision (humidité, pertes, prix) avec saisonnalité
+- détection de lots à risque (classification)
+- pipeline data + features
+- entraînement simple (offline) + prédiction online
+- API + UI dashboard
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- ML (Node) : ml-regression, ml-random-forest
+  OU (option) microservice Python FastAPI (scikit-learn)
+- Scheduler : node-cron
+- Front : React + Recharts
+
+-----------------------------------
+1. MODÈLES PRISMA (AJOUTS)
+-----------------------------------
+
+model LotMetrics {
+  id         String   @id @default(uuid())
+  lotId      String
+  date       DateTime
+  humidity   Float
+  weight     Float
+  temp       Float?
+  storage    String?  // warehouse, box, bag
+}
+
+model Prediction {
+  id          String   @id @default(uuid())
+  lotId       String?
+  type        String   // humidity, loss, price
+  date        DateTime
+  value       Float
+  confidence  Float
+  createdAt   DateTime @default(now())
+}
+
+model RiskEvent {
+  id         String   @id @default(uuid())
+  lotId      String
+  riskLevel  String   // LOW, MEDIUM, HIGH
+  score      Float
+  reason     String
+  createdAt  DateTime @default(now())
+}
+
+-----------------------------------
+2. FEATURE ENGINEERING (TRÈS IMPORTANT)
+-----------------------------------
+
+Pour chaque lot/jour construire :
+
+features = {
+  humidity_t,
+  delta_humidity (J-1 vs J),
+  weight_loss_rate (Δ poids / temps),
+  days_in_curing,
+  temp,
+  storage_type,
+
+  // SAISONNALITÉ
+  month,        // 1–12
+  week_of_year, // 1–52
+  is_rainy_season (bool Madagascar),
+
+  // AGRÉGATS
+  humidity_mean_7d,
+  humidity_std_7d,
+  weight_loss_7d
+}
+
+-----------------------------------
+3. MODÈLES ML
+-----------------------------------
+
+A. PRÉVISION HUMIDITÉ (régression)
+- modèle : RandomForestRegressor (ou régression linéaire si simple)
+- horizon : J+1 à J+7
+
+B. PRÉVISION PERTES
+- cible : % perte dans 7 jours
+
+C. PRÉVISION PRIX (option)
+- entrée : historique prix + saison (mois)
+- modèle : moyenne mobile + tendance (MVP) ou RF
+
+D. DÉTECTION RISQUE (classification)
+- modèle : RandomForestClassifier
+- cible : HIGH_RISK (0/1)
+
+-----------------------------------
+4. ENTRAÎNEMENT (OFFLINE)
+-----------------------------------
+
+Créer script :
+
+/scripts/trainModels.js
+
+LOGIQUE :
+
+- charger LotMetrics historiques
+- construire features
+- split train/test
+- entraîner modèles
+- sauvegarder modèles (JSON)
+
+-----------------------------------
+5. PRÉDICTION (ONLINE)
+-----------------------------------
+
+Service :
+
+predictLot(lotId)
+
+LOGIQUE :
+
+- récupérer dernières metrics
+- construire features temps réel
+- charger modèles
+- prédire :
+  - humidity J+1..J+7
+  - loss %
+  - risk score
+
+Retour :
+
+{
+  humidityForecast: [...],
+  lossForecast: 0.12,
+  riskScore: 0.78,
+  riskLevel: "HIGH"
+}
+
+-----------------------------------
+6. API
+-----------------------------------
+
+GET /api/ai/predict/:lotId
+
+GET /api/ai/risk-lots
+
+→ liste lots à risque
+
+-----------------------------------
+7. AUTOMATISATION
+-----------------------------------
+
+CRON quotidien :
+
+- recalcul prédictions
+- créer RiskEvent si HIGH
+- notifier (log / webhook)
+
+-----------------------------------
+8. SAISONNALITÉ MADAGASCAR
+-----------------------------------
+
+Règles simples (MVP) :
+
+- Novembre → Mars = saison humide → risque ↑
+- Avril → Octobre = saison sèche → risque ↓
+
+Feature :
+
+is_rainy_season = true/false
+
+-----------------------------------
+9. UI DASHBOARD IA
+-----------------------------------
+
+Page :
+
+/logistics/ai
+
+Afficher :
+
+A. Lots à risque
+- liste HIGH / MEDIUM
+
+B. Graphiques
+- humidité réelle vs prédite
+- pertes prévues
+
+C. KPI
+- % lots à risque
+- pertes estimées
+
+-----------------------------------
+10. ALERTES INTELLIGENTES
+-----------------------------------
+
+Si :
+
+riskScore > 0.7
+→ alerte :
+
+"Lot X risque moisissure sous 3 jours"
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- accès LOGISTICS_MANAGER uniquement
+- logs prédictions
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- pipeline ML simple
+- prédictions fonctionnelles
+- dashboard IA
+
+Commence par :
+1. features
+2. modèle risque
+3. API predict
