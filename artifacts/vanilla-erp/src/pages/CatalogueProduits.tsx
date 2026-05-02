@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Package, Filter, TrendingUp, ShoppingCart, Star, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Package, Filter, TrendingUp, ShoppingCart, Star, ChevronDown, ChevronUp, ExternalLink, Boxes, Plus, Minus, X, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,7 +22,21 @@ interface Product {
   availability: string;
   purchasePriceKg?: number;
   minFobPriceKg?: number;
+  stockKg?: number;
   createdAt: string;
+}
+
+// ─── Stock badge helper ───────────────────────────────────────────────────────
+function stockBadge(stock: number): { color: string; label: string; level: "ok" | "low" | "critical" | "empty" } {
+  if (stock <= 0)   return { color: "bg-gray-100 text-gray-500 border-gray-200", label: "Rupture", level: "empty" };
+  if (stock < 20)   return { color: "bg-red-100 text-red-700 border-red-200",     label: "Critique", level: "critical" };
+  if (stock < 100)  return { color: "bg-amber-100 text-amber-800 border-amber-200", label: "Bas",    level: "low" };
+  return                  { color: "bg-green-100 text-green-700 border-green-200", label: "OK",      level: "ok" };
+}
+
+function fmtKg(kg: number): string {
+  if (kg >= 1000) return `${(kg / 1000).toFixed(2)} t`;
+  return `${kg.toFixed(kg < 10 ? 1 : 0)} kg`;
 }
 
 const CATEGORIES = [
@@ -57,11 +71,19 @@ function fmt(n: number | undefined | null, unit = ""): string {
 }
 
 // ─── Product card ─────────────────────────────────────────────────────────────
-function ProductCard({ product, showPurchasePrice, showFobPrice }: { product: Product; showPurchasePrice: boolean; showFobPrice: boolean }) {
+function ProductCard({ product, showPurchasePrice, showFobPrice, canAdjustStock, onAdjustStock }: {
+  product: Product;
+  showPurchasePrice: boolean;
+  showFobPrice: boolean;
+  canAdjustStock: boolean;
+  onAdjustStock: (p: Product) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const catStyle = CAT_COLOR[product.category] ?? "bg-gray-100 text-gray-600 border-gray-200";
   const availStyle = AVAIL_COLOR[product.availability] ?? "bg-gray-100 text-gray-500";
   const catLabel = CATEGORIES.find(c => c.key === product.category)?.label ?? product.category;
+  const stock = product.stockKg ?? 0;
+  const sb = stockBadge(stock);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col">
@@ -140,6 +162,204 @@ function ProductCard({ product, showPurchasePrice, showFobPrice }: { product: Pr
           {product.salesUnit && <span className="text-gray-400">Unité : {product.salesUnit}</span>}
         </div>
       )}
+
+      {/* Stock row */}
+      <div className="px-4 pb-4 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${sb.color.replace("text-", "text-").replace("bg-", "bg-")}`}>
+            <Boxes className="w-3.5 h-3.5" />
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Stock</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-sm font-bold text-gray-800">{fmtKg(stock)}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sb.color}`}>{sb.label}</span>
+            </div>
+          </div>
+        </div>
+        {canAdjustStock && (
+          <button
+            onClick={() => onAdjustStock(product)}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-[#1a3c2a]/30 text-[#1a3c2a] font-semibold hover:bg-[#1a3c2a]/5 transition-colors flex items-center gap-1"
+            data-testid={`btn-adjust-stock-${product.reference}`}
+          >
+            <Plus className="w-3 h-3" /> Ajuster
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Stock adjustment modal ───────────────────────────────────────────────────
+function StockAdjustmentModal({ product, onClose, onSuccess }: {
+  product: Product;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [direction, setDirection] = useState<"in" | "out">("in");
+  const [quantity, setQuantity] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const qty = parseFloat(quantity);
+      if (!qty || qty <= 0) throw new Error("Quantité invalide");
+      const signed = direction === "in" ? qty : -qty;
+      const r = await fetch("/api/stock/adjust", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, quantity: signed, reason: reason || undefined }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error ?? "Erreur lors de l'ajustement");
+      }
+      return r.json();
+    },
+    onSuccess: () => { onSuccess(); onClose(); },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const currentStock = product.stockKg ?? 0;
+  const previewStock = currentStock + (direction === "in" ? 1 : -1) * (parseFloat(quantity) || 0);
+  const sbCurrent = stockBadge(currentStock);
+  const sbPreview = stockBadge(previewStock);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#1a3c2a] text-white px-5 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold flex items-center gap-2"><Boxes className="w-4 h-4" /> Ajuster le stock</h2>
+            <p className="text-xs text-white/60 mt-0.5">{product.reference} — {product.name}</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white" data-testid="btn-close-modal">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          {/* Stock preview */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Stock actuel</p>
+              <div className="flex items-baseline gap-1.5 mt-1">
+                <span className="text-lg font-bold text-gray-700">{fmtKg(currentStock)}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sbCurrent.color}`}>{sbCurrent.label}</span>
+              </div>
+            </div>
+            <div className="bg-[#1a3c2a]/5 border border-[#1a3c2a]/20 rounded-lg p-3">
+              <p className="text-[10px] text-[#1a3c2a]/60 font-semibold uppercase tracking-wide">Après ajustement</p>
+              <div className="flex items-baseline gap-1.5 mt-1">
+                <span className="text-lg font-bold text-[#1a3c2a]">{fmtKg(Math.max(0, previewStock))}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${sbPreview.color}`}>{sbPreview.label}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Direction */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Type de mouvement</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setDirection("in")}
+                className={`py-2.5 px-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  direction === "in" ? "bg-green-50 border-green-300 text-green-700" : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+                data-testid="btn-direction-in"
+              >
+                <Plus className="w-4 h-4" /> Entrée (+)
+              </button>
+              <button
+                onClick={() => setDirection("out")}
+                className={`py-2.5 px-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  direction === "out" ? "bg-red-50 border-red-300 text-red-700" : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+                data-testid="btn-direction-out"
+              >
+                <Minus className="w-4 h-4" /> Sortie (−)
+              </button>
+            </div>
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Quantité (kg)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={quantity}
+              onChange={(e) => { setQuantity(e.target.value); setError(null); }}
+              placeholder="0.00"
+              autoFocus
+              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a3c2a]/20 focus:border-[#1a3c2a]/40"
+              data-testid="input-quantity"
+            />
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+              Raison <span className="text-gray-400 font-normal">(recommandé)</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={direction === "in" ? "Ex: Réception fournisseur, retour client…" : "Ex: Vente directe, perte, échantillon…"}
+              rows={2}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a3c2a]/20 focus:border-[#1a3c2a]/40 resize-none"
+              data-testid="input-reason"
+            />
+          </div>
+
+          {/* Warning if going negative */}
+          {previewStock < 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-red-700">
+                <p className="font-semibold">Stock négatif</p>
+                <p>Cette sortie dépasse le stock disponible ({fmtKg(currentStock)}).</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 font-medium">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            data-testid="btn-cancel"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !quantity || parseFloat(quantity) <= 0}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#1a3c2a] hover:bg-[#1a3c2a]/90 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+            data-testid="btn-confirm-adjust"
+          >
+            {mutation.isPending ? (
+              <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Enregistrement…</>
+            ) : (
+              <>Enregistrer l'ajustement</>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -147,6 +367,7 @@ function ProductCard({ product, showPurchasePrice, showFobPrice }: { product: Pr
 // ─── Main catalogue ───────────────────────────────────────────────────────────
 export default function CatalogueProduits() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const role = user?.role ?? "";
 
   // COMMERCIAL ne voit pas le prix d'achat (MGA interne)
@@ -154,11 +375,14 @@ export default function CatalogueProduits() {
   const showPurchasePrice = role !== "COMMERCIAL";
   const showFobPrice      = role !== "LOGISTICS_MANAGER";
   const canImport         = role === "SUPER_ADMIN" || role === "LOGISTICS_MANAGER";
+  const canAdjustStock    = role === "SUPER_ADMIN" || role === "LOGISTICS_MANAGER";
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [availFilter, setAvailFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState<"all" | "ok" | "low" | "critical" | "empty">("all");
+  const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", selectedCategory, debouncedSearch, availFilter],
@@ -190,7 +414,8 @@ export default function CatalogueProduits() {
     const matchAvail = availFilter === "all" || p.availability === availFilter;
     const matchSearch = !debouncedSearch || [p.reference, p.name, p.description ?? "", p.aromaticProfile ?? ""]
       .join(" ").toLowerCase().includes(debouncedSearch.toLowerCase());
-    return matchCat && matchAvail && matchSearch;
+    const matchStock = stockFilter === "all" || stockBadge(p.stockKg ?? 0).level === stockFilter;
+    return matchCat && matchAvail && matchSearch && matchStock;
   });
 
   // Stats
@@ -199,6 +424,11 @@ export default function CatalogueProduits() {
     available: products.filter(p => p.availability === "Disponible").length,
     avgFob: products.filter(p => p.minFobPriceKg).reduce((sum, p) => sum + (p.minFobPriceKg ?? 0), 0) / (products.filter(p => p.minFobPriceKg).length || 1),
     categories: new Set(products.map(p => p.category)).size,
+    totalStock: products.reduce((sum, p) => sum + (p.stockKg ?? 0), 0),
+    lowStock: products.filter(p => {
+      const lvl = stockBadge(p.stockKg ?? 0).level;
+      return lvl === "low" || lvl === "critical" || lvl === "empty";
+    }).length,
   };
 
   return (
@@ -222,10 +452,11 @@ export default function CatalogueProduits() {
 
         {/* KPI strip */}
         {products.length > 0 && (
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
             {[
               { label: "Produits total", value: stats.total, icon: Package, color: "text-[#1a3c2a]", bg: "bg-white", show: true },
-              { label: "Disponibles", value: stats.available, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50", show: true },
+              { label: "Stock total", value: fmtKg(stats.totalStock), icon: Boxes, color: "text-[#1a3c2a]", bg: "bg-[#1a3c2a]/5", show: true },
+              { label: "Stock bas / rupture", value: stats.lowStock, icon: AlertTriangle, color: stats.lowStock > 0 ? "text-amber-600" : "text-green-600", bg: stats.lowStock > 0 ? "bg-amber-50" : "bg-green-50", show: true },
               { label: "Catégories", value: stats.categories, icon: Filter, color: "text-purple-600", bg: "bg-purple-50", show: true },
               { label: "FOB moy. (€/kg)", value: stats.avgFob.toFixed(2), icon: Star, color: "text-blue-600", bg: "bg-blue-50", show: showFobPrice },
             ].filter(s => s.show).map(s => (
@@ -274,7 +505,7 @@ export default function CatalogueProduits() {
             </div>
 
             {/* Availability filter */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Filter className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-xs text-gray-500 font-medium">Disponibilité :</span>
               {["all", "Disponible", "Rupture de stock", "Sur commande", "Discontinué"].map(av => (
@@ -283,6 +514,26 @@ export default function CatalogueProduits() {
                     availFilter === av ? "bg-[#1a3c2a] text-white border-transparent" : "border-gray-200 text-gray-500 hover:bg-gray-50"
                   }`}>
                   {av === "all" ? "Tous" : av}
+                </button>
+              ))}
+            </div>
+
+            {/* Stock filter */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Boxes className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-xs text-gray-500 font-medium">Stock :</span>
+              {[
+                { key: "all", label: "Tous" },
+                { key: "ok", label: "OK (>100kg)" },
+                { key: "low", label: "Bas (<100kg)" },
+                { key: "critical", label: "Critique (<20kg)" },
+                { key: "empty", label: "Rupture" },
+              ].map(s => (
+                <button key={s.key} onClick={() => setStockFilter(s.key as any)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    stockFilter === s.key ? "bg-[#1a3c2a] text-white border-transparent" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                  }`}>
+                  {s.label}
                 </button>
               ))}
             </div>
@@ -325,10 +576,26 @@ export default function CatalogueProduits() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} showPurchasePrice={showPurchasePrice} showFobPrice={showFobPrice} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  showPurchasePrice={showPurchasePrice}
+                  showFobPrice={showFobPrice}
+                  canAdjustStock={canAdjustStock}
+                  onAdjustStock={setAdjustingProduct}
+                />
               ))}
             </div>
           </>
+        )}
+
+        {/* Stock adjustment modal */}
+        {adjustingProduct && (
+          <StockAdjustmentModal
+            product={adjustingProduct}
+            onClose={() => setAdjustingProduct(null)}
+            onSuccess={() => queryClient.invalidateQueries({ queryKey: ["products"] })}
+          />
         )}
       </div>
     </div>

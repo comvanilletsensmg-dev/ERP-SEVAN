@@ -41,6 +41,7 @@ import quotesRouter from "./quotes";
 import importLotsRouter from "./import-lots";
 import importProductsRouter from "./import-products";
 import productsRouter from "./products";
+import productStockRouter from "./product-stock";
 
 const router: IRouter = Router();
 
@@ -86,5 +87,6 @@ router.use(crmDashboardRouter);
 router.use(importLotsRouter);
 router.use(importProductsRouter);
 router.use(productsRouter);
+router.use(productStockRouter);
 
 export default router;

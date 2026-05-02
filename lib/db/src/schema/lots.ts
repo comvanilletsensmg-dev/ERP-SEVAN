@@ -1,14 +1,15 @@
-import { pgTable, text, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, real, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { suppliersTable } from "./suppliers";
+import { productsTable } from "./products";
 
 export const lotsTable = pgTable("lots", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   code: text("code").notNull().unique(),
   supplierId: text("supplier_id").notNull().references(() => suppliersTable.id),
   purchaseId: text("purchase_id"),
-  productId: text("product_id"), // link to products catalogue (nullable)
+  productId: text("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   weightInitial: real("weight_initial").notNull(),
   weightCurrent: real("weight_current").notNull(),
   humidity: real("humidity").notNull(),
@@ -17,7 +18,9 @@ export const lotsTable = pgTable("lots", {
   warehouse: text("warehouse"),
   status: text("status").notNull().default("raw"), // raw | curing | drying | ready | sold
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  productIdIdx: index("lots_product_id_idx").on(t.productId),
+}));
 
 export const insertLotSchema = createInsertSchema(lotsTable).omit({ id: true, createdAt: true });
 export type InsertLot = z.infer<typeof insertLotSchema>;
