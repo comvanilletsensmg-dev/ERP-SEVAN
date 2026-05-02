@@ -8,7 +8,7 @@ import {
   BookOpen, LogOut, CreditCard, ArrowLeftRight, UserCheck, CalendarDays,
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
-  Target, Activity, AlertTriangle,
+  Target, Activity, AlertTriangle, Upload,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -19,6 +19,7 @@ const logisticsNav = [
   { label: "Paiements",           href: "/payments",                  icon: CreditCard },
   { label: "Mouvements stock",    href: "/stock-movements",           icon: ArrowLeftRight },
   { label: "Intelligence IA",     href: "/logistics/intelligence",    icon: Cpu },
+  { label: "Import lots",          href: "/logistics/import",          icon: Upload },
 ];
 
 const accountingNav = [

@@ -12,6 +12,8 @@ export const lotsTable = pgTable("lots", {
   weightCurrent: real("weight_current").notNull(),
   humidity: real("humidity").notNull(),
   grade: text("grade"), // nullable until transformation
+  region: text("region"),
+  warehouse: text("warehouse"),
   status: text("status").notNull().default("raw"), // raw | curing | drying | ready | sold
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

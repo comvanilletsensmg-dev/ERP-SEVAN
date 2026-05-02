@@ -38,6 +38,7 @@ import crmConversionAlertsRouter from "./crm-conversion-alerts";
 import dealsRouter from "./deals";
 import interactionsRouter from "./interactions";
 import quotesRouter from "./quotes";
+import importLotsRouter from "./import-lots";
 
 const router: IRouter = Router();
 
@@ -80,5 +81,6 @@ router.use(leadsRouter);
 router.use(crmEmailsRouter);
 router.use(crmRemindersRouter);
 router.use(crmDashboardRouter);
+router.use(importLotsRouter);
 
 export default router;

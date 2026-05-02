@@ -1,0 +1,218 @@
+Tu es un développeur full-stack senior expert en data import ERP.
+
+Objectif :
+Créer un module IMPORT PRODUITS (lots logistiques) avec :
+- upload Excel/CSV
+- preview
+- mapping colonnes
+- validation avancée
+- détection doublons intelligente
+- import sécurisé avec logs
+
+Stack :
+- Front : React + Tailwind
+- Backend : Node.js + Express
+- ORM : Prisma + PostgreSQL
+- Librairies :
+  - XLSX (Excel)
+  - Papaparse (CSV)
+  - Zod (validation)
+  - Multer (upload)
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Lot {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  supplier       String
+  region         String
+  weightInitial  Float
+  humidity       Float
+  grade          String
+  warehouse      String
+  createdAt      DateTime @default(now())
+}
+
+model ImportBatch {
+  id         String   @id @default(uuid())
+  fileName   String
+  totalRows  Int
+  success    Int
+  failed     Int
+  createdAt  DateTime @default(now())
+}
+
+model ImportError {
+  id        String   @id @default(uuid())
+  batchId   String
+  rowNumber Int
+  message   String
+}
+
+-----------------------------------
+2. BACKEND – ROUTES
+-----------------------------------
+
+POST /api/import/validate
+
+LOGIQUE :
+
+- recevoir fichier (multer)
+- parser CSV / Excel
+- transformer en JSON
+- valider chaque ligne
+- détecter doublons :
+  - code identique
+  - poids similaire ±5% + même fournisseur
+
+Retour :
+
+{
+  rows: [
+    {
+      data: {...},
+      errors: [],
+      warnings: [],
+      duplicate: true/false,
+      suggestedAction: "create"
+    }
+  ]
+}
+
+-----------------------------------
+
+POST /api/import/execute
+
+Input :
+
+{
+  rows: [
+    {
+      data,
+      action // create, update, ignore
+    }
+  ]
+}
+
+LOGIQUE :
+
+- transaction Prisma
+- créer ou update Lot
+- enregistrer erreurs
+- créer ImportBatch
+
+-----------------------------------
+3. VALIDATION (ZOD)
+-----------------------------------
+
+Créer schema :
+
+- code : string obligatoire
+- weight > 0
+- humidity 0–100
+- grade enum
+- warehouse obligatoire
+
+WARNINGS :
+
+- humidity > 35
+- weight < 1
+
+-----------------------------------
+4. FRONTEND – PAGE IMPORT
+-----------------------------------
+
+Créer page :
+
+/logistics/import
+
+-----------------------------------
+5. COMPOSANT ImportProducts.jsx
+-----------------------------------
+
+STEP 1 : Upload
+- drag & drop
+- accepter .csv .xlsx
+
+STEP 2 : Preview
+- afficher table (10–20 lignes)
+- colonnes auto détectées
+
+STEP 3 : Mapping
+- dropdown mapping colonnes
+
+STEP 4 : Validation
+- badge :
+  - vert OK
+  - rouge erreur
+  - jaune warning
+
+STEP 5 : Doublons
+- afficher :
+  - duplicate_file
+  - duplicate_db
+
+- select action :
+  - ignore
+  - update
+  - create
+
+STEP 6 : Import
+- bouton envoyer vers API
+
+-----------------------------------
+6. UI DESIGN
+-----------------------------------
+
+- table moderne (tailwind)
+- modals propres
+- toast notifications
+- loaders
+
+-----------------------------------
+7. DÉTECTION DOUBLONS
+-----------------------------------
+
+A. fichier :
+
+- vérifier codes uniques
+
+B. base :
+
+- findMany sur :
+  - code
+  - supplier + weight proche
+
+-----------------------------------
+8. FEEDBACK
+-----------------------------------
+
+Après import :
+
+- X succès
+- Y erreurs
+
+Bouton :
+- télécharger erreurs CSV
+
+-----------------------------------
+9. BONUS
+-----------------------------------
+
+- bouton "télécharger modèle Excel"
+- auto génération code si vide
+
+-----------------------------------
+10. LIVRABLE
+-----------------------------------
+
+- backend complet
+- frontend fonctionnel
+- import sécurisé
+
+Commence par :
+1. API validate
+2. UI upload
+3. mapping
