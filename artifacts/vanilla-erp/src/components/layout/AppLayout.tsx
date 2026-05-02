@@ -18,8 +18,9 @@ const logisticsNav = [
   { label: "Lots",                href: "/lots",                      icon: Package },
   { label: "Paiements",           href: "/payments",                  icon: CreditCard },
   { label: "Mouvements stock",    href: "/stock-movements",           icon: ArrowLeftRight },
-  { label: "Intelligence IA",     href: "/logistics/intelligence",    icon: Cpu },
-  { label: "Import lots",          href: "/logistics/import",          icon: Upload },
+  { label: "Intelligence IA",       href: "/logistics/intelligence",      icon: Cpu },
+  { label: "Import Produits",       href: "/logistics/import-products",   icon: Upload },
+  { label: "Catalogue Produits",    href: "/catalogue",                    icon: Package },
 ];
 
 const accountingNav = [
@@ -50,6 +51,7 @@ const crmNav = [
   { label: "Activités",         href: "/crm/interactions",  icon: Activity },
   { label: "Templates email",   href: "/crm/templates",     icon: Mail },
   { label: "Relances",          href: "/crm/reminders",     icon: BellRing },
+  { label: "Catalogue Produits", href: "/catalogue",          icon: Package },
 ];
 
 const adminNav = [
