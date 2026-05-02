@@ -33,3 +33,6 @@ export * from "./import_lots";
 export * from "./products";
 export * from "./product_adjustments";
 export * from "./lot_histories";
+export * from "./lot_metrics";
+export * from "./predictions";
+export * from "./risk_events";

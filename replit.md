@@ -98,6 +98,32 @@ Only lots with status `ready` can be sold.
 
 **E2E validation passed**: valid transition, invalid transition (CURING→SHIPPED → 409), critical humidity (40%) auto-blocks, PHENOLED bans sale (409), full RAW→CURING→SORTING→READY→AVAILABLE chain works, sale succeeds on AVAILABLE, dashboard counters correct, history audit chronological, weight≤0 rejected by Zod, /lots/:id regression OK.
 
+## Module: AI AVANCÉE VANILLE (ML risk classifier + forecasting)
+
+**Backend**
+- `lib/ai/features.ts` — `buildFeatures(lot, samples[])` returns 14-dim FeatureVector (humidity_t/t-1/t-2, humidity_var, humidity_slope3, weight_loss_pct, weight_slope3, days_since_creation, status_phase ordinal, is_blocked, temp_avg, storage_mode encoded, is_rainy_season Madagascar Nov-Mar). Pure, deterministic, indexed by `FEATURE_ORDER`.
+- `lib/ai/models.ts` — `trainRiskClassifier(samples)` fits a `RandomForestClassifier` (ml-random-forest, 15-25 trees, maxFeatures auto-tuned to dataset size) and persists to `./models/risk-classifier.json`. `loadRiskClassifier()` mtime-cached. `predictRiskWithModel(features)` returns `{ probability, label }`. `forecastSeries(values, horizonDays)` uses `SimpleLinearRegression` (ml-regression-simple-linear, named import — NOT default) with R² confidence; clamps humidity 0..100 and loss 0..100. Tolerant to small datasets — catches RF training errors and gracefully returns null (heuristic fallback).
+- `lib/ai/predict.ts` — `predictLot(lotId)` blends heuristic score + ML probability (0.5/0.5 if model present), forecasts humidity J+1..J+7, computes loss% to J+7, applies Madagascar rainy-season boost when humidity > 28%. Returns `{ riskScore, riskLevel, reasons[], humidityForecast, lossForecast, modelUsed: 'ml'|'heuristic'|'blend', isRainySeason }`. `predictAllLots()` parallel.
+- `lib/ai/predict-cron.ts` — `runAiPredictions()`: persists 3 `predictions` rows per lot (humidity/loss/risk + confidence), inserts `risk_events` row when level=HIGH **with 24h dedupe** (skip if same lotId+HIGH already exists in last 24h). Logs alerts for downstream notification.
+- `routes/ai.ts` — RBAC `requireRole(SUPER_ADMIN, LOGISTICS_MANAGER)`:
+  - `GET /api/ai/predict/:lotId` — single lot prediction
+  - `GET /api/ai/risk-lots` — all lots HIGH+MEDIUM with summary (`{ total, high, medium, pctAtRisk, avgLossForecast, modelTrainedAt, modelSamples }`)
+  - `GET /api/ai/risk-events` — recent HIGH events (90d)
+  - `POST /api/ai/recompute` — manual cron trigger
+- Cron registered in `index.ts` — startup (after 8s) + every 24h.
+- Training script: `pnpm --filter @workspace/api-server run train-models` (calls `src/scripts/train-models.ts`). Builds features from all lots+histories+metrics, label = `isBlocked || riskLevel='HIGH'`, requires ≥4 samples + both classes. Fails gracefully when RandomForest can't fit small datasets (heuristic fallback).
+
+**Frontend** — page `/logistics/ai` (sidebar "IA Vanille", Brain icon, gated SUPER_ADMIN/LOGISTICS_MANAGER):
+- Header with "Recalculer" button + model status (trained date + samples, or heuristic fallback notice with training command).
+- Rainy-season Madagascar alert when applicable.
+- 4 KPI cards (lots analysés, % à risque, pertes prévues moy., événements HIGH 90j).
+- Smart alert listing top 5 HIGH lots with score + first reason.
+- Recharts BarChart: pertes prévues + score risque par lot (top 12).
+- Detailed table HIGH+MEDIUM with humidity J+7, model used badge, causes. "Détails" modal with humidity J+1..J+7 LineChart (with seuil 35% reference line), confidence, all reasons, intelligent alert "risque moisissure sous 3 jours" when score > 0.7.
+- Recent risk events history table.
+
+**E2E validation passed**: predict/:lotId returns blended forecast, risk-lots summary correct (4 lots, 1 HIGH 70%, heuristic when untrained), recompute persists 60 prediction rows (20×3 types) + dedupes events (3 calls → 0 new events), training script tolerant to 4-sample dataset (graceful fallback), RBAC enforced (401 unauth).
+
 ## Architecture
 
 - `lib/api-spec/openapi.yaml` — API contract (source of truth)
@@ -137,6 +163,9 @@ Tables:
 - `onboarding_tasks` — onboarding (employeeId, title, status: pending|done)
 - `lots` (extended) — adds `riskScore`, `riskLevel` (LOW|MEDIUM|HIGH), `isBlocked`, `blockedReason`, `lastRiskCheck`. Status now stored UPPERCASE: RAW | CURING | SORTING | READY | AVAILABLE | SHIPPED | PHENOLED | MOLDY | DOWNGRADED (legacy lowercase still accepted for back-compat).
 - `lot_histories` — audit trail (lotId FK CASCADE, status, humidity, weight, note, createdBy, createdAt, indexed by lotId + createdAt DESC).
+- `lot_metrics` — time series sensor data (lotId FK CASCADE, date, humidity, weight, temp, storage). Source for AI feature engineering.
+- `predictions` — AI forecast persistence (lotId FK CASCADE, type: humidity|loss|risk, date, value, confidence, createdAt). 3 rows written per lot per cron run.
+- `risk_events` — HIGH risk audit log (lotId FK CASCADE, riskLevel, score, reason, createdAt). Deduped 24h to avoid noise.
 
 ## Frontend Pages
 
@@ -146,6 +175,7 @@ Tables:
 - `/lots` — liste + transformation lot (mise à jour poids/statut)
 - `/logistics/lots-status` — workflow STATUTS VANILLE : tableau lots avec badge statut, humidité (rouge si > 35%), score de risque, blocage. Modal de mise à jour (statut + humidité + poids + note) gardée par rôle SUPER_ADMIN/LOGISTICS_MANAGER. Modal historique d'audit complet par lot.
 - `/logistics/risk` — détection IA des lots à risque : 4 KPI (analysés/HIGH/MEDIUM/bloqués), alertes HIGH + humidité critique, 2 graphiques Recharts (top humidité avec seuil 35%, top pertes %), tableau détaillé HIGH + MEDIUM avec causes et suggestions IA.
+- `/logistics/ai` — IA AVANCÉE VANILLE : RandomForest + régression linéaire, prévisions humidité J+1..J+7, pertes prévues 7j, score de risque blend (heuristique + ML), saisonnalité Madagascar (Nov-Mar), modal détail avec courbe humidité (seuil 35%), alertes intelligentes ("risque moisissure sous 3j"), bouton recalcul manuel, historique événements HIGH. Gardée par rôle SUPER_ADMIN/LOGISTICS_MANAGER.
 - `/clients` — CRUD clients
 - `/sales` — création vente export (lots ready uniquement)
 - `/payments` — enregistrement paiement client

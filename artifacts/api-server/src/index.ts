@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { seedDatabase } from "./lib/seed";
 import { checkOverdueInvoices } from "./routes/crm-reminders";
 import { recalcAllLotRisks } from "./lib/lot-risk-cron";
+import { runAiPredictions } from "./lib/ai/predict-cron";
 
 const rawPort = process.env["PORT"];
 
@@ -43,6 +44,20 @@ setTimeout(() => {
     .then(r => logger.info(r, "Startup: lot risk recalc complete"))
     .catch(err => logger.error({ err }, "Startup: lot risk recalc failed"));
 }, 5000);
+
+// Daily AI cron: recompute predictions + create RiskEvents for HIGH risk lots
+setInterval(() => {
+  runAiPredictions()
+    .then(r => logger.info(r, "Cron: AI predictions complete"))
+    .catch(err => logger.error({ err }, "Cron: AI predictions failed"));
+}, TWENTY_FOUR_HOURS);
+
+// Run AI predictions once at startup (after risk recalc)
+setTimeout(() => {
+  runAiPredictions()
+    .then(r => logger.info(r, "Startup: AI predictions complete"))
+    .catch(err => logger.error({ err }, "Startup: AI predictions failed"));
+}, 8000);
 
 app.listen(port, (err) => {
   if (err) {
