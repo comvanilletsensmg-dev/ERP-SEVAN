@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Package, Filter, TrendingUp, ShoppingCart, Star, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Product {
@@ -56,7 +57,7 @@ function fmt(n: number | undefined | null, unit = ""): string {
 }
 
 // ─── Product card ─────────────────────────────────────────────────────────────
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, showPurchasePrice, showFobPrice }: { product: Product; showPurchasePrice: boolean; showFobPrice: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const catStyle = CAT_COLOR[product.category] ?? "bg-gray-100 text-gray-600 border-gray-200";
   const availStyle = AVAIL_COLOR[product.availability] ?? "bg-gray-100 text-gray-500";
@@ -114,18 +115,24 @@ function ProductCard({ product }: { product: Product }) {
       </div>
 
       {/* Footer — pricing */}
-      <div className="px-4 pb-4 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
-        <div className="bg-[#f5f0e8] rounded-lg p-2 text-center">
-          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Prix achat</p>
-          <p className="text-sm font-bold text-[#1a3c2a]">{product.purchasePriceKg ? `${(product.purchasePriceKg / 1000).toFixed(0)}k Ar` : "—"}</p>
-          <p className="text-[10px] text-gray-400">par kg (MGA)</p>
+      {(showPurchasePrice || showFobPrice) && (
+        <div className={`px-4 pb-4 pt-3 border-t border-gray-100 grid gap-2 ${showPurchasePrice && showFobPrice ? "grid-cols-2" : "grid-cols-1"}`}>
+          {showPurchasePrice && (
+            <div className="bg-[#f5f0e8] rounded-lg p-2 text-center">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Prix achat</p>
+              <p className="text-sm font-bold text-[#1a3c2a]">{product.purchasePriceKg ? `${(product.purchasePriceKg / 1000).toFixed(0)}k Ar` : "—"}</p>
+              <p className="text-[10px] text-gray-400">par kg (MGA)</p>
+            </div>
+          )}
+          {showFobPrice && (
+            <div className="bg-blue-50 rounded-lg p-2 text-center">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Prix FOB min.</p>
+              <p className="text-sm font-bold text-blue-700">{product.minFobPriceKg ? `${product.minFobPriceKg.toFixed(2)} €` : "—"}</p>
+              <p className="text-[10px] text-gray-400">par kg (EUR)</p>
+            </div>
+          )}
         </div>
-        <div className="bg-blue-50 rounded-lg p-2 text-center">
-          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Prix FOB min.</p>
-          <p className="text-sm font-bold text-blue-700">{product.minFobPriceKg ? `${product.minFobPriceKg.toFixed(2)} €` : "—"}</p>
-          <p className="text-[10px] text-gray-400">par kg (EUR)</p>
-        </div>
-      </div>
+      )}
 
       {(product.moq || product.salesUnit) && (
         <div className="px-4 pb-3 flex gap-3 text-xs text-gray-500">
@@ -139,6 +146,15 @@ function ProductCard({ product }: { product: Product }) {
 
 // ─── Main catalogue ───────────────────────────────────────────────────────────
 export default function CatalogueProduits() {
+  const { user } = useAuth();
+  const role = user?.role ?? "";
+
+  // COMMERCIAL ne voit pas le prix d'achat (MGA interne)
+  // LOGISTICS_MANAGER ne voit pas le prix FOB (prix de vente export)
+  const showPurchasePrice = role !== "COMMERCIAL";
+  const showFobPrice      = role !== "LOGISTICS_MANAGER";
+  const canImport         = role === "SUPER_ADMIN" || role === "LOGISTICS_MANAGER";
+
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
