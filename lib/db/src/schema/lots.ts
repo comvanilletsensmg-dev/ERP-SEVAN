@@ -7,11 +7,12 @@ export const lotsTable = pgTable("lots", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   code: text("code").notNull().unique(),
   supplierId: text("supplier_id").notNull().references(() => suppliersTable.id),
-  purchaseId: text("purchase_id"), // back-reference to purchase
+  purchaseId: text("purchase_id"),
+  productId: text("product_id"), // link to products catalogue (nullable)
   weightInitial: real("weight_initial").notNull(),
   weightCurrent: real("weight_current").notNull(),
   humidity: real("humidity").notNull(),
-  grade: text("grade"), // nullable until transformation
+  grade: text("grade"),
   region: text("region"),
   warehouse: text("warehouse"),
   status: text("status").notNull().default("raw"), // raw | curing | drying | ready | sold

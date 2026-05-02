@@ -1,0 +1,257 @@
+Tu es un développeur full-stack senior expert ERP (logistique + CRM).
+
+Objectif :
+Créer un module PRODUITS + STOCK connecté aux LOTS avec :
+- catalogue produits (visible logistique + commercial)
+- stock calculé automatiquement depuis les lots
+- ajustement de stock sécurisé
+- import Excel/CSV avancé (validation + doublons)
+- UI premium SaaS
+
+Stack :
+- Front : React + Tailwind + React Query
+- Backend : Node.js + Express
+- ORM : Prisma + PostgreSQL
+- Librairies :
+  - XLSX
+  - Papaparse
+  - Zod
+  - Multer
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Product {
+  id          String   @id @default(uuid())
+  reference   String   @unique
+  name        String
+  type        String
+  origin      String?
+  quality     String?
+  priceUSD    Float
+  createdAt   DateTime @default(now())
+
+  lots        Lot[]
+}
+
+model Lot {
+  id            String   @id @default(uuid())
+  productId     String
+  weightCurrent Float
+  humidity      Float
+  status        String   // raw, ready, exported
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model StockMovement {
+  id        String   @id @default(uuid())
+  productId String
+  type      String   // IN, OUT, ADJUSTMENT
+  quantity  Float
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model ImportBatch {
+  id         String   @id @default(uuid())
+  fileName   String
+  totalRows  Int
+  success    Int
+  failed     Int
+  createdAt  DateTime @default(now())
+}
+
+model ImportError {
+  id        String   @id @default(uuid())
+  batchId   String
+  rowNumber Int
+  message   String
+}
+
+-----------------------------------
+2. LOGIQUE STOCK (IMPORTANT)
+-----------------------------------
+
+NE PAS stocker stock dans Product
+
+Créer fonction :
+
+getProductStock(productId)
+
+LOGIQUE :
+
+SUM(lots.weightCurrent)
+
+-----------------------------------
+3. API PRODUITS
+-----------------------------------
+
+GET /api/products
+
+Retour :
+
+{
+  id,
+  name,
+  priceUSD,
+  stockKg
+}
+
+-----------------------------------
+4. AJUSTEMENT STOCK
+-----------------------------------
+
+POST /api/stock/adjust
+
+Body :
+
+{
+  productId,
+  quantity,
+  reason
+}
+
+LOGIQUE :
+
+- créer StockMovement
+- créer ou ajuster lot
+
+-----------------------------------
+5. IMPORT PRODUITS (EXCEL / CSV)
+-----------------------------------
+
+POST /api/import/validate
+
+LOGIQUE :
+
+- parser fichier
+- mapping colonnes
+- validation Zod
+- détecter doublons :
+
+A. strict :
+- reference identique
+
+B. intelligent :
+- name + type similaire
+
+Retour :
+
+{
+  rows: [
+    {
+      data,
+      errors,
+      warnings,
+      duplicate,
+      action: "create"
+    }
+  ]
+}
+
+-----------------------------------
+
+POST /api/import/execute
+
+- create / update produits
+- log erreurs
+
+-----------------------------------
+6. VALIDATION AVANCÉE
+-----------------------------------
+
+- reference obligatoire
+- priceUSD > 0
+- humidity 0–100
+
+Warnings :
+- humidity > 35
+
+-----------------------------------
+7. UI REACT
+-----------------------------------
+
+Pages :
+
+/products/catalog
+/products/import
+
+-----------------------------------
+8. PAGE CATALOGUE
+-----------------------------------
+
+Table :
+
+- référence
+- nom
+- type
+- prix
+- stock (calculé)
+
+Badge stock :
+
+- vert > 100kg
+- jaune < 100kg
+- rouge < 20kg
+
+-----------------------------------
+9. AJUSTEMENT STOCK UI
+-----------------------------------
+
+Bouton :
+
+"Ajuster stock"
+
+Formulaire :
+
+- produit
+- quantité (+/-)
+- raison
+
+-----------------------------------
+10. PAGE IMPORT
+-----------------------------------
+
+Étapes :
+
+1. upload
+2. preview
+3. mapping
+4. validation
+5. doublons
+6. import
+
+-----------------------------------
+11. SÉCURITÉ RÔLES
+-----------------------------------
+
+LOGISTICS_MANAGER :
+- accès total
+- modifier stock
+
+COMMERCIAL :
+- lecture seule produits
+
+-----------------------------------
+12. BONUS
+-----------------------------------
+
+- export Excel catalogue
+- template téléchargement
+- toast UI
+
+-----------------------------------
+13. LIVRABLE
+-----------------------------------
+
+- backend complet
+- UI fonctionnelle
+- stock fiable
+- import intelligent
+
+Commence par :
+1. modèles Prisma
+2. API products
+3. UI catalogue
