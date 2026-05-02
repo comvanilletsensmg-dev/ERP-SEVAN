@@ -168,56 +168,63 @@ router.post("/import-products/execute", requireAuth, requireRole(...ROLES), asyn
   let successCount = 0, failedCount = 0, ignoredCount = 0;
   const batchErrors: Array<{ rowNumber: number; rowData: object; message: string }> = [];
 
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < rows.length; i++) {
-      const { data: rawData, action } = rows[i];
-      if (action === "ignore") { ignoredCount++; continue; }
+  for (let i = 0; i < rows.length; i++) {
+    const { data: rawData, action } = rows[i];
+    if (action === "ignore") { ignoredCount++; continue; }
 
-      const { data, errors } = validateRow(rawData as Record<string, unknown>);
-      if (!data || errors.length) {
-        failedCount++;
-        batchErrors.push({ rowNumber: i + 1, rowData: rawData, message: errors.join("; ") });
-        continue;
-      }
+    const { data, errors } = validateRow(rawData as Record<string, unknown>);
+    if (!data || errors.length) {
+      failedCount++;
+      batchErrors.push({ rowNumber: i + 1, rowData: rawData, message: errors.join("; ") });
+      continue;
+    }
 
-      try {
-        const values = {
-          reference: data.reference.trim(),
-          name: data.name.trim(),
-          category: data.category.toLowerCase(),
-          subCategoryGousse: data.subCategoryGousse || null,
-          size: data.size || null,
-          subCategoryExtrait: data.subCategoryExtrait || null,
-          subCategoryPate: data.subCategoryPate || null,
-          description: data.description || null,
-          aromaticProfile: data.aromaticProfile || null,
-          recommendedUsage: data.recommendedUsage || null,
-          packaging: data.packaging || null,
-          moq: data.moq || null,
-          salesUnit: data.salesUnit || null,
-          availability: data.availability || "Disponible",
-          purchasePriceKg: data.purchasePriceKg ?? null,
-          minFobPriceKg: data.minFobPriceKg ?? null,
-        };
+    try {
+      const values = {
+        reference: data.reference.trim(),
+        name: data.name.trim(),
+        category: data.category.toLowerCase(),
+        subCategoryGousse: data.subCategoryGousse || null,
+        size: data.size || null,
+        subCategoryExtrait: data.subCategoryExtrait || null,
+        subCategoryPate: data.subCategoryPate || null,
+        description: data.description || null,
+        aromaticProfile: data.aromaticProfile || null,
+        recommendedUsage: data.recommendedUsage || null,
+        packaging: data.packaging || null,
+        moq: data.moq || null,
+        salesUnit: data.salesUnit || null,
+        availability: data.availability || "Disponible",
+        purchasePriceKg: data.purchasePriceKg ?? null,
+        minFobPriceKg: data.minFobPriceKg ?? null,
+      };
 
-        if (action === "create") {
-          await tx.insert(productsTable).values(values);
+      if (action === "create") {
+        await db.insert(productsTable).values(values)
+          .onConflictDoNothing();
+        successCount++;
+      } else {
+        const [existing] = await db.select().from(productsTable)
+          .where(sql`UPPER(${productsTable.reference}) = ${data.reference.trim().toUpperCase()}`);
+        if (existing) {
+          await db.update(productsTable).set({ ...values, updatedAt: new Date() }).where(eq(productsTable.id, existing.id));
         } else {
-          const [existing] = await tx.select().from(productsTable)
-            .where(sql`UPPER(${productsTable.reference}) = ${data.reference.trim().toUpperCase()}`);
-          if (existing) {
-            await tx.update(productsTable).set({ ...values, updatedAt: new Date() }).where(eq(productsTable.id, existing.id));
-          } else {
-            await tx.insert(productsTable).values(values);
-          }
+          await db.insert(productsTable).values(values);
         }
         successCount++;
-      } catch (e: any) {
-        failedCount++;
-        batchErrors.push({ rowNumber: i + 1, rowData: rawData, message: e?.message?.includes("unique") ? `Référence "${data.reference}" déjà existante` : (e?.message ?? "Erreur interne") });
       }
+    } catch (e: any) {
+      failedCount++;
+      const msg = (e?.message ?? "");
+      batchErrors.push({
+        rowNumber: i + 1,
+        rowData: rawData,
+        message: msg.includes("unique") || msg.includes("duplicate")
+          ? `Référence "${data.reference}" déjà existante`
+          : (msg || "Erreur interne"),
+      });
     }
-  });
+  }
 
   const [batch] = await db.insert(importBatchesTable).values({ fileName, totalRows: rows.length, successCount, failedCount, ignoredCount, createdBy: userId }).returning();
   if (batchErrors.length) {
