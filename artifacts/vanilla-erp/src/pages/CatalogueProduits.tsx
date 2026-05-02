@@ -211,22 +211,24 @@ export default function CatalogueProduits() {
             <h1 className="text-2xl font-bold text-[#1a3c2a]">Catalogue Produits</h1>
             <p className="text-sm text-gray-500 mt-0.5">Vanille Madagascar — {products.length} produit{products.length > 1 ? "s" : ""} au catalogue</p>
           </div>
-          <a href="/logistics/import-products">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#1a3c2a]/30 text-[#1a3c2a] text-sm font-medium hover:bg-[#1a3c2a]/5 transition-colors">
-              <ExternalLink className="w-4 h-4" /> Importer des produits
-            </button>
-          </a>
+          {canImport && (
+            <a href="/logistics/import-products">
+              <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#1a3c2a]/30 text-[#1a3c2a] text-sm font-medium hover:bg-[#1a3c2a]/5 transition-colors">
+                <ExternalLink className="w-4 h-4" /> Importer des produits
+              </button>
+            </a>
+          )}
         </div>
 
         {/* KPI strip */}
         {products.length > 0 && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             {[
-              { label: "Produits total", value: stats.total, icon: Package, color: "text-[#1a3c2a]", bg: "bg-white" },
-              { label: "Disponibles", value: stats.available, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50" },
-              { label: "Catégories", value: stats.categories, icon: Filter, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "FOB moy. (€/kg)", value: stats.avgFob.toFixed(2), icon: Star, color: "text-blue-600", bg: "bg-blue-50" },
-            ].map(s => (
+              { label: "Produits total", value: stats.total, icon: Package, color: "text-[#1a3c2a]", bg: "bg-white", show: true },
+              { label: "Disponibles", value: stats.available, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50", show: true },
+              { label: "Catégories", value: stats.categories, icon: Filter, color: "text-purple-600", bg: "bg-purple-50", show: true },
+              { label: "FOB moy. (€/kg)", value: stats.avgFob.toFixed(2), icon: Star, color: "text-blue-600", bg: "bg-blue-50", show: showFobPrice },
+            ].filter(s => s.show).map(s => (
               <div key={s.label} className={`${s.bg} rounded-xl border border-gray-200 p-4 flex items-center gap-3`}>
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-current/10 bg-opacity-10`} style={{ background: "rgba(0,0,0,0.04)" }}>
                   <s.icon className={`w-5 h-5 ${s.color}`} />
@@ -298,12 +300,16 @@ export default function CatalogueProduits() {
             {products.length === 0 ? (
               <>
                 <p className="text-gray-500 font-medium">Catalogue vide</p>
-                <p className="text-sm text-gray-400 mt-1">Importez vos produits depuis un fichier Excel pour commencer</p>
-                <a href="/logistics/import-products">
-                  <button className="mt-4 px-4 py-2 bg-[#1a3c2a] text-white text-sm rounded-lg font-medium hover:bg-[#1a3c2a]/90 transition-colors">
-                    Importer le catalogue
-                  </button>
-                </a>
+                <p className="text-sm text-gray-400 mt-1">
+                  {canImport ? "Importez vos produits depuis un fichier Excel pour commencer" : "Le catalogue n'a pas encore été alimenté"}
+                </p>
+                {canImport && (
+                  <a href="/logistics/import-products">
+                    <button className="mt-4 px-4 py-2 bg-[#1a3c2a] text-white text-sm rounded-lg font-medium hover:bg-[#1a3c2a]/90 transition-colors">
+                      Importer le catalogue
+                    </button>
+                  </a>
+                )}
               </>
             ) : (
               <>
@@ -319,7 +325,7 @@ export default function CatalogueProduits() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} showPurchasePrice={showPurchasePrice} showFobPrice={showFobPrice} />
               ))}
             </div>
           </>
