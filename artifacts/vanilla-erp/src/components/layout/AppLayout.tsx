@@ -122,26 +122,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
   });
 
   // Platform settings — branding, title, favicon, CSS vars
-  const { getSetting } = usePlatformSettings();
+  const { settings: platformSettings } = usePlatformSettings();
 
   useEffect(() => {
-    const erpName = getSetting("erp_name", "Vanilla ERP");
-    const primaryColor = getSetting("primary_color");
-    const accentColor = getSetting("accent_color");
-    const faviconUrl = getSetting("favicon_url");
+    const erpName = platformSettings["erp_name"] ?? "Vanilla ERP";
+    const primaryColor = platformSettings["primary_color"] ?? "";
+    const accentColor = platformSettings["accent_color"] ?? "";
+    const faviconUrl = platformSettings["favicon_url"] ?? "";
 
-    // Browser title
     if (erpName) document.title = erpName;
 
-    // CSS custom properties for theming
-    if (primaryColor && /^#[0-9A-Fa-f]{6}$/.test(primaryColor)) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(primaryColor))
       document.documentElement.style.setProperty("--brand-primary", primaryColor);
-    }
-    if (accentColor && /^#[0-9A-Fa-f]{6}$/.test(accentColor)) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(accentColor))
       document.documentElement.style.setProperty("--brand-accent", accentColor);
-    }
 
-    // Favicon
     if (faviconUrl) {
       let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
       if (!link) {
@@ -151,7 +146,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       }
       link.setAttribute("href", faviconUrl);
     }
-  }, [getSetting]);
+  }, [platformSettings]);
 
   // Fetch pending conversion alert count
   const { data: alertCount } = useQuery<{ pending: number }>({
@@ -189,7 +184,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               {companySettings?.companyName ?? "Vanilla ERP"}
             </h1>
             <p className="text-xs text-sidebar-foreground/70 truncate">
-              {getSetting("platform_tagline", "Madagascar Operations")}
+              {platformSettings["platform_tagline"] ?? "Madagascar Operations"}
             </p>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2, MapPin, FileText, DollarSign, Palette, Settings,
-  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft, Globe,
+  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft, Globe, ImagePlus,
 } from "lucide-react";
 import { COUNTRY_OPTIONS, getCountryConfig } from "@/config/countries";
 
@@ -299,6 +299,236 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
   );
 }
 
+// ─── Branding tab ────────────────────────────────────────────────────────────
+const BRANDING_KEYS = new Set(["logo_url", "erp_name", "platform_tagline", "primary_color", "accent_color", "favicon_url"]);
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/.exec(hex);
+  if (!m) return null;
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+function luminance(r: number, g: number, b: number) {
+  return [r, g, b].reduce((acc, c, i) => {
+    const s = c / 255;
+    return acc + (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][i];
+  }, 0);
+}
+function contrastRatio(hex1: string, hex2: string): number {
+  const c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
+  if (!c1 || !c2) return 0;
+  const l1 = luminance(...c1), l2 = luminance(...c2);
+  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+function ContrastBadge({ fg, bg }: { fg: string; bg: string }) {
+  const r = contrastRatio(fg, bg);
+  const label = r >= 7 ? "AAA" : r >= 4.5 ? "AA" : r >= 3 ? "AA Large" : "Faible";
+  const cls = r >= 4.5 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : r >= 3 ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+    : "bg-red-50 text-red-700 border-red-200";
+  return <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${cls}`}>{r.toFixed(1)}:1 {label}</span>;
+}
+
+const COLOR_PRESETS = [
+  { name: "Vanille",  primary: "#1A1917", accent: "#185FA5" },
+  { name: "Forêt",   primary: "#1A2E1A", accent: "#2D7A2D" },
+  { name: "Océan",   primary: "#0F2744", accent: "#1565C0" },
+  { name: "Terre",   primary: "#3B1F0A", accent: "#A0522D" },
+  { name: "Ardoise", primary: "#1E293B", accent: "#475569" },
+  { name: "Rubis",   primary: "#1A0A0A", accent: "#B91C1C" },
+];
+
+function BrandingTab({ values, onChange, onLogoUpload, uploading }: {
+  values: SettingsMap;
+  onChange: (key: string, val: string) => void;
+  onLogoUpload: (file: File) => void;
+  uploading: boolean;
+}) {
+  const logoRef = useRef<HTMLInputElement>(null);
+  const primaryOk = /^#[0-9A-Fa-f]{6}$/.test(values["primary_color"] ?? "");
+  const accentOk  = /^#[0-9A-Fa-f]{6}$/.test(values["accent_color"] ?? "");
+  const primary   = primaryOk ? values["primary_color"] : "#1A1917";
+  const accent    = accentOk  ? values["accent_color"]  : "#185FA5";
+
+  // Live CSS var update while editing — no save needed
+  useEffect(() => {
+    if (primaryOk) document.documentElement.style.setProperty("--brand-primary", values["primary_color"]);
+    if (accentOk)  document.documentElement.style.setProperty("--brand-accent",  values["accent_color"]);
+  }, [values["primary_color"], values["accent_color"], primaryOk, accentOk]);
+
+  return (
+    <div className="grid grid-cols-[1fr_256px] gap-8 items-start">
+      {/* ── Fields ── */}
+      <div className="space-y-8">
+
+        {/* Logo */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-800">Logo principal</p>
+          <p className="text-xs text-gray-400">SVG ou PNG fond transparent — affiché dans la sidebar et les emails</p>
+          <div className="flex gap-4 items-start">
+            <div onClick={() => logoRef.current?.click()}
+              className="relative w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-emerald-400 cursor-pointer bg-gray-50 flex items-center justify-center overflow-hidden transition-colors group shrink-0">
+              {values["logo_url"]
+                ? <img src={values["logo_url"]} alt="Logo" className="max-w-[68px] max-h-[68px] object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                : <div className="flex flex-col items-center gap-1 text-gray-300 group-hover:text-emerald-500 transition-colors">
+                    <Upload className="w-5 h-5" /><span className="text-[9px]">PNG/SVG</span>
+                  </div>
+              }
+              {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-emerald-600" /></div>}
+            </div>
+            <div className="flex-1 space-y-2">
+              <input type="text" value={values["logo_url"] ?? ""} onChange={e => onChange("logo_url", e.target.value)}
+                placeholder="https://... ou uploader" className={inputCls} />
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" onClick={() => logoRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition">
+                  <Upload className="w-3 h-3" /> Uploader fichier
+                </button>
+                {values["logo_url"] && (
+                  <button type="button" onClick={() => onChange("logo_url", "")}
+                    className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs hover:bg-red-50 transition">
+                    Supprimer
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <input ref={logoRef} type="file" accept=".png,.jpg,.jpeg,.webp,.svg" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onLogoUpload(f); e.target.value = ""; }} />
+        </div>
+
+        {/* Name + tagline */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-gray-800">Nom de l'ERP</p>
+            <p className="text-xs text-gray-400">Titre navigateur + sidebar</p>
+            <input type="text" value={values["erp_name"] ?? ""} onChange={e => onChange("erp_name", e.target.value)}
+              placeholder="Vanilla ERP" className={inputCls} />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-gray-800">Sous-titre sidebar</p>
+            <p className="text-xs text-gray-400">Ligne sous le nom</p>
+            <input type="text" value={values["platform_tagline"] ?? ""} onChange={e => onChange("platform_tagline", e.target.value)}
+              placeholder="Madagascar Operations" className={inputCls} />
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-gray-800">Couleurs</p>
+          {/* Presets */}
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Palettes prédéfinies</p>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PRESETS.map(p => (
+                <button key={p.name} type="button"
+                  onClick={() => { onChange("primary_color", p.primary); onChange("accent_color", p.accent); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-200 rounded-lg hover:border-emerald-400 transition text-xs font-medium text-gray-600">
+                  <span className="flex gap-0.5">
+                    <span className="w-3.5 h-3.5 rounded-sm inline-block" style={{ background: p.primary }} />
+                    <span className="w-3.5 h-3.5 rounded-sm inline-block" style={{ background: p.accent }} />
+                  </span>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Primary */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">Couleur principale <span className="text-xs text-gray-400">(sidebar, fond)</span></p>
+              {primaryOk && <ContrastBadge fg="#ffffff" bg={values["primary_color"]} />}
+            </div>
+            <ColorField value={values["primary_color"] ?? ""} onChange={v => onChange("primary_color", v)} />
+          </div>
+          {/* Accent */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">Couleur d'accent <span className="text-xs text-gray-400">(boutons, liens, actif)</span></p>
+              {accentOk && <ContrastBadge fg="#ffffff" bg={values["accent_color"]} />}
+            </div>
+            <ColorField value={values["accent_color"] ?? ""} onChange={v => onChange("accent_color", v)} />
+          </div>
+        </div>
+
+        {/* Favicon */}
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold text-gray-800">Favicon</p>
+          <p className="text-xs text-gray-400">PNG 32×32 ou ICO — URL directe (onglet navigateur)</p>
+          <div className="flex gap-3 items-center">
+            <div className="w-8 h-8 border border-gray-200 rounded bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+              {values["favicon_url"]
+                ? <img src={values["favicon_url"]} alt="fav" className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                : <Globe className="w-4 h-4 text-gray-300" />
+              }
+            </div>
+            <input type="text" value={values["favicon_url"] ?? ""} onChange={e => onChange("favicon_url", e.target.value)}
+              placeholder="https://exemple.com/favicon.png" className={`${inputCls} flex-1`} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Live preview ── */}
+      <div className="sticky top-4 space-y-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aperçu en direct</p>
+
+        {/* Mini sidebar */}
+        <div className="rounded-xl overflow-hidden shadow-md border border-gray-200">
+          <div className="p-3 space-y-2.5" style={{ background: primary }}>
+            <div className="flex items-center gap-2">
+              {values["logo_url"]
+                ? <img src={values["logo_url"]} alt="logo" className="w-7 h-7 object-contain rounded-md bg-white/10 p-0.5"
+                    onError={e => (e.currentTarget.style.display = "none")} />
+                : <div className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-bold text-white bg-white/15">
+                    {(values["erp_name"] || "E").charAt(0).toUpperCase()}
+                  </div>
+              }
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-white truncate leading-tight">{values["erp_name"] || "Vanilla ERP"}</div>
+                <div className="text-[9px] text-white/50 truncate">{values["platform_tagline"] || "Madagascar Operations"}</div>
+              </div>
+            </div>
+            <div className="space-y-0.5">
+              {["Tableau de bord", "Logistique", "CRM", "Facturation"].map((item, i) => (
+                <div key={item} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px]"
+                  style={i === 0 ? { background: accent, color: "#fff" } : { color: "rgba(255,255,255,0.55)" }}>
+                  <div className="w-1.5 h-1.5 rounded-sm bg-current opacity-70" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Browser tab */}
+          <div className="bg-gray-100 border-t border-gray-200 px-2.5 py-1.5 flex items-center gap-1.5">
+            {values["favicon_url"]
+              ? <img src={values["favicon_url"]} className="w-3.5 h-3.5 object-contain shrink-0" alt="fav" onError={e => (e.currentTarget.style.display = "none")} />
+              : <div className="w-3.5 h-3.5 rounded-sm bg-gray-300 shrink-0" />
+            }
+            <span className="text-[10px] text-gray-500 truncate">{values["erp_name"] || "Vanilla ERP"}</span>
+          </div>
+        </div>
+
+        {/* Color swatches */}
+        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Palette active</p>
+          <div className="flex gap-1.5 mb-1.5">
+            <div className="flex-1 h-7 rounded-md" style={{ background: primary }} />
+            <div className="flex-1 h-7 rounded-md" style={{ background: accent }} />
+            <div className="flex-1 h-7 rounded-md bg-white border border-gray-200" />
+          </div>
+          <div className="flex gap-1.5 text-[9px] font-mono text-gray-400">
+            <span className="flex-1 text-center truncate">{primary}</span>
+            <span className="flex-1 text-center truncate">{accent}</span>
+            <span className="flex-1 text-center">#ffffff</span>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-gray-400 text-center">Les couleurs s'appliquent en direct.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Country mode section (System tab) ───────────────────────────────────────
 const SYSTEM_HIDDEN_KEYS = new Set(["country_mode"]);
 
@@ -486,12 +716,14 @@ function FiscalTab({ values, onChange }: {
 export default function PlatformSettingsPage() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>("company");
+  const handleTabChange = (key: TabKey) => { setActiveTab(key); setConfirmingReset(false); };
   const [allSettings, setAllSettings] = useState<PlatformSetting[]>([]);
   const [values, setValues] = useState<SettingsMap>({});
   const [originalValues, setOriginalValues] = useState<SettingsMap>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   // Load all settings
   useEffect(() => {
@@ -513,22 +745,22 @@ export default function PlatformSettingsPage() {
 
   // Settings for the active tab (some keys are hidden from the UI)
   const HIDDEN_KEYS = new Set(["fob_min_price_usd"]);
-  const isLegalTab = activeTab === "legal";
-  const isSystemTab = activeTab === "system";
+  const isLegalTab    = activeTab === "legal";
+  const isSystemTab   = activeTab === "system";
+  const isBrandingTab = activeTab === "branding";
   const tabSettings = allSettings.filter(s =>
     s.category === activeTab &&
     !HIDDEN_KEYS.has(s.settingKey) &&
-    !(isLegalTab && ALL_FISCAL_KEYS.has(s.settingKey)) &&
-    !(isSystemTab && SYSTEM_HIDDEN_KEYS.has(s.settingKey))
+    !(isLegalTab    && ALL_FISCAL_KEYS.has(s.settingKey)) &&
+    !(isSystemTab   && SYSTEM_HIDDEN_KEYS.has(s.settingKey)) &&
+    !(isBrandingTab && BRANDING_KEYS.has(s.settingKey))
   );
 
-  // Find changed keys in this tab only
-  // Also track fiscal keys when on the legal tab
-  const fiscalKeys = isLegalTab
-    ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)]
-    : [];
-  const systemExtraKeys = isSystemTab ? ["country_mode"] : [];
-  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys, ...systemExtraKeys];
+  // Find changed keys in this tab only (+ special sub-tab keys)
+  const fiscalKeys      = isLegalTab    ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)] : [];
+  const systemExtraKeys = isSystemTab   ? ["country_mode"] : [];
+  const brandingExtraKeys = isBrandingTab ? Array.from(BRANDING_KEYS) : [];
+  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys, ...systemExtraKeys, ...brandingExtraKeys];
   const changedKeys = allTrackedKeys.filter(k => values[k] !== originalValues[k]);
 
   const handleSave = async () => {
@@ -578,10 +810,11 @@ export default function PlatformSettingsPage() {
   };
 
   const handleReset = () => {
-    if (!confirm("Réinitialiser tous les champs de cet onglet aux valeurs originales ?")) return;
     const reset: SettingsMap = {};
-    for (const s of tabSettings) reset[s.settingKey] = originalValues[s.settingKey] ?? "";
+    for (const k of allTrackedKeys) reset[k] = originalValues[k] ?? "";
     setValues(prev => ({ ...prev, ...reset }));
+    setConfirmingReset(false);
+    toast("Champs réinitialisés");
   };
 
   if (loading) {
@@ -607,7 +840,7 @@ export default function PlatformSettingsPage() {
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key)}
+            onClick={() => handleTabChange(key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === key
                 ? "bg-white shadow text-emerald-700"
@@ -635,19 +868,17 @@ export default function PlatformSettingsPage() {
         </div>
 
         <div className="p-6">
-          {/* Branding tab: logo preview panel */}
-          {activeTab === "branding" && values["logo_url"] && (
-            <div className="mb-6 p-4 bg-gray-800 rounded-xl flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden p-1 shrink-0">
-                <img src={values["logo_url"]} alt="Logo preview" className="max-h-10 max-w-10 object-contain" />
-              </div>
-              <div>
-                <div className="text-white font-semibold text-sm">{values["erp_name"] || "Vanilla ERP"}</div>
-                <div className="text-white/60 text-xs">Aperçu sidebar</div>
-              </div>
-            </div>
+          {/* Branding tab — dedicated component */}
+          {isBrandingTab && (
+            <BrandingTab
+              values={values}
+              onChange={handleChange}
+              onLogoUpload={handleLogoUpload}
+              uploading={logoUploading}
+            />
           )}
 
+          {!isBrandingTab && (
           <div className="space-y-6">
             {/* Country mode — System tab */}
             {isSystemTab && (
@@ -663,16 +894,12 @@ export default function PlatformSettingsPage() {
             {tabSettings.length === 0 && !isLegalTab && !isSystemTab ? (
               <p className="text-gray-400 text-sm text-center py-8">Aucun paramètre dans cette catégorie.</p>
             ) : tabSettings.length > 0 ? (
-              <div className={isLegalTab ? "pt-2 border-t border-gray-100 space-y-6" : isSystemTab ? "pt-2 border-t border-gray-100 space-y-6" : "space-y-6"}>
+              <div className={isLegalTab || isSystemTab ? "pt-2 border-t border-gray-100 space-y-6" : "space-y-6"}>
                 {isLegalTab && (
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Informations légales générales
-                  </p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Informations légales générales</p>
                 )}
                 {isSystemTab && (
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Paramètres système
-                  </p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Paramètres système</p>
                 )}
                 {tabSettings.map(setting => (
                   <SettingField
@@ -687,17 +914,33 @@ export default function PlatformSettingsPage() {
               </div>
             ) : null}
           </div>
+          )}
 
           {/* Action buttons */}
-          {(tabSettings.length > 0 || isLegalTab || isSystemTab) && (
+          {(tabSettings.length > 0 || isLegalTab || isSystemTab || isBrandingTab) && (
             <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Réinitialiser
-              </button>
+              {confirmingReset ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Réinitialiser les modifications ?</span>
+                  <button type="button" onClick={handleReset}
+                    className="px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                    Confirmer
+                  </button>
+                  <button type="button" onClick={() => setConfirmingReset(false)}
+                    className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    Annuler
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(true)}
+                  disabled={changedKeys.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-400 hover:text-gray-600 disabled:opacity-30 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Réinitialiser
+                </button>
+              )}
               <button
                 onClick={handleSave}
                 disabled={saving || changedKeys.length === 0}
