@@ -108,6 +108,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const logout = useLogout();
   const role = user?.role ?? "";
 
+  // Fetch company settings for logo + name
+  const { data: companySettings } = useQuery<{ companyName: string; logoUrl?: string | null } | null>({
+    queryKey: ["company-settings"],
+    queryFn: async () => {
+      const r = await fetch("/api/settings", { credentials: "include" });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch pending conversion alert count
   const { data: alertCount } = useQuery<{ pending: number }>({
     queryKey: ["crm-alert-count"],
@@ -131,9 +142,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="h-screen flex bg-background overflow-hidden">
       <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border hidden md:flex flex-col h-screen">
-        <div className="p-6 shrink-0">
-          <h1 className="text-xl font-serif font-bold tracking-tight text-sidebar-primary">Vanilla ERP</h1>
-          <p className="text-xs text-sidebar-foreground/70 mt-1">Madagascar Operations</p>
+        <div className="p-4 shrink-0 flex items-center gap-3">
+          {companySettings?.logoUrl ? (
+            <img
+              src={companySettings.logoUrl}
+              alt="Logo"
+              className="h-10 w-10 object-contain rounded-lg bg-white/10 p-0.5 shrink-0"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-base font-serif font-bold tracking-tight text-sidebar-primary truncate leading-tight">
+              {companySettings?.companyName ?? "Vanilla ERP"}
+            </h1>
+            <p className="text-xs text-sidebar-foreground/70 truncate">Madagascar Operations</p>
+          </div>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto pb-4">

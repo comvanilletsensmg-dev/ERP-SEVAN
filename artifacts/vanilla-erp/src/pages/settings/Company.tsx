@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Upload, Building2, MapPin, Receipt, DollarSign, Save, Loader2, ImagePlus } from "lucide-react";
 
 interface CompanySettings {
@@ -55,6 +56,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition";
 
 export default function CompanySettings() {
+  const qc = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -87,6 +89,7 @@ export default function CompanySettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      qc.invalidateQueries({ queryKey: ["company-settings"] });
       toast.success("Configuration enregistrée");
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur lors de l'enregistrement");
@@ -109,6 +112,7 @@ export default function CompanySettings() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       setLogoUrl(j.logoUrl + "?t=" + Date.now());
+      qc.invalidateQueries({ queryKey: ["company-settings"] });
       toast.success("Logo mis à jour");
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur upload logo");
