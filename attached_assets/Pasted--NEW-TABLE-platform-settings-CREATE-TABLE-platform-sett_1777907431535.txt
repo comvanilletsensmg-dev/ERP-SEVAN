@@ -1,0 +1,662 @@
+---
+
+## NEW TABLE: platform_settings
+
+CREATE TABLE platform_settings (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  setting_key text UNIQUE NOT NULL,
+  setting_value text,
+  setting_type text CHECK (setting_type IN (
+    'text', 'email', 'url', 'number',
+    'boolean', 'color', 'json', 'file_url'
+  )) DEFAULT 'text',
+  category text CHECK (category IN (
+    'branding',
+    'email',
+    'notifications',
+    'commerce',
+    'legal',
+    'features'
+  )) NOT NULL,
+  label text NOT NULL,
+  description text,
+  is_public boolean DEFAULT false,
+  last_edited_by uuid REFERENCES team(id),
+  updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE platform_settings
+  ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "super_admin_settings_all"
+ON platform_settings FOR ALL TO authenticated
+USING (get_my_role() = 'super_admin')
+WITH CHECK (get_my_role() = 'super_admin');
+
+CREATE POLICY "authenticated_read_public_settings"
+ON platform_settings FOR SELECT TO authenticated
+USING (is_public = true);
+
+---
+
+## SEED: DEFAULT PLATFORM SETTINGS
+
+INSERT INTO platform_settings (
+  setting_key, setting_value, setting_type,
+  category, label, description, is_public
+) VALUES
+
+-- BRANDING
+('platform_name', 'SEVAN Espace Pro',
+  'text', 'branding',
+  'Nom de la plateforme',
+  'Affiché dans le navigateur et les emails',
+  true),
+
+('platform_tagline',
+  'Votre espace professionnel vanille',
+  'text', 'branding',
+  'Slogan / sous-titre',
+  'Affiché sous le logo dans l''espace client',
+  true),
+
+('logo_url', '',
+  'file_url', 'branding',
+  'Logo principal (URL)',
+  'URL du logo principal. Format recommandé : SVG ou PNG fond transparent.',
+  true),
+
+('logo_dark_url', '',
+  'file_url', 'branding',
+  'Logo version sombre (URL)',
+  'Version du logo pour fond sombre (sidebar, header noir)',
+  true),
+
+('favicon_url', '',
+  'file_url', 'branding',
+  'Favicon (URL)',
+  'Icône affichée dans l''onglet du navigateur. Format : ICO ou PNG 32x32.',
+  true),
+
+('primary_color', '#1A1917',
+  'color', 'branding',
+  'Couleur principale',
+  'Couleur des éléments actifs, boutons principaux, sidebar',
+  true),
+
+('accent_color', '#185FA5',
+  'color', 'branding',
+  'Couleur d''accent',
+  'Couleur des badges info, liens, éléments secondaires',
+  true),
+
+-- EMAIL
+('email_from_name', 'SEVAN Espace Pro',
+  'text', 'email',
+  'Nom expéditeur des emails',
+  'Nom affiché dans le champ "De" des emails envoyés',
+  false),
+
+('email_from_address', 'noreply@sevan.pro',
+  'email', 'email',
+  'Adresse expéditeur',
+  'Adresse email utilisée pour tous les envois automatiques',
+  false),
+
+('email_reply_to', 'contact@sevan.pro',
+  'email', 'email',
+  'Adresse de réponse (Reply-To)',
+  'Adresse où les clients répondent quand ils cliquent "Répondre"',
+  false),
+
+('email_footer_text',
+  'SEVAN · contact@sevan.pro · sevan.pro',
+  'text', 'email',
+  'Pied de page des emails',
+  'Texte affiché en bas de tous les emails',
+  false),
+
+('email_logo_url', '',
+  'file_url', 'email',
+  'Logo dans les emails (URL)',
+  'Logo affiché en haut de tous les emails',
+  false),
+
+-- NOTIFICATIONS
+('admin_notification_emails',
+  'contact@sevan.pro,crm@sevan.pro,admin@sevan.pro',
+  'text', 'notifications',
+  'Emails de notification admin',
+  'Liste des emails séparés par des virgules qui reçoivent les notifications internes',
+  false),
+
+('notify_on_new_registration', 'true',
+  'boolean', 'notifications',
+  'Notifier à chaque nouvelle inscription',
+  'Envoyer un email aux admins dès qu''un formulaire est soumis',
+  false),
+
+('notify_on_new_claim', 'true',
+  'boolean', 'notifications',
+  'Notifier à chaque nouvelle réclamation',
+  'Envoyer un email aux admins et au commercial concerné',
+  false),
+
+('notify_on_invoice_overdue', 'true',
+  'boolean', 'notifications',
+  'Notifier les factures en retard',
+  'Envoyer un email aux admins quand une facture dépasse son échéance',
+  false),
+
+-- COMMERCE
+('default_currency', 'USD',
+  'text', 'commerce',
+  'Devise par défaut',
+  'Devise utilisée pour les devis et factures. Ex: USD, EUR, MGA',
+  true),
+
+('accepted_currencies', 'USD,EUR',
+  'text', 'commerce',
+  'Devises acceptées',
+  'Liste des devises disponibles dans les formulaires devis/factures (séparées par des virgules)',
+  true),
+
+('fob_minimum_price_usd', '250',
+  'number', 'commerce',
+  'Prix minimum FOB (USD/kg)',
+  'Prix plancher pour tous les devis vanille. Validation automatique dans les formulaires.',
+  false),
+
+('default_payment_delay_days', '30',
+  'number', 'commerce',
+  'Délai de paiement par défaut (jours)',
+  'Nombre de jours ajoutés à la date d''émission pour calculer l''échéance',
+  false),
+
+('moq_unit', 'kg',
+  'text', 'commerce',
+  'Unité MOQ par défaut',
+  'Unité affichée pour le minimum de commande dans le catalogue',
+  true),
+
+-- LEGAL
+('terms_of_service_url', '',
+  'url', 'legal',
+  'URL des CGV',
+  'Lien vers les conditions générales de vente. Affiché dans le formulaire d''inscription.',
+  true),
+
+('privacy_policy_url', '',
+  'url', 'legal',
+  'URL de la politique de confidentialité',
+  'Lien affiché dans le formulaire d''inscription et le footer',
+  true),
+
+('company_legal_name', 'SEVAN',
+  'text', 'legal',
+  'Raison sociale',
+  'Nom légal complet de l''entreprise, utilisé dans les documents officiels',
+  true),
+
+('company_address', '',
+  'text', 'legal',
+  'Adresse de l''entreprise',
+  'Adresse complète affichée dans les factures et documents officiels',
+  false),
+
+('company_phone', '',
+  'text', 'legal',
+  'Téléphone / WhatsApp',
+  'Numéro de contact principal affiché dans la page Support',
+  true),
+
+('company_email', 'contact@sevan.pro',
+  'email', 'legal',
+  'Email général',
+  'Email de contact général affiché dans la page Support et les emails',
+  true),
+
+('company_website', '',
+  'url', 'legal',
+  'Site vitrine',
+  'URL du site principal SEVAN',
+  true),
+
+-- FEATURES
+('feature_2fa_required_admin', 'true',
+  'boolean', 'features',
+  '2FA obligatoire pour les admins',
+  'Force les super admins à activer la 2FA à la première connexion',
+  false),
+
+('feature_2fa_required_commercial', 'false',
+  'boolean', 'features',
+  '2FA obligatoire pour les commerciaux',
+  'Force les commerciaux à activer la 2FA',
+  false),
+
+('feature_client_self_register', 'false',
+  'boolean', 'features',
+  'Inscription client automatique',
+  'Si activé, les inscriptions créent un compte directement sans validation manuelle',
+  false),
+
+('feature_client_catalog_visible', 'true',
+  'boolean', 'features',
+  'Catalogue visible pour les clients',
+  'Afficher la page catalogue dans le portail client',
+  true),
+
+('feature_claims_enabled', 'true',
+  'boolean', 'features',
+  'Réclamations activées',
+  'Permettre aux clients de soumettre des réclamations depuis leur espace',
+  true),
+
+('feature_multi_contact', 'true',
+  'boolean', 'features',
+  'Multi-contacts par compte client',
+  'Permettre d''ajouter plusieurs contacts dans un même compte entreprise',
+  false),
+
+('session_timeout_minutes', '120',
+  'number', 'features',
+  'Expiration de session (minutes)',
+  'Durée d''inactivité avant déconnexion automatique. Min: 30, Max: 480.',
+  false),
+
+('support_whatsapp_number', '',
+  'text', 'features',
+  'Numéro WhatsApp support',
+  'Numéro WhatsApp affiché dans la page Support du portail client (format: +261XXXXXXXXX)',
+  true),
+
+('support_hours', 'Lun–Ven, 8h–17h',
+  'text', 'features',
+  'Horaires du support',
+  'Texte affiché dans la page Support',
+  true);
+
+---
+
+## SETTINGS UTILITY
+
+Create: src/lib/settings.ts
+
+import { supabase } from './supabase'
+
+type SettingsCache = Record<string, string>
+let cache: SettingsCache | null = null
+let cacheLoadedAt: number | null = null
+const CACHE_TTL_MS = 5 * 60 * 1000
+
+export async function getSettings(
+  keys?: string[]
+): Promise<SettingsCache> {
+  const now = Date.now()
+  if (
+    cache &&
+    cacheLoadedAt &&
+    now - cacheLoadedAt < CACHE_TTL_MS
+  ) {
+    if (!keys) return cache
+    return Object.fromEntries(
+      keys.map(k => [k, cache![k] ?? ''])
+    )
+  }
+
+  const query = supabase
+    .from('platform_settings')
+    .select('setting_key, setting_value')
+
+  const { data } = await query
+  cache = Object.fromEntries(
+    (data || []).map(s => [s.setting_key, s.setting_value ?? ''])
+  )
+  cacheLoadedAt = now
+
+  if (keys) {
+    return Object.fromEntries(
+      keys.map(k => [k, cache![k] ?? ''])
+    )
+  }
+  return cache
+}
+
+export async function getSetting(key: string)
+  : Promise<string> {
+  const settings = await getSettings([key])
+  return settings[key] ?? ''
+}
+
+export function invalidateSettingsCache() {
+  cache = null
+  cacheLoadedAt = null
+}
+
+Use these functions everywhere settings are needed:
+
+const platformName = await getSetting('platform_name')
+const currency = await getSetting('default_currency')
+const fobMin = await getSetting('fob_minimum_price_usd')
+
+Replace ALL hardcoded strings in the codebase:
+- "SEVAN Espace Pro" → getSetting('platform_name')
+- "contact@sevan.pro" → getSetting('company_email')
+- "#1A1917" colors → getSetting('primary_color')
+- "+261..." → getSetting('support_whatsapp_number')
+- "250" FOB price → getSetting('fob_minimum_price_usd')
+- Support hours → getSetting('support_hours')
+
+---
+
+## FEATURE FLAGS
+
+Create: src/lib/featureFlags.ts
+
+export async function isFeatureEnabled(
+  featureKey: string
+): Promise<boolean> {
+  const value = await getSetting(featureKey)
+  return value === 'true'
+}
+
+Use in components to conditionally render features:
+
+const claimsEnabled = await isFeatureEnabled(
+  'feature_claims_enabled'
+)
+if (!claimsEnabled) {
+  hideClaimsNavItem()
+}
+
+const catalogVisible = await isFeatureEnabled(
+  'feature_client_catalog_visible'
+)
+if (!catalogVisible) {
+  redirectFromCatalog()
+}
+
+Apply feature flags to these elements:
+
+feature_client_catalog_visible:
+  Client sidebar: show/hide "Nos produits"
+  Client routes: allow/block /produits
+
+feature_claims_enabled:
+  Client sidebar: show/hide "Réclamations"
+  Client routes: allow/block /reclamations
+
+feature_multi_contact:
+  Admin client detail: show/hide contacts section
+
+feature_2fa_required_admin:
+  After super_admin login: check 2FA setup
+  already implemented in C1
+
+feature_client_self_register:
+  Registration form success:
+  If true → create account automatically
+  If false → show "pending review" message
+  (current behavior)
+
+---
+
+## SESSION TIMEOUT
+
+Implement idle session timeout based on
+session_timeout_minutes setting:
+
+In a top-level React component (App.tsx or Layout):
+
+let idleTimer: ReturnType<typeof setTimeout>
+
+async function resetIdleTimer() {
+  clearTimeout(idleTimer)
+  const minutes = parseInt(
+    await getSetting('session_timeout_minutes')
+  ) || 120
+  idleTimer = setTimeout(async () => {
+    await supabase.auth.signOut()
+    router.replace('/login?reason=timeout')
+  }, minutes * 60 * 1000)
+}
+
+const events = ['mousedown', 'keydown',
+  'touchstart', 'scroll']
+events.forEach(e =>
+  document.addEventListener(e, resetIdleTimer))
+
+resetIdleTimer()
+
+On login page, if reason = 'timeout', show:
+"Votre session a expiré par inactivité.
+Reconnectez-vous."
+
+---
+
+## LOGO AND BRANDING APPLICATION
+
+Apply branding settings dynamically:
+
+In the root component, on mount:
+
+const settings = await getSettings([
+  'platform_name',
+  'primary_color',
+  'accent_color',
+  'logo_url',
+  'favicon_url'
+])
+
+document.title = settings.platform_name
+
+if (settings.favicon_url) {
+  const link = document.querySelector("link[rel='icon']")
+    || document.createElement('link')
+  link.setAttribute('rel', 'icon')
+  link.setAttribute('href', settings.favicon_url)
+  document.head.appendChild(link)
+}
+
+if (settings.primary_color) {
+  document.documentElement.style.setProperty(
+    '--brand-primary', settings.primary_color
+  )
+}
+
+if (settings.accent_color) {
+  document.documentElement.style.setProperty(
+    '--brand-accent', settings.accent_color
+  )
+}
+
+In the sidebar logo area:
+If logo_url is set: show <img src={logo_url}>
+Otherwise: show text "SEVAN" as before.
+
+---
+
+## ADMIN: SETTINGS PAGE
+
+Add "Configuration" to super admin sidebar
+under Paramètres.
+
+Page /admin/settings:
+
+Title: "Configuration de la plateforme"
+Subtitle: "Personnalisez SEVAN Espace Pro
+sans toucher au code"
+
+### 6 tabs (one per category)
+
+Tab 1 — Identité visuelle (branding)
+Tab 2 — Emails (email)
+Tab 3 — Notifications (notifications)
+Tab 4 — Commerce (commerce)
+Tab 5 — Légal (legal)
+Tab 6 — Fonctionnalités (features)
+
+### Per tab: settings form
+
+Each setting displayed as a labeled field.
+
+Field types by setting_type:
+
+text / email / url:
+  Standard text input
+  Full width
+
+number:
+  Number input with min/max validation
+
+boolean:
+  Toggle switch
+  Label shows current state: "Activé / Désactivé"
+
+color:
+  Color picker input (type="color")
+  + text input showing hex value
+  + Live preview swatch
+
+file_url:
+  Text input for URL
+  + "Prévisualiser" link (opens in new tab)
+  For logo: show current logo image preview
+    (100px max height)
+
+json:
+  Textarea with monospace font
+
+Each field shows:
+- Label (bold)
+- Description (small gray text below)
+- Input
+- Public badge if is_public = true:
+  "Visible par les clients" (teal badge)
+
+### Save button behavior
+
+"Sauvegarder les modifications" button
+at the bottom of each tab.
+
+On save:
+  For each changed setting:
+    await supabase
+      .from('platform_settings')
+      .update({
+        setting_value: newValue,
+        last_edited_by: currentAdminId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('setting_key', key)
+
+  Invalidate settings cache:
+    invalidateSettingsCache()
+
+  Show success toast: "Paramètres sauvegardés"
+
+  Log audit: action = 'settings_updated',
+    metadata: { keys_changed: [...changedKeys] }
+
+### Live preview for branding tab
+
+On the right side of the branding tab,
+show a mini preview of:
+- The sidebar with logo + primary color
+- A sample email header
+- The client portal top bar
+
+Updates in real-time as user changes colors/logo.
+
+### Reset to defaults button
+
+At the bottom of each tab:
+"Réinitialiser les valeurs par défaut"
+(ghost button, not prominent)
+
+On click: confirmation modal
+"Êtes-vous sûr ? Les valeurs actuelles seront perdues."
+On confirm: reset all settings in this category
+to their seeded default values.
+
+### Settings change history
+
+Below the form on each tab:
+Collapsible section: "Historique des modifications"
+
+Table showing last 10 changes to this category:
+- Date/heure
+- Clé modifiée (setting_key)
+- Modifié par (admin name)
+
+Loaded from audit_logs filtered by
+action = 'settings_updated' and
+metadata containing the category keys.
+
+---
+
+## APPLY SETTINGS THROUGHOUT THE APP
+
+After implementing the settings page,
+do a global search and replace in the codebase:
+
+Replace every hardcoded instance of:
+
+1. Email addresses:
+   "contact@sevan.pro" → getSetting('company_email')
+   "noreply@sevan.pro" → getSetting('email_from_address')
+   "crm@sevan.pro" → getSetting('admin_notification_emails')
+
+2. Brand text:
+   "SEVAN Espace Pro" → getSetting('platform_name')
+   "SEVAN" (in headers) → getSetting('company_legal_name')
+
+3. Support info:
+   Support hours text → getSetting('support_hours')
+   WhatsApp number → getSetting('support_whatsapp_number')
+
+4. Commerce rules:
+   250 (FOB minimum) → getSetting('fob_minimum_price_usd')
+   "USD" default → getSetting('default_currency')
+   30 (payment delay) → getSetting('default_payment_delay_days')
+
+5. Legal links:
+   Privacy policy link → getSetting('privacy_policy_url')
+   Terms link → getSetting('terms_of_service_url')
+
+This ensures the entire platform updates
+when settings change, with no code deployment needed.
+
+---
+
+## SETTINGS VALIDATION
+
+Add client-side validation before saving:
+
+primary_color / accent_color:
+  Must match /^#[0-9A-Fa-f]{6}$/
+
+email fields:
+  Must match standard email regex
+
+url fields:
+  Must start with https:// or be empty
+
+fob_minimum_price_usd:
+  Must be >= 100 and <= 10000
+
+session_timeout_minutes:
+  Must be >= 30 and <= 480
+
+accepted_currencies:
+  Must be comma-separated 3-letter codes
+  Validate each: /^[A-Z]{3}$/
+
+admin_notification_emails:
+  Must be comma-separated valid email addresses
+  Validate each entry
+
+Show inline validation errors in red below
+each field as the user types.
+Disable save button until all validations pass.

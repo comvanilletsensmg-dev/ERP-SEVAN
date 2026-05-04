@@ -101,7 +101,7 @@ router.post(
       return;
     }
 
-    const logoUrl = `/uploads/logo/${req.file.filename}`;
+    const logoUrl = `/api/uploads/logo/${req.file.filename}`;
 
     const [existing] = await db.select({ id: companySettingsTable.id }).from(companySettingsTable).limit(1);
     if (existing) {
