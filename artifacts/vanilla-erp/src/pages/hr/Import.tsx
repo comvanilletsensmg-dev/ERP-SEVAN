@@ -92,8 +92,8 @@ export default function HrImport() {
   };
 
   const downloadTemplate = () => {
-    const headers = "matricule,nom,prenom,sexe,email,telephone,poste,departement,typeContrat,salaireBase,cnaps,ostie,dateEmbauche,statut\n";
-    const example = "EMP001,Rakoto,Jean,M,jean@example.com,+261320000001,Technicien,Production,CDI,500000,00100001,00100001,2024-01-15,actif\n";
+    const headers = "matricule,nom,prenom,sexe,email,telephone,poste,departement,typeContrat,salaireBase,dateEmbauche,statut\n";
+    const example = "EMP001,Rakoto,Jean,M,jean@example.com,+261320000001,Technicien,Logistique,CDI,500000,2024-01-15,actif\n";
     const blob = new Blob(["\uFEFF" + headers + example], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -275,8 +275,6 @@ export default function HrImport() {
               ["departement", "Département"],
               ["typeContrat", "CDI / CDD / journalier"],
               ["salaireBase", "Obligatoire — montant MGA"],
-              ["cnaps", "Numéro CNAPS"],
-              ["ostie", "Numéro OSTIE"],
               ["dateEmbauche", "YYYY-MM-DD"],
               ["statut", "actif / suspendu / sorti"],
             ].map(([col, desc]) => (

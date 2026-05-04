@@ -90,7 +90,7 @@ router.get("/employees/export/csv", requireAuth, async (_req, res): Promise<void
     .leftJoin(departmentsTable, eq(employeesTable.departmentId, departmentsTable.id))
     .orderBy(employeesTable.name);
 
-  const headers = ["Matricule", "Nom", "Prénom", "Poste", "Département", "Type Contrat", "Salaire (MGA)", "Téléphone", "Email", "CNAPS", "OSTIE", "Statut", "Compte", "Date embauche"];
+  const headers = ["Matricule", "Nom", "Prénom", "Poste", "Département", "Type Contrat", "Salaire (MGA)", "Téléphone", "Email", "Statut", "Compte", "Date embauche"];
   const csvEsc = (v: unknown) => { const s = String(v ?? ""); return s.includes(",") ? `"${s}"` : s; };
   const rows = employees.map(({ employee: e, deptName }) => [
     e.matricule ?? "",
@@ -102,8 +102,6 @@ router.get("/employees/export/csv", requireAuth, async (_req, res): Promise<void
     e.salary?.toString() ?? "",
     e.phone ?? "",
     e.email ?? "",
-    e.cnapsNumber ?? "",
-    e.ostieNumber ?? "",
     e.statut,
     e.hasAccount ? "Oui" : "Non",
     e.hireDate?.toISOString().slice(0, 10) ?? "",

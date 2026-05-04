@@ -37,14 +37,13 @@ type Emp = Record<string, any>;
 type EmpForm = {
   nom: string; prenom: string; sexe: string; email: string;
   position: string; departmentId: string; salary: string; phone: string;
-  hireDate: string; dateNaissance: string; typeContrat: string;
-  cnapsNumber: string; ostieNumber: string; statut: string;
+  hireDate: string; dateNaissance: string; typeContrat: string; statut: string;
 };
 
 const EMPTY_FORM: EmpForm = {
   nom: "", prenom: "", sexe: "", email: "", position: "",
   departmentId: "", salary: "", phone: "", hireDate: "", dateNaissance: "",
-  typeContrat: "CDI", cnapsNumber: "", ostieNumber: "", statut: "actif",
+  typeContrat: "CDI", statut: "actif",
 };
 
 /** Splits "Prénom NOM" into { prenom, nom } — NOM is all-uppercase */
@@ -149,8 +148,6 @@ export default function EmployeesPage() {
           hireDate: data.hireDate || null,
           dateNaissance: data.dateNaissance || null,
           typeContrat: data.typeContrat || "CDI",
-          cnapsNumber: data.cnapsNumber.trim() || null,
-          ostieNumber: data.ostieNumber.trim() || null,
           statut: data.statut,
           isActive: data.statut === "actif",
         }),
@@ -223,8 +220,6 @@ export default function EmployeesPage() {
       hireDate: emp.hireDate ? emp.hireDate.slice(0, 10) : "",
       dateNaissance: emp.dateNaissance ? emp.dateNaissance.slice(0, 10) : "",
       typeContrat: emp.typeContrat ?? "CDI",
-      cnapsNumber: emp.cnapsNumber ?? "",
-      ostieNumber: emp.ostieNumber ?? "",
       statut: emp.statut ?? "actif",
     });
     setError("");
@@ -548,14 +543,6 @@ export default function EmployeesPage() {
                 </FieldRow>
                 <FieldRow label="Date d'embauche">
                   <input type="date" value={form.hireDate} onChange={set("hireDate")} className={inputCls} />
-                </FieldRow>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <FieldRow label="N° CNAPS">
-                  <input type="text" value={form.cnapsNumber} onChange={set("cnapsNumber")} placeholder="12345678901" className={inputCls} />
-                </FieldRow>
-                <FieldRow label="N° OSTIE">
-                  <input type="text" value={form.ostieNumber} onChange={set("ostieNumber")} placeholder="123456789" className={inputCls} />
                 </FieldRow>
               </div>
             </div>
