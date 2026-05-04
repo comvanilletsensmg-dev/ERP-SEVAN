@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2, MapPin, FileText, DollarSign, Palette, Settings,
-  Save, Loader2, Upload, ImagePlus, ExternalLink, RefreshCw,
+  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,12 +22,15 @@ type SettingsMap = Record<string, string>;
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const TABS = [
-  { key: "company",  label: "Entreprise",   icon: Building2 },
-  { key: "contact",  label: "Coordonnées",  icon: MapPin },
-  { key: "legal",    label: "Fiscalité",    icon: FileText },
-  { key: "finance",  label: "Devises",      icon: DollarSign },
-  { key: "branding", label: "Branding",     icon: Palette },
-  { key: "system",   label: "Système",      icon: Settings },
+  { key: "company",       label: "Entreprise",    icon: Building2 },
+  { key: "contact",       label: "Coordonnées",   icon: MapPin },
+  { key: "legal",         label: "Fiscalité",     icon: FileText },
+  { key: "finance",       label: "Finance",       icon: DollarSign },
+  { key: "branding",      label: "Branding",      icon: Palette },
+  { key: "email",         label: "Emails",        icon: Mail },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "features",      label: "Fonctionnalités", icon: ToggleLeft },
+  { key: "system",        label: "Système",       icon: Settings },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
