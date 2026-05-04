@@ -292,6 +292,16 @@ export interface CheckOutBody {
   employeeId: string;
 }
 
+export interface ManualAttendanceBody {
+  employeeId: string;
+  /** Date in YYYY-MM-DD format */
+  date: string;
+  /** Time in HH:MM format */
+  checkIn?: string | null;
+  /** Time in HH:MM format */
+  checkOut?: string | null;
+}
+
 export interface HrRequest {
   id: string;
   employeeId: string;
@@ -567,6 +577,17 @@ export type GetAttendanceParams = {
    * Filter by date (YYYY-MM-DD)
    */
   date?: string;
+  employeeId?: string;
+};
+
+export type GetAttendanceMonthParams = {
+  /**
+   * Month in YYYY-MM format
+   */
+  month: string;
+  /**
+   * Filter by employee
+   */
   employeeId?: string;
 };
 

@@ -1,0 +1,188 @@
+Tu es un développeur full-stack senior expert ERP RH.
+
+Objectif :
+Créer un module de gestion des congés professionnel avec :
+- calendrier interactif
+- workflow validation
+- calcul automatique droits congés
+- intégration paie
+- dashboard RH
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- Calendar : FullCalendar
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Leave {
+  id            String   @id @default(uuid())
+  employeeId    String
+  type          String   // annual, sick, unpaid
+  startDate     DateTime
+  endDate       DateTime
+  days          Float
+
+  status        String   // pending, approved, rejected
+
+  reason        String?
+
+  approvedBy    String?
+  createdAt     DateTime @default(now())
+}
+
+-----------------------------------
+
+model LeaveBalance {
+  id           String @id @default(uuid())
+  employeeId   String
+
+  totalDays    Float
+  usedDays     Float
+  remaining    Float
+
+  year         Int
+}
+
+-----------------------------------
+
+model LeavePolicy {
+  id           String @id @default(uuid())
+  type         String
+  daysPerYear  Float
+  maxCarryOver Float
+}
+
+-----------------------------------
+2. LOGIQUE MÉTIER
+-----------------------------------
+
+A. Acquisition congés :
+
+- 2.5 jours / mois (Madagascar standard)
+
+-----------------------------------
+
+B. Calcul jours :
+
+days = difference(startDate, endDate)
+
+-----------------------------------
+
+C. Validation :
+
+- RH ou manager valide
+
+-----------------------------------
+
+D. Mise à jour :
+
+remaining = total - used
+
+-----------------------------------
+3. WORKFLOW
+-----------------------------------
+
+1. employé demande congé
+2. statut = pending
+3. RH valide
+4. statut = approved
+5. déduction automatique
+
+-----------------------------------
+4. CALENDRIER PRO
+-----------------------------------
+
+Utiliser FullCalendar
+
+-----------------------------------
+
+Afficher :
+
+- congés validés (vert)
+- en attente (orange)
+- refusés (rouge)
+
+-----------------------------------
+
+Filtres :
+
+- par département
+- par employé
+
+-----------------------------------
+5. UI EMPLOYÉ
+-----------------------------------
+
+/hr/leaves
+
+-----------------------------------
+
+Formulaire :
+
+- type congé
+- dates
+- motif
+
+-----------------------------------
+6. DASHBOARD RH
+-----------------------------------
+
+Afficher :
+
+- employés absents aujourd’hui
+- congés en attente
+- soldes congés
+
+-----------------------------------
+7. INTÉGRATION PAIE
+-----------------------------------
+
+SI congé non payé :
+
+→ déduction salaire
+
+-----------------------------------
+
+SI congé payé :
+
+→ pas d’impact
+
+-----------------------------------
+8. AUTOMATISATION
+-----------------------------------
+
+CRON mensuel :
+
+- ajouter congés mensuels
+
+-----------------------------------
+9. VALIDATION
+-----------------------------------
+
+- pas dépasser solde
+- pas chevauchement
+
+-----------------------------------
+10. BONUS
+-----------------------------------
+
+- approbation multi-niveaux
+- notifications email
+- export Excel
+
+-----------------------------------
+11. LIVRABLE
+-----------------------------------
+
+- calendrier interactif
+- gestion congés complète
+- intégré paie
+
+Commence par :
+1. modèles Prisma
+2. calendrier UI
+3. workflow validation

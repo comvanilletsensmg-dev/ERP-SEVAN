@@ -685,6 +685,58 @@ paths:
               schema:
                 $ref: "#/components/schemas/AttendanceRecord"
 
+  /attendance/month:
+    get:
+      operationId: getAttendanceMonth
+      tags: [hr]
+      summary: List all attendance records for a given month
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Month in YYYY-MM format
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+          description: Filter by employee
+      responses:
+        "200":
+          description: List of attendance records for the month
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/manual:
+    post:
+      operationId: createManualAttendance
+      tags: [hr]
+      summary: Create or update attendance record manually (any date)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualAttendanceBody"
+      responses:
+        "200":
+          description: Attendance record updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+        "201":
+          description: Attendance record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
   /hr-requests:
     get:
       operationId: getHrRequests
@@ -1984,6 +2036,26 @@ components:
           type: string
       required:
         - employeeId
+
+    ManualAttendanceBody:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        date:
+          type: string
+          description: Date in YYYY-MM-DD format
+        checkIn:
+          type: string
+          nullable: true
+          description: Time in HH:MM format
+        checkOut:
+          type: string
+          nullable: true
+          description: Time in HH:MM format
+      required:
+        - employeeId
+        - date
 
     HrRequest:
       type: object

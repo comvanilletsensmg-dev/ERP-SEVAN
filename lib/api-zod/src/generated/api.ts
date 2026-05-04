@@ -802,6 +802,69 @@ export const CheckOutResponse = zod.object({
 });
 
 /**
+ * @summary List all attendance records for a given month
+ */
+export const GetAttendanceMonthQueryParams = zod.object({
+  month: zod.coerce.string().describe("Month in YYYY-MM format"),
+  employeeId: zod.coerce.string().optional().describe("Filter by employee"),
+});
+
+export const GetAttendanceMonthResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  date: zod.string(),
+  checkIn: zod.string().nullish(),
+  checkOut: zod.string().nullish(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetAttendanceMonthResponse = zod.array(
+  GetAttendanceMonthResponseItem,
+);
+
+/**
+ * @summary Create or update attendance record manually (any date)
+ */
+export const CreateManualAttendanceBody = zod.object({
+  employeeId: zod.string(),
+  date: zod.string().describe("Date in YYYY-MM-DD format"),
+  checkIn: zod.string().nullish().describe("Time in HH:MM format"),
+  checkOut: zod.string().nullish().describe("Time in HH:MM format"),
+});
+
+export const CreateManualAttendanceResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  date: zod.string(),
+  checkIn: zod.string().nullish(),
+  checkOut: zod.string().nullish(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
  * @summary List HR requests
  */
 export const GetHrRequestsResponseItem = zod.object({

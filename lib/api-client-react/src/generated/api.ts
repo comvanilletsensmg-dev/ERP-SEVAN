@@ -51,6 +51,7 @@ import type {
   ErrorResponse,
   FixedAsset,
   GeneratePayrollBody,
+  GetAttendanceMonthParams,
   GetAttendanceParams,
   GetBonusesParams,
   GetInvoicesParams,
@@ -68,6 +69,7 @@ import type {
   LoginResponse,
   Lot,
   LotStatusCount,
+  ManualAttendanceBody,
   MatchBankBody,
   OnboardingTask,
   Payment,
@@ -3031,6 +3033,189 @@ export const useCheckOut = <
   TContext
 > => {
   return useMutation(getCheckOutMutationOptions(options));
+};
+
+/**
+ * @summary List all attendance records for a given month
+ */
+export const getGetAttendanceMonthUrl = (params: GetAttendanceMonthParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/attendance/month?${stringifiedParams}`
+    : `/api/attendance/month`;
+};
+
+export const getAttendanceMonth = async (
+  params: GetAttendanceMonthParams,
+  options?: RequestInit,
+): Promise<AttendanceRecord[]> => {
+  return customFetch<AttendanceRecord[]>(getGetAttendanceMonthUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAttendanceMonthQueryKey = (
+  params?: GetAttendanceMonthParams,
+) => {
+  return [`/api/attendance/month`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAttendanceMonthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAttendanceMonth>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetAttendanceMonthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAttendanceMonth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAttendanceMonthQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAttendanceMonth>>
+  > = ({ signal }) => getAttendanceMonth(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAttendanceMonth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAttendanceMonthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAttendanceMonth>>
+>;
+export type GetAttendanceMonthQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all attendance records for a given month
+ */
+
+export function useGetAttendanceMonth<
+  TData = Awaited<ReturnType<typeof getAttendanceMonth>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetAttendanceMonthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAttendanceMonth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAttendanceMonthQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update attendance record manually (any date)
+ */
+export const getCreateManualAttendanceUrl = () => {
+  return `/api/attendance/manual`;
+};
+
+export const createManualAttendance = async (
+  manualAttendanceBody: ManualAttendanceBody,
+  options?: RequestInit,
+): Promise<AttendanceRecord> => {
+  return customFetch<AttendanceRecord>(getCreateManualAttendanceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(manualAttendanceBody),
+  });
+};
+
+export const getCreateManualAttendanceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualAttendance>>,
+    TError,
+    { data: BodyType<ManualAttendanceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createManualAttendance>>,
+  TError,
+  { data: BodyType<ManualAttendanceBody> },
+  TContext
+> => {
+  const mutationKey = ["createManualAttendance"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createManualAttendance>>,
+    { data: BodyType<ManualAttendanceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createManualAttendance(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateManualAttendanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createManualAttendance>>
+>;
+export type CreateManualAttendanceMutationBody = BodyType<ManualAttendanceBody>;
+export type CreateManualAttendanceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or update attendance record manually (any date)
+ */
+export const useCreateManualAttendance = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createManualAttendance>>,
+    TError,
+    { data: BodyType<ManualAttendanceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createManualAttendance>>,
+  TError,
+  { data: BodyType<ManualAttendanceBody> },
+  TContext
+> => {
+  return useMutation(getCreateManualAttendanceMutationOptions(options));
 };
 
 /**
