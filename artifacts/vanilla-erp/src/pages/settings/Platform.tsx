@@ -3,8 +3,9 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2, MapPin, FileText, DollarSign, Palette, Settings,
-  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft,
+  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft, Globe,
 } from "lucide-react";
+import { COUNTRY_OPTIONS, getCountryConfig } from "@/config/countries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSetting {
@@ -298,6 +299,85 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
   );
 }
 
+// ─── Country mode section (System tab) ───────────────────────────────────────
+const SYSTEM_HIDDEN_KEYS = new Set(["country_mode"]);
+
+function CountrySystemSection({ values, onChange }: {
+  values: SettingsMap;
+  onChange: (key: string, val: string) => void;
+}) {
+  const current = values["country_mode"] ?? "MADAGASCAR";
+  const config = getCountryConfig(current);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Globe className="w-3.5 h-3.5" /> Pays principal ERP
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {COUNTRY_OPTIONS.map(opt => {
+            const active = current === opt.value;
+            return (
+              <button key={opt.value} type="button" onClick={() => onChange("country_mode", opt.value)}
+                className={`relative flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 text-center transition-all
+                  ${active
+                    ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                    : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-gray-50"
+                  }`}>
+                <span className="text-3xl leading-none">{opt.flag}</span>
+                <span className={`text-sm font-semibold ${active ? "text-emerald-700" : "text-gray-700"}`}>
+                  {opt.label}
+                </span>
+                <span className="text-[10px] text-gray-400">{opt.currency} · {opt.taxSystem}</span>
+                {active && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Config summary card */}
+      <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</p>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Devise</span>
+            <span className="font-mono font-semibold text-gray-800">{config.currency} ({config.currencySymbol})</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Format date</span>
+            <span className="font-mono font-semibold text-gray-800">{config.dateFormat}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Système fiscal</span>
+            <span className="font-mono font-semibold text-gray-800">{config.taxSystem}</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Modules actifs</p>
+          {[
+            { key: "payroll", label: "Paie" },
+            { key: "export",  label: "Export" },
+            { key: "vat",     label: "TVA" },
+            { key: "cnaps",   label: "CNAPS/OSTIE" },
+          ].map(m => {
+            const on = config.modules[m.key as keyof typeof config.modules];
+            return (
+              <div key={m.key} className="flex items-center justify-between">
+                <span className="text-gray-600">{m.label}</span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${on ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}>
+                  {on ? "Actif" : "Inactif"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Fiscal module ───────────────────────────────────────────────────────────
 type TaxRegion = "MADAGASCAR" | "EUROPE" | "AFRICA";
 
@@ -433,12 +513,13 @@ export default function PlatformSettingsPage() {
 
   // Settings for the active tab (some keys are hidden from the UI)
   const HIDDEN_KEYS = new Set(["fob_min_price_usd"]);
-  // Legal tab: fiscal keys rendered by FiscalTab, not the generic list
   const isLegalTab = activeTab === "legal";
+  const isSystemTab = activeTab === "system";
   const tabSettings = allSettings.filter(s =>
     s.category === activeTab &&
     !HIDDEN_KEYS.has(s.settingKey) &&
-    !(isLegalTab && ALL_FISCAL_KEYS.has(s.settingKey))
+    !(isLegalTab && ALL_FISCAL_KEYS.has(s.settingKey)) &&
+    !(isSystemTab && SYSTEM_HIDDEN_KEYS.has(s.settingKey))
   );
 
   // Find changed keys in this tab only
@@ -446,7 +527,8 @@ export default function PlatformSettingsPage() {
   const fiscalKeys = isLegalTab
     ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)]
     : [];
-  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys];
+  const systemExtraKeys = isSystemTab ? ["country_mode"] : [];
+  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys, ...systemExtraKeys];
   const changedKeys = allTrackedKeys.filter(k => values[k] !== originalValues[k]);
 
   const handleSave = async () => {
@@ -567,19 +649,29 @@ export default function PlatformSettingsPage() {
           )}
 
           <div className="space-y-6">
-            {/* Fiscal module — rendered only in the legal tab */}
+            {/* Country mode — System tab */}
+            {isSystemTab && (
+              <CountrySystemSection values={values} onChange={handleChange} />
+            )}
+
+            {/* Fiscal module — Legal tab */}
             {isLegalTab && (
               <FiscalTab values={values} onChange={handleChange} />
             )}
 
             {/* Generic fields for this tab */}
-            {tabSettings.length === 0 && !isLegalTab ? (
+            {tabSettings.length === 0 && !isLegalTab && !isSystemTab ? (
               <p className="text-gray-400 text-sm text-center py-8">Aucun paramètre dans cette catégorie.</p>
             ) : tabSettings.length > 0 ? (
-              <div className={isLegalTab ? "pt-2 border-t border-gray-100 space-y-6" : "space-y-6"}>
+              <div className={isLegalTab ? "pt-2 border-t border-gray-100 space-y-6" : isSystemTab ? "pt-2 border-t border-gray-100 space-y-6" : "space-y-6"}>
                 {isLegalTab && (
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Informations légales générales
+                  </p>
+                )}
+                {isSystemTab && (
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Paramètres système
                   </p>
                 )}
                 {tabSettings.map(setting => (
@@ -597,7 +689,7 @@ export default function PlatformSettingsPage() {
           </div>
 
           {/* Action buttons */}
-          {tabSettings.length > 0 && (
+          {(tabSettings.length > 0 || isLegalTab || isSystemTab) && (
             <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
               <button
                 type="button"

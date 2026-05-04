@@ -1,0 +1,250 @@
+Tu es un développeur full-stack senior expert ERP international.
+
+Objectif :
+Créer un système global où TOUT l’ERP s’adapte automatiquement selon le pays.
+
+Concept :
+country-driven ERP
+
+-----------------------------------
+1. SETTINGS PRINCIPAL
+-----------------------------------
+
+Ajouter dans platform_settings :
+
+('country_mode', 'MADAGASCAR',
+ 'text', 'system',
+ 'Pays principal ERP',
+ 'MADAGASCAR | EUROPE | AFRICA',
+ true),
+
+-----------------------------------
+2. STRUCTURE CONFIGURATION PAR PAYS
+-----------------------------------
+
+Créer fichier :
+
+/src/config/countries.ts
+
+-----------------------------------
+
+export const COUNTRY_CONFIG = {
+
+  MADAGASCAR: {
+    currency: "MGA",
+    dateFormat: "DD/MM/YYYY",
+    taxSystem: "NIF_STAT",
+    modules: {
+      payroll: true,
+      export: true,
+      vat: false
+    },
+    fields: {
+      fiscal: ["company_nif", "company_stat", "company_rcs"]
+    }
+  },
+
+  EUROPE: {
+    currency: "EUR",
+    dateFormat: "DD-MM-YYYY",
+    taxSystem: "VAT",
+    modules: {
+      payroll: true,
+      export: true,
+      vat: true
+    },
+    fields: {
+      fiscal: ["company_vat", "company_registration", "company_eori"]
+    }
+  },
+
+  AFRICA: {
+    currency: "USD",
+    dateFormat: "DD/MM/YYYY",
+    taxSystem: "TAX_ID",
+    modules: {
+      payroll: true,
+      export: true,
+      vat: false
+    },
+    fields: {
+      fiscal: ["company_tax_id", "company_rccm"]
+    }
+  }
+
+}
+
+-----------------------------------
+3. SERVICE CENTRAL
+-----------------------------------
+
+Créer :
+
+/src/lib/country.ts
+
+-----------------------------------
+
+import { getSetting } from "./settings";
+import { COUNTRY_CONFIG } from "../config/countries";
+
+export async function getCountryConfig() {
+  const country = await getSetting("country_mode");
+  return COUNTRY_CONFIG[country];
+}
+
+-----------------------------------
+4. ADAPTATION GLOBALE ERP
+-----------------------------------
+
+A. FISCALITÉ
+
+Utiliser :
+
+config.fields.fiscal
+
+-----------------------------------
+
+B. DEVISE
+
+const currency = config.currency
+
+-----------------------------------
+
+C. MODULES
+
+if config.modules.vat === false:
+  hide VAT module
+
+-----------------------------------
+
+D. UI
+
+- format date
+- labels dynamiques
+- champs conditionnels
+
+-----------------------------------
+5. FRONTEND GLOBAL HOOK
+-----------------------------------
+
+Créer :
+
+useCountry()
+
+-----------------------------------
+
+export function useCountry() {
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    getCountryConfig().then(setConfig);
+  }, []);
+
+  return config;
+}
+
+-----------------------------------
+6. EXEMPLES D’ADAPTATION
+-----------------------------------
+
+FACTURE :
+
+if MADAGASCAR:
+  afficher NIF
+
+if EUROPE:
+  afficher TVA
+
+-----------------------------------
+
+PAIE :
+
+if MADAGASCAR:
+  CNAPS / OSTIE / IRSA
+
+if EUROPE:
+  TVA + charges sociales
+
+-----------------------------------
+
+CRM :
+
+if EUROPE:
+  afficher VAT client
+
+-----------------------------------
+
+LOGISTIQUE :
+
+adapter unités :
+- kg
+- tonnes
+
+-----------------------------------
+7. FEATURE FLAGS PAR PAYS
+-----------------------------------
+
+Créer :
+
+isFeatureEnabledByCountry(feature)
+
+-----------------------------------
+
+Exemple :
+
+if country === "EUROPE":
+  activer TVA
+
+-----------------------------------
+8. UI SETTINGS
+-----------------------------------
+
+Page :
+
+/admin/settings/system
+
+-----------------------------------
+
+Ajouter :
+
+Select Pays principal
+
+- Madagascar 🇲🇬
+- Europe 🇪🇺
+- Afrique 🌍
+
+-----------------------------------
+9. RÈGLE CRITIQUE
+-----------------------------------
+
+NE JAMAIS hardcoder :
+
+- devise
+- fiscalité
+- format
+
+TOUT doit passer par :
+
+getCountryConfig()
+
+-----------------------------------
+10. MIGRATION
+-----------------------------------
+
+Remplacer :
+
+"USD" → config.currency
+"NIF" → config.fields
+
+-----------------------------------
+11. LIVRABLE
+-----------------------------------
+
+- ERP adaptatif complet
+- scalable multi-pays
+- prêt export international
+
+Commence par :
+1. country_config
+2. service global
+3. adaptation modules
