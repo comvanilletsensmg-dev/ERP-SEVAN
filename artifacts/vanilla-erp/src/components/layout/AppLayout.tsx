@@ -60,8 +60,9 @@ const crmNav = [
 ];
 
 const adminNav = [
-  { label: "Utilisateurs",   href: "/admin/users",        icon: ShieldCheck },
-  { label: "Configuration",  href: "/settings/company",   icon: Settings },
+  { label: "Utilisateurs",    href: "/admin/users",        icon: ShieldCheck },
+  { label: "Config. ERP",     href: "/settings/platform",  icon: Settings },
+  { label: "Config. Société", href: "/settings/company",   icon: Building2 },
 ];
 
 const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];

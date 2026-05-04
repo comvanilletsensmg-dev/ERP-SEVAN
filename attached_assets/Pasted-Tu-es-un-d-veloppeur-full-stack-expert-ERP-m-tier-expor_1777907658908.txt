@@ -1,0 +1,249 @@
+Tu es un développeur full-stack expert ERP métier (export vanille Madagascar).
+
+Objectif :
+Adapter le système platform_settings existant pour créer
+une CONFIGURATION GÉNÉRALE ERP complète.
+
+Base existante :
+Table platform_settings déjà en place.
+
+-----------------------------------
+1. CATÉGORIES À UTILISER (ADAPTÉES ERP)
+-----------------------------------
+
+Remplacer les catégories existantes par :
+
+- company      → infos entreprise
+- branding     → logo / UI
+- finance      → devises / règles
+- legal        → infos fiscales Madagascar
+- contact      → coordonnées
+- system       → paramètres ERP
+
+-----------------------------------
+2. NOUVEAUX SETTINGS À AJOUTER
+-----------------------------------
+
+-- ENTREPRISE
+('company_name', 'Flavorie Export',
+ 'text', 'company',
+ 'Nom de l’entreprise',
+ 'Nom affiché sur factures, ERP, exports',
+ true),
+
+('company_legal_name', 'Flavorie SARL',
+ 'text', 'company',
+ 'Raison sociale',
+ 'Nom officiel pour documents légaux',
+ true),
+
+-----------------------------------
+
+-- CONTACT
+('company_address',
+ 'Lot XXX Antananarivo',
+ 'text', 'contact',
+ 'Adresse physique',
+ 'Adresse complète de l’entreprise',
+ true),
+
+('company_city', 'Antananarivo',
+ 'text', 'contact',
+ 'Ville',
+ 'Ville principale',
+ true),
+
+('company_country', 'Madagascar',
+ 'text', 'contact',
+ 'Pays',
+ 'Pays d’activité',
+ true),
+
+('company_phone', '+261XXXXXXXXX',
+ 'text', 'contact',
+ 'Téléphone',
+ 'Numéro principal',
+ true),
+
+('company_email', 'contact@flavorie.com',
+ 'email', 'contact',
+ 'Email',
+ 'Email officiel',
+ true),
+
+-----------------------------------
+
+-- FISCAL MADAGASCAR
+('company_nif', '',
+ 'text', 'legal',
+ 'NIF',
+ 'Numéro d’identification fiscale Madagascar',
+ true),
+
+('company_stat', '',
+ 'text', 'legal',
+ 'STAT',
+ 'Numéro statistique',
+ true),
+
+('company_rcs', '',
+ 'text', 'legal',
+ 'RCS',
+ 'Registre du commerce',
+ true),
+
+-----------------------------------
+
+-- FINANCE / DEVISES
+('default_currency', 'MGA',
+ 'text', 'finance',
+ 'Devise principale',
+ 'Devise utilisée par défaut',
+ true),
+
+('secondary_currency_1', 'USD',
+ 'text', 'finance',
+ 'Devise secondaire 1',
+ 'Utilisée pour export',
+ true),
+
+('secondary_currency_2', 'EUR',
+ 'text', 'finance',
+ 'Devise secondaire 2',
+ 'Utilisée pour export',
+ true),
+
+-----------------------------------
+
+-- BRANDING
+('logo_url', '',
+ 'file_url', 'branding',
+ 'Logo',
+ 'Logo principal ERP',
+ true),
+
+('primary_color', '#0F172A',
+ 'color', 'branding',
+ 'Couleur principale',
+ 'Couleur ERP',
+ true),
+
+-----------------------------------
+
+-- PARAMÈTRES ERP
+('erp_name', 'Flavorie ERP',
+ 'text', 'system',
+ 'Nom ERP',
+ 'Nom affiché dans interface',
+ true),
+
+('erp_mode', 'production',
+ 'text', 'system',
+ 'Mode ERP',
+ 'production ou test',
+ false)
+
+-----------------------------------
+3. UI CONFIGURATION (ADMIN)
+-----------------------------------
+
+Créer page :
+
+/admin/settings
+
+-----------------------------------
+
+Sections UI :
+
+1. 🏢 Entreprise
+2. 📍 Coordonnées
+3. 📄 Fiscalité
+4. 💰 Devises
+5. 🎨 Branding
+6. ⚙️ Système
+
+-----------------------------------
+4. CHAMPS UI IMPORTANTS
+-----------------------------------
+
+Entreprise :
+- Nom entreprise
+- Raison sociale
+
+Coordonnées :
+- adresse
+- ville
+- pays
+- téléphone
+- email
+
+Fiscalité :
+- NIF
+- STAT
+- RCS
+
+Finance :
+- select devise principale (MGA, USD, EUR)
+- devises secondaires
+
+Branding :
+- upload logo
+- couleur
+
+-----------------------------------
+5. UTILISATION DANS ERP
+-----------------------------------
+
+Remplacer partout :
+
+Nom entreprise → getSetting('company_name')
+Devise → getSetting('default_currency')
+Email → getSetting('company_email')
+Téléphone → getSetting('company_phone')
+
+-----------------------------------
+6. FACTURES / EXPORT
+-----------------------------------
+
+Afficher automatiquement :
+
+- nom entreprise
+- NIF
+- STAT
+- adresse
+- devise
+
+-----------------------------------
+7. VALIDATION
+-----------------------------------
+
+- devise ∈ MGA, USD, EUR
+- email valide
+- NIF obligatoire pour export
+
+-----------------------------------
+8. SÉCURITÉ
+-----------------------------------
+
+- SUPER_ADMIN uniquement
+- log modifications
+
+-----------------------------------
+9. BONUS
+-----------------------------------
+
+- preview facture en live
+- multi-devises futur
+
+-----------------------------------
+10. LIVRABLE
+-----------------------------------
+
+- config ERP centralisée
+- utilisée partout
+- adaptable sans code
+
+Commence par :
+1. insert settings
+2. UI admin
+3. intégration globale
