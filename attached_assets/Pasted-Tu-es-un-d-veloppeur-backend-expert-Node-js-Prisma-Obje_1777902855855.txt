@@ -1,0 +1,125 @@
+Tu es un développeur backend expert Node.js + Prisma.
+
+Objectif :
+Implémenter un système de génération automatique de matricule employé.
+
+Format :
+AAAADDDNNNN
+
+-----------------------------------
+1. SERVICE GENERATE MATRICULE
+-----------------------------------
+
+Créer fonction :
+
+async function generateMatricule(departementCode)
+
+LOGIQUE :
+
+- récupérer année actuelle
+- chercher dernier employé avec :
+  matricule commence par AAAADDD
+- extraire séquence
+- incrémenter
+
+-----------------------------------
+2. CODE COMPLET
+-----------------------------------
+
+import { prisma } from "../lib/prisma";
+
+export async function generateMatricule(deptCode) {
+  const year = new Date().getFullYear();
+
+  const prefix = `${year}${deptCode}`;
+
+  const lastEmployee = await prisma.employee.findFirst({
+    where: {
+      matricule: {
+        startsWith: prefix
+      }
+    },
+    orderBy: {
+      matricule: "desc"
+    }
+  });
+
+  let nextNumber = 1;
+
+  if (lastEmployee) {
+    const lastSeq = parseInt(lastEmployee.matricule.slice(-4));
+    nextNumber = lastSeq + 1;
+  }
+
+  const padded = String(nextNumber).padStart(4, "0");
+
+  return `${prefix}${padded}`;
+}
+
+-----------------------------------
+3. INTÉGRATION CRÉATION EMPLOYÉ
+-----------------------------------
+
+Dans POST /api/hr/employees :
+
+- récupérer département
+- appeler generateMatricule()
+- assigner matricule automatiquement
+
+-----------------------------------
+4. BLOQUER SAISIE MANUELLE
+-----------------------------------
+
+Frontend :
+
+- champ matricule = readonly
+- afficher valeur auto
+
+-----------------------------------
+5. MIGRATION DES ANCIENS EMPLOYÉS
+-----------------------------------
+
+Créer script :
+
+- récupérer tous employés
+- recalculer matricule selon département
+- mettre à jour DB
+
+-----------------------------------
+6. VALIDATION
+-----------------------------------
+
+Zod :
+
+matricule:
+- uniquement chiffres
+- longueur = 11 ou 12
+
+-----------------------------------
+7. SÉCURITÉ CONCURRENCE
+-----------------------------------
+
+Utiliser transaction Prisma :
+
+- éviter doublon si 2 créations simultanées
+
+-----------------------------------
+8. BONUS
+-----------------------------------
+
+- preview matricule avant création
+- afficher :
+  année | département | numéro
+
+-----------------------------------
+9. LIVRABLE
+-----------------------------------
+
+- génération auto fiable
+- remplacement ancien système
+- intégration complète
+
+Commence par :
+1. fonction generateMatricule
+2. API create employee
+3. migration script
