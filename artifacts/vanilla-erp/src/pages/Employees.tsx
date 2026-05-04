@@ -160,11 +160,19 @@ export default function EmployeesPage() {
       qc.invalidateQueries({ queryKey: ["employees"] });
       setShowModal(false);
       setError("");
-      if (!editing && result.accountCreated && result.generatedPassword) {
-        toast.success(`Compte créé — Mot de passe temporaire : ${result.generatedPassword}`, { duration: 12000 });
-      } else if (!editing && result.matricule) {
-        toast.success(`Employé créé — Matricule : ${result.matricule}`);
-      } else if (editing) {
+      if (!editing) {
+        if (result.accountCreated && result.generatedPassword) {
+          toast.success(`Employé créé — Matricule : ${result.matricule}`, { duration: 6000 });
+          toast.info(`Compte créé — Mot de passe temporaire : ${result.generatedPassword}`, { duration: 14000 });
+        } else {
+          toast.success(`Employé créé — Matricule : ${result.matricule}`);
+        }
+      } else if (result.matriculeRegenerated) {
+        toast.success(
+          `Fiche mise à jour — Nouveau matricule : ${result.matricule} (changement de département)`,
+          { duration: 8000 }
+        );
+      } else {
         toast.success("Fiche employé mise à jour");
       }
     },

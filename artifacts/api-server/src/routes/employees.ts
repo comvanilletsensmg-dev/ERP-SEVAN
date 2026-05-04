@@ -200,11 +200,42 @@ router.put("/employees/:id", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.H
     return;
   }
 
+  // Fetch existing employee to detect department change
+  const [existing] = await db
+    .select()
+    .from(employeesTable)
+    .where(eq(employeesTable.id, req.params.id));
+  if (!existing) { res.status(404).json({ error: "Employé introuvable" }); return; }
+
   const data = parseBody(body);
 
-  if (data.departmentId && !data.department) {
+  // Resolve department name
+  let newDeptCode: string | null = null;
+  if (data.departmentId) {
     const [dept] = await db.select().from(departmentsTable).where(eq(departmentsTable.id, data.departmentId));
-    if (dept) data.department = dept.name;
+    if (dept) {
+      data.department = dept.name;
+      newDeptCode = dept.code;
+    }
+  }
+
+  // Regenerate matricule only when department actually changes
+  const deptChanged = data.departmentId !== existing.departmentId;
+  if (deptChanged && newDeptCode) {
+    data.matricule = await generateMatricule(newDeptCode);
+    logger.info(
+      { employeeId: existing.id, oldDept: existing.departmentId, newDept: data.departmentId, newMatricule: data.matricule },
+      "Matricule regenerated due to department change"
+    );
+  } else {
+    // Keep existing matricule — generate one if employee had none and now has a dept
+    if (!existing.matricule && newDeptCode) {
+      data.matricule = await generateMatricule(newDeptCode);
+      logger.info({ employeeId: existing.id, newMatricule: data.matricule }, "Matricule generated for first-time dept assignment");
+    } else {
+      // Preserve existing matricule regardless of position/status change
+      data.matricule = existing.matricule;
+    }
   }
 
   const [employee] = await db
@@ -214,7 +245,7 @@ router.put("/employees/:id", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.H
     .returning();
 
   if (!employee) { res.status(404).json({ error: "Employé introuvable" }); return; }
-  res.json(formatEmployee(employee));
+  res.json({ ...formatEmployee(employee), matriculeRegenerated: deptChanged && !!newDeptCode });
 });
 
 /** Update statut only */
