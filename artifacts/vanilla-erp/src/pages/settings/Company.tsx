@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Upload, Building2, MapPin, Receipt, DollarSign, Save, Loader2, ImagePlus } from "lucide-react";
+import { Upload, Building2, MapPin, DollarSign, Save, Loader2, ImagePlus } from "lucide-react";
 
 interface CompanySettings {
   id?: string;
@@ -231,21 +231,6 @@ export default function CompanySettings() {
             </Field>
             <Field label="Pays">
               <input {...register("country")} className={inputCls} placeholder="Madagascar" />
-            </Field>
-          </div>
-        </SectionCard>
-
-        {/* C. Informations fiscales */}
-        <SectionCard icon={Receipt} title="Informations fiscales">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="NIF (Numéro d'Identification Fiscale)">
-              <input {...register("taxId")} className={inputCls} placeholder="1234567890" />
-            </Field>
-            <Field label="STAT (Statistique)">
-              <input {...register("statNumber")} className={inputCls} placeholder="62900 11 2020 0 10001" />
-            </Field>
-            <Field label="RCS (Registre de Commerce)">
-              <input {...register("rcsNumber")} className={inputCls} placeholder="2020 B 00123" />
             </Field>
           </div>
         </SectionCard>
