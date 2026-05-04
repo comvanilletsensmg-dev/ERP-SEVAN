@@ -1,0 +1,167 @@
+Tu es un développeur full-stack senior expert ERP SaaS.
+
+Objectif :
+Créer un module de CONFIGURATION GÉNÉRALE pour l’ERP avec :
+- informations entreprise
+- logo upload
+- coordonnées fiscales
+- coordonnées physiques
+- gestion des devises
+- UI simple type SaaS
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind + React Hook Form
+- Upload : Multer
+- Validation : Zod
+
+-----------------------------------
+1. MODÈLE PRISMA
+-----------------------------------
+
+model CompanySettings {
+  id              String   @id @default(uuid())
+
+  companyName     String
+  logoUrl         String?
+
+  email           String?
+  phone           String?
+
+  address         String?
+  city            String?
+  postalCode      String?
+  country         String
+
+  taxId           String?   // NIF
+  statNumber      String?   // STAT
+  rcsNumber       String?   // RCS
+
+  currency        String    // MGA, USD, EUR
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+-----------------------------------
+2. API BACKEND
+-----------------------------------
+
+GET /api/settings
+
+- retourne configuration existante
+
+-----------------------------------
+
+POST /api/settings
+
+- crée ou met à jour configuration
+
+Body :
+
+{
+  companyName,
+  email,
+  phone,
+  address,
+  city,
+  postalCode,
+  country,
+  taxId,
+  statNumber,
+  rcsNumber,
+  currency
+}
+
+-----------------------------------
+3. UPLOAD LOGO
+-----------------------------------
+
+POST /api/settings/logo
+
+- upload image (png/jpg)
+- stocker dans /uploads/logo
+- sauvegarder URL dans DB
+
+-----------------------------------
+4. FRONTEND – PAGE CONFIGURATION
+-----------------------------------
+
+Créer page :
+
+/settings/company
+
+-----------------------------------
+5. FORMULAIRE UI
+-----------------------------------
+
+Sections :
+
+A. Informations générales
+- nom entreprise
+- logo upload
+
+B. Coordonnées
+- email
+- téléphone
+- adresse
+- ville
+- code postal
+- pays
+
+C. Informations fiscales
+- NIF
+- STAT
+- RCS
+
+D. Devise
+
+Select :
+
+- MGA (Ariary)
+- USD (Dollar)
+- EUR (Euro)
+
+-----------------------------------
+6. UX DESIGN
+-----------------------------------
+
+- cards séparées
+- upload drag & drop logo
+- preview logo
+- bouton "Enregistrer"
+
+-----------------------------------
+7. VALIDATION ZOD
+-----------------------------------
+
+- companyName obligatoire
+- currency obligatoire
+- email valide
+
+-----------------------------------
+8. SÉCURITÉ
+-----------------------------------
+
+- accès : SUPER_ADMIN uniquement
+
+-----------------------------------
+9. BONUS
+-----------------------------------
+
+- multi-devise (future)
+- format automatique devise
+
+-----------------------------------
+10. LIVRABLE
+-----------------------------------
+
+- module settings complet
+- logo fonctionnel
+- devises configurables
+
+Commence par :
+1. modèle Prisma
+2. API settings
+3. UI formulaire

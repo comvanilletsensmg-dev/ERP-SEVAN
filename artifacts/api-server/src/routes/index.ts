@@ -47,6 +47,7 @@ import aiRouter from "./ai";
 import hrImportRouter from "./hr-import";
 import hrDeclarationsRouter from "./hr-declarations";
 import departmentsRouter from "./departments";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -99,5 +100,6 @@ router.use(aiRouter);
 router.use(departmentsRouter);
 router.use(hrImportRouter);
 router.use(hrDeclarationsRouter);
+router.use(settingsRouter);
 
 export default router;

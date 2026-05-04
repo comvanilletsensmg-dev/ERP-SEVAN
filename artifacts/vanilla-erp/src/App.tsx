@@ -32,6 +32,7 @@ import AccountingBank from "@/pages/accounting/Bank";
 import AccountingAssets from "@/pages/accounting/Assets";
 import AccountingReports from "@/pages/accounting/Reports";
 import UsersAdmin from "@/pages/admin/Users";
+import CompanySettings from "@/pages/settings/Company";
 import LogisticsIntelligence from "@/pages/logistics/Intelligence";
 import LogisticsImport from "@/pages/logistics/ImportLots";
 import LogisticsImportProducts from "@/pages/logistics/ImportProducts";
@@ -98,6 +99,7 @@ function Router() {
       <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
+      <Route path="/settings/company" component={() => <ProtectedRoute component={CompanySettings} />} />
       <Route path="/logistics/intelligence" component={() => <ProtectedRoute component={LogisticsIntelligence} />} />
       <Route path="/logistics/import" component={() => <ProtectedRoute component={LogisticsImport} />} />
       <Route path="/logistics/import-products" component={() => <ProtectedRoute component={LogisticsImportProducts} />} />

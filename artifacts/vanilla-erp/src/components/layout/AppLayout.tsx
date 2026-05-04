@@ -8,7 +8,7 @@ import {
   BookOpen, LogOut, CreditCard, ArrowLeftRight, UserCheck, CalendarDays,
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
-  Target, Activity, AlertTriangle, Upload, Workflow, ShieldAlert, Brain,
+  Target, Activity, AlertTriangle, Upload, Workflow, ShieldAlert, Brain, Settings,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -60,7 +60,8 @@ const crmNav = [
 ];
 
 const adminNav = [
-  { label: "Utilisateurs", href: "/admin/users", icon: ShieldCheck },
+  { label: "Utilisateurs",   href: "/admin/users",        icon: ShieldCheck },
+  { label: "Configuration",  href: "/settings/company",   icon: Settings },
 ];
 
 const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];
