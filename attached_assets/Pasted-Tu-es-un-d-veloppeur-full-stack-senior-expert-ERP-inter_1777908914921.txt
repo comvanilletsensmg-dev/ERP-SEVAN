@@ -1,0 +1,219 @@
+Tu es un développeur full-stack senior expert ERP international.
+
+Objectif :
+Créer un module FISCALITÉ dynamique dans l’ERP avec :
+- sélection région fiscale
+- champs adaptés automatiquement (Madagascar, Europe, Afrique)
+- validation intelligente
+- intégration globale ERP
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind + React Hook Form
+- Validation : Zod
+
+Base existante :
+Table platform_settings
+
+-----------------------------------
+1. SETTINGS À CRÉER (SEED)
+-----------------------------------
+
+-- Région fiscale
+('tax_region', 'MADAGASCAR',
+ 'text', 'legal',
+ 'Région fiscale',
+ 'MADAGASCAR | EUROPE | AFRICA',
+ true),
+
+-----------------------------------
+
+-- MADAGASCAR
+('company_nif', '', 'text', 'legal', 'NIF', 'Numéro fiscal Madagascar', true),
+('company_stat', '', 'text', 'legal', 'STAT', 'Numéro statistique', true),
+('company_rcs', '', 'text', 'legal', 'RCS', 'Registre commerce', true),
+
+-----------------------------------
+
+-- EUROPE
+('company_vat', '', 'text', 'legal', 'TVA', 'Numéro TVA intracommunautaire', true),
+('company_registration', '', 'text', 'legal', 'Numéro entreprise', 'Registre entreprise', true),
+('company_eori', '', 'text', 'legal', 'EORI', 'Numéro douane export', false),
+
+-----------------------------------
+
+-- AFRIQUE
+('company_tax_id', '', 'text', 'legal', 'Tax ID', 'Numéro fiscal', true),
+('company_rccm', '', 'text', 'legal', 'RCCM', 'Registre commerce africain', true),
+('company_import_license', '', 'text', 'legal', 'Licence import/export', false),
+
+-----------------------------------
+2. API BACKEND
+-----------------------------------
+
+GET /api/settings/tax
+
+Retour :
+
+{
+  tax_region,
+  fields: {
+    company_nif,
+    company_stat,
+    ...
+  }
+}
+
+-----------------------------------
+
+POST /api/settings/tax
+
+- mettre à jour settings fiscaux
+
+-----------------------------------
+3. LOGIQUE MÉTIER
+-----------------------------------
+
+Créer fonction :
+
+getTaxFields(region)
+
+Retour :
+
+MADAGASCAR :
+  ["company_nif", "company_stat", "company_rcs"]
+
+EUROPE :
+  ["company_vat", "company_registration", "company_eori"]
+
+AFRICA :
+  ["company_tax_id", "company_rccm"]
+
+-----------------------------------
+4. VALIDATION ZOD
+-----------------------------------
+
+MADAGASCAR :
+
+- NIF obligatoire
+- STAT obligatoire
+
+EUROPE :
+
+- VAT obligatoire
+- format VAT valide
+
+AFRICA :
+
+- Tax ID obligatoire
+
+-----------------------------------
+5. UI REACT
+-----------------------------------
+
+Page :
+
+/admin/settings/fiscal
+
+-----------------------------------
+
+SECTION 1 :
+
+Select Région fiscale
+
+Options :
+
+- Madagascar 🇲🇬
+- Europe 🇪🇺
+- Afrique 🌍
+
+-----------------------------------
+
+SECTION 2 :
+
+Afficher champs dynamiques
+
+-----------------------------------
+
+Exemple :
+
+if region === MADAGASCAR :
+
+- NIF
+- STAT
+- RCS
+
+-----------------------------------
+
+6. UX DESIGN
+-----------------------------------
+
+- affichage en cards
+- animation changement région
+- badges pays
+
+-----------------------------------
+7. INTÉGRATION ERP
+-----------------------------------
+
+Créer helper :
+
+getCompanyTaxInfo()
+
+Retour :
+
+{
+  label1: "NIF",
+  value1: "...",
+  label2: "STAT",
+  value2: "..."
+}
+
+-----------------------------------
+8. FACTURES / EXPORT
+-----------------------------------
+
+Afficher automatiquement :
+
+MADAGASCAR :
+
+NIF
+STAT
+RCS
+
+EUROPE :
+
+VAT
+Registration
+
+AFRICA :
+
+Tax ID
+RCCM
+
+-----------------------------------
+9. SÉCURITÉ
+-----------------------------------
+
+- SUPER_ADMIN uniquement
+
+-----------------------------------
+10. BONUS
+-----------------------------------
+
+- multi pays futur
+- adaptation client selon pays
+
+-----------------------------------
+11. LIVRABLE
+-----------------------------------
+
+- module fiscal dynamique
+- UI + API
+- prêt production
+
+Commence par :
+1. seed settings
+2. API tax
+3. UI dynamique

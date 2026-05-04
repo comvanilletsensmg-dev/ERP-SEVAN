@@ -298,6 +298,110 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
   );
 }
 
+// ─── Fiscal module ───────────────────────────────────────────────────────────
+type TaxRegion = "MADAGASCAR" | "EUROPE" | "AFRICA";
+
+const TAX_FIELDS: Record<TaxRegion, { key: string; label: string; desc: string; required?: boolean }[]> = {
+  MADAGASCAR: [
+    { key: "company_nif",  label: "NIF",  desc: "Numéro d'identification fiscale", required: true },
+    { key: "company_stat", label: "STAT", desc: "Numéro statistique INSTAT",       required: true },
+    { key: "company_rcs",  label: "RCS",  desc: "Registre du commerce et des sociétés" },
+  ],
+  EUROPE: [
+    { key: "company_vat",          label: "N° TVA intracom.", desc: "Ex: FR12345678901",                required: true },
+    { key: "company_registration", label: "N° entreprise",    desc: "Registre d'entreprise UE" },
+    { key: "company_eori",         label: "EORI",             desc: "Numéro douane export" },
+  ],
+  AFRICA: [
+    { key: "company_tax_id",         label: "Tax ID",              desc: "Numéro fiscal africain", required: true },
+    { key: "company_rccm",           label: "RCCM",                desc: "Registre du commerce — OHADA" },
+    { key: "company_import_license", label: "Licence import/export", desc: "Numéro de licence" },
+  ],
+};
+
+const REGION_OPTIONS: { value: TaxRegion; flag: string; label: string; desc: string }[] = [
+  { value: "MADAGASCAR", flag: "🇲🇬", label: "Madagascar", desc: "NIF · STAT · RCS" },
+  { value: "EUROPE",     flag: "🇪🇺", label: "Europe",     desc: "TVA · EORI" },
+  { value: "AFRICA",     flag: "🌍",  label: "Afrique",    desc: "Tax ID · RCCM" },
+];
+
+// All fiscal-specific keys — excluded from generic legal rendering
+const ALL_FISCAL_KEYS = new Set([
+  "tax_region",
+  ...Object.values(TAX_FIELDS).flat().map(f => f.key),
+]);
+
+function FiscalTab({ values, onChange }: {
+  values: SettingsMap;
+  onChange: (key: string, val: string) => void;
+}) {
+  const region = (values["tax_region"] ?? "MADAGASCAR") as TaxRegion;
+  const fields = TAX_FIELDS[region] ?? TAX_FIELDS.MADAGASCAR;
+
+  return (
+    <div className="space-y-6">
+      {/* Region selector */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Région fiscale</p>
+        <div className="grid grid-cols-3 gap-3">
+          {REGION_OPTIONS.map(opt => {
+            const active = region === opt.value;
+            return (
+              <button key={opt.value} type="button" onClick={() => onChange("tax_region", opt.value)}
+                className={`relative flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 text-center transition-all
+                  ${active
+                    ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                    : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-gray-50"
+                  }`}>
+                <span className="text-3xl leading-none">{opt.flag}</span>
+                <span className={`text-sm font-semibold ${active ? "text-emerald-700" : "text-gray-700"}`}>
+                  {opt.label}
+                </span>
+                <span className="text-[10px] text-gray-400">{opt.desc}</span>
+                {active && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dynamic fields for selected region */}
+      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Identifiants fiscaux — {REGION_OPTIONS.find(o => o.value === region)?.flag}{" "}
+          {REGION_OPTIONS.find(o => o.value === region)?.label}
+        </p>
+        {fields.map(f => (
+          <div key={f.key} className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-800">{f.label}</label>
+              {f.required && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded">
+                  Obligatoire
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400">{f.desc}</p>
+            <input
+              type="text"
+              value={values[f.key] ?? ""}
+              onChange={e => onChange(f.key, e.target.value)}
+              placeholder={f.label}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition
+                ${f.required && !values[f.key]
+                  ? "border-red-300 focus:ring-red-400 bg-red-50/30"
+                  : "border-gray-300 focus:ring-emerald-500 focus:border-transparent bg-white"
+                }`}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PlatformSettingsPage() {
   const qc = useQueryClient();
@@ -329,12 +433,21 @@ export default function PlatformSettingsPage() {
 
   // Settings for the active tab (some keys are hidden from the UI)
   const HIDDEN_KEYS = new Set(["fob_min_price_usd"]);
-  const tabSettings = allSettings.filter(s => s.category === activeTab && !HIDDEN_KEYS.has(s.settingKey));
+  // Legal tab: fiscal keys rendered by FiscalTab, not the generic list
+  const isLegalTab = activeTab === "legal";
+  const tabSettings = allSettings.filter(s =>
+    s.category === activeTab &&
+    !HIDDEN_KEYS.has(s.settingKey) &&
+    !(isLegalTab && ALL_FISCAL_KEYS.has(s.settingKey))
+  );
 
   // Find changed keys in this tab only
-  const changedKeys = tabSettings
-    .map(s => s.settingKey)
-    .filter(k => values[k] !== originalValues[k]);
+  // Also track fiscal keys when on the legal tab
+  const fiscalKeys = isLegalTab
+    ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)]
+    : [];
+  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys];
+  const changedKeys = allTrackedKeys.filter(k => values[k] !== originalValues[k]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -454,20 +567,33 @@ export default function PlatformSettingsPage() {
           )}
 
           <div className="space-y-6">
-            {tabSettings.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucun paramètre dans cette catégorie.</p>
-            ) : (
-              tabSettings.map(setting => (
-                <SettingField
-                  key={setting.settingKey}
-                  setting={setting}
-                  value={values[setting.settingKey] ?? ""}
-                  onChange={handleChange}
-                  onUpload={handleLogoUpload}
-                  uploading={logoUploading}
-                />
-              ))
+            {/* Fiscal module — rendered only in the legal tab */}
+            {isLegalTab && (
+              <FiscalTab values={values} onChange={handleChange} />
             )}
+
+            {/* Generic fields for this tab */}
+            {tabSettings.length === 0 && !isLegalTab ? (
+              <p className="text-gray-400 text-sm text-center py-8">Aucun paramètre dans cette catégorie.</p>
+            ) : tabSettings.length > 0 ? (
+              <div className={isLegalTab ? "pt-2 border-t border-gray-100 space-y-6" : "space-y-6"}>
+                {isLegalTab && (
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Informations légales générales
+                  </p>
+                )}
+                {tabSettings.map(setting => (
+                  <SettingField
+                    key={setting.settingKey}
+                    setting={setting}
+                    value={values[setting.settingKey] ?? ""}
+                    onChange={handleChange}
+                    onUpload={handleLogoUpload}
+                    uploading={logoUploading}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Action buttons */}
