@@ -94,6 +94,74 @@ function FileUrlField({ value, onChange, onUpload, uploading }: {
   );
 }
 
+// ─── Currency fields ──────────────────────────────────────────────────────────
+const CURRENCIES = [
+  { code: "MGA", label: "Ariary malgache" },
+  { code: "USD", label: "Dollar américain" },
+  { code: "EUR", label: "Euro" },
+  { code: "GBP", label: "Livre sterling" },
+  { code: "JPY", label: "Yen japonais" },
+  { code: "CHF", label: "Franc suisse" },
+  { code: "CNY", label: "Yuan chinois" },
+  { code: "AED", label: "Dirham émirati" },
+  { code: "SGD", label: "Dollar de Singapour" },
+  { code: "CAD", label: "Dollar canadien" },
+  { code: "AUD", label: "Dollar australien" },
+  { code: "INR", label: "Roupie indienne" },
+  { code: "ZAR", label: "Rand sud-africain" },
+  { code: "KES", label: "Shilling kényan" },
+  { code: "TZS", label: "Shilling tanzanien" },
+];
+
+function CurrencySelectField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+      <option value="">— Choisir une devise —</option>
+      {CURRENCIES.map(c => (
+        <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function CurrencyMultiField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const selected = value ? value.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+  function toggle(code: string) {
+    const next = selected.includes(code)
+      ? selected.filter(c => c !== code)
+      : [...selected, code];
+    onChange(next.join(","));
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {CURRENCIES.map(c => {
+          const active = selected.includes(c.code);
+          return (
+            <button key={c.code} type="button" onClick={() => toggle(c.code)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors select-none
+                ${active
+                  ? "bg-emerald-600 border-emerald-600 text-white"
+                  : "bg-white border-gray-300 text-gray-500 hover:border-emerald-400 hover:text-emerald-600"
+                }`}>
+              <span>{c.code}</span>
+              {active && <span className="text-xs opacity-75">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+      {selected.length > 0 && (
+        <p className="text-xs text-gray-400">
+          Sélectionnées : <span className="text-gray-600 font-medium">{selected.join(", ")}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Support hours field ──────────────────────────────────────────────────────
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
@@ -207,6 +275,10 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
 
       {setting.settingKey === "support_hours" ? (
         <SupportHoursField value={value} onChange={v => onChange(setting.settingKey, v)} />
+      ) : setting.settingKey === "accepted_currencies" ? (
+        <CurrencyMultiField value={value} onChange={v => onChange(setting.settingKey, v)} />
+      ) : ["default_currency", "secondary_currency_1", "secondary_currency_2"].includes(setting.settingKey) ? (
+        <CurrencySelectField value={value} onChange={v => onChange(setting.settingKey, v)} />
       ) : setting.settingType === "boolean" ? (
         <ToggleField value={value} onChange={v => onChange(setting.settingKey, v)} />
       ) : setting.settingType === "color" ? (
@@ -255,8 +327,9 @@ export default function PlatformSettingsPage() {
     setValues(prev => ({ ...prev, [key]: val }));
   };
 
-  // Settings for the active tab
-  const tabSettings = allSettings.filter(s => s.category === activeTab);
+  // Settings for the active tab (some keys are hidden from the UI)
+  const HIDDEN_KEYS = new Set(["fob_min_price_usd"]);
+  const tabSettings = allSettings.filter(s => s.category === activeTab && !HIDDEN_KEYS.has(s.settingKey));
 
   // Find changed keys in this tab only
   const changedKeys = tabSettings
