@@ -185,6 +185,17 @@ router.post("/payroll", requireAuth, hrAccess, async (req, res): Promise<void> =
   res.status(201).json(formatPayroll(payroll, employee));
 });
 
+/** Delete a single payroll record */
+router.delete("/payroll/:id", requireAuth, hrAccess, async (req, res): Promise<void> => {
+  const [deleted] = await db
+    .delete(payrollTable)
+    .where(eq(payrollTable.id, req.params.id))
+    .returning();
+  if (!deleted) { res.status(404).json({ error: "Fiche de paie introuvable" }); return; }
+  logger.info({ id: deleted.id, employeeId: deleted.employeeId, month: deleted.month }, "Payroll record deleted");
+  res.json({ success: true, deleted: { id: deleted.id, month: deleted.month } });
+});
+
 // Batch payroll: generate for ALL active employees in a given month
 router.post("/payroll/batch", requireAuth, hrAccess, async (req, res): Promise<void> => {
   const { month } = req.body as { month?: string };

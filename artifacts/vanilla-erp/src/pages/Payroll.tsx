@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useGetPayrolls, useGeneratePayroll, useGetEmployees } from "@workspace/api-client-react";
-import { PayrollRecord } from "@workspace/api-zod";
 import { useForm } from "react-hook-form";
-import { FileText, Download, RefreshCw } from "lucide-react";
+import { FileText, Download, RefreshCw, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date(2026, i, 1);
@@ -27,39 +28,45 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 type FormData = { employeeId: string; month: string; heuresSup: number };
 
+async function apiFetch(url: string, opts?: RequestInit) {
+  const r = await fetch(url, { credentials: "include", ...opts });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j as any).error ?? r.statusText);
+  return j;
+}
+
 export default function PayrollPage() {
+  const qc = useQueryClient();
   const [filterMonth, setFilterMonth] = useState(MONTHS[3].value);
   const { data: payrolls, isLoading, refetch } = useGetPayrolls({ month: filterMonth });
   const { data: employees } = useGetEmployees();
-  const generatePayroll = useGeneratePayroll();
   const [showModal, setShowModal] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string; month: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: { month: filterMonth, heuresSup: 0 },
   });
 
   const totalNet = (payrolls ?? []).reduce((a, p) => a + p.netSalary, 0);
-  const totalCnaps = (payrolls ?? []).reduce((a, p) => a + (p.cnapsEmp ?? 0), 0);
-  const totalOstie = (payrolls ?? []).reduce((a, p) => a + (p.ostieEmp ?? 0), 0);
-  const totalIrsa = (payrolls ?? []).reduce((a, p) => a + (p.irsa ?? 0), 0);
+  const totalCnaps = (payrolls ?? []).reduce((a, p) => a + ((p as any).cnapsEmp ?? 0), 0);
+  const totalOstie = (payrolls ?? []).reduce((a, p) => a + ((p as any).ostieEmp ?? 0), 0);
+  const totalIrsa = (payrolls ?? []).reduce((a, p) => a + ((p as any).irsa ?? 0), 0);
 
   const onSubmit = async (data: FormData) => {
     setError("");
     try {
-      await fetch("/api/payroll", {
+      await apiFetch("/api/payroll", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: data.employeeId, month: data.month, heuresSup: Number(data.heuresSup ?? 0) }),
-      }).then(async (r) => {
-        if (!r.ok) { const j = await r.json(); throw new Error(j.error); }
-        return r.json();
       });
       setShowModal(false);
       setFilterMonth(data.month);
       refetch();
+      toast.success("Fiche de paie générée");
     } catch (e: any) {
       setError(e?.message ?? "Erreur lors de la génération");
     }
@@ -69,16 +76,13 @@ export default function PayrollPage() {
     setBatchLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/payroll/batch", {
+      const j = await apiFetch("/api/payroll/batch", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month: filterMonth }),
       });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
       refetch();
-      alert(`Paie batch : ${j.created} créée(s), ${j.skipped} ignorée(s)`);
+      toast.success(`Batch paie : ${j.created} créée(s), ${j.skipped} déjà existante(s)`);
     } catch (e: any) {
       setError(e?.message ?? "Erreur batch");
     } finally {
@@ -86,13 +90,24 @@ export default function PayrollPage() {
     }
   };
 
-  const openPdf = (id: string) => {
-    window.open(`/api/payroll/${id}/pdf`, "_blank");
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    setDeleteLoading(true);
+    try {
+      await apiFetch(`/api/payroll/${confirmDelete.id}`, { method: "DELETE" });
+      setConfirmDelete(null);
+      refetch();
+      toast.success(`Fiche supprimée — ${confirmDelete.name} (${confirmDelete.month})`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur lors de la suppression");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
-  const exportDeclaration = (type: "cnaps" | "ostie" | "irsa") => {
+  const openPdf = (id: string) => window.open(`/api/payroll/${id}/pdf`, "_blank");
+  const exportDeclaration = (type: "cnaps" | "ostie" | "irsa") =>
     window.open(`/api/hr/declarations/${type}?month=${filterMonth}`, "_blank");
-  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -155,8 +170,8 @@ export default function PayrollPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {["Employé", "Matricule", "Base", "Primes", "Hres Sup", "CNAPS", "OSTIE", "IRSA", "Déductions", "Net à payer", "Bulletin"].map((h) => (
-                  <th key={h} className="text-left px-3 py-3 font-medium text-gray-600 text-xs uppercase tracking-wider">{h}</th>
+                {["Employé", "Matricule", "Base", "Primes", "Hres Sup", "CNAPS", "OSTIE", "IRSA", "Déductions", "Net à payer", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-3 py-3 font-medium text-gray-600 text-xs uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -166,21 +181,37 @@ export default function PayrollPage() {
               ) : (
                 (payrolls ?? []).map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-3 py-3 font-medium text-gray-800">{p.employee?.name ?? p.employeeId}</td>
+                    <td className="px-3 py-3 font-medium text-gray-800">{(p.employee as any)?.name ?? p.employeeId}</td>
                     <td className="px-3 py-2 font-mono text-xs text-gray-500">{(p.employee as any)?.matricule ?? "—"}</td>
                     <td className="px-3 py-2 font-mono text-xs">{formatMga(p.salaryBase)}</td>
-                    <td className="px-3 py-2 text-emerald-600 font-mono text-xs">{p.bonus > 0 ? "+"+formatMga(p.bonus) : "—"}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-blue-600">{(p as any).heuresSup > 0 ? "+"+formatMga((p as any).heuresSup) : "—"}</td>
+                    <td className="px-3 py-2 text-emerald-600 font-mono text-xs">{p.bonus > 0 ? "+" + formatMga(p.bonus) : "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-blue-600">{(p as any).heuresSup > 0 ? "+" + formatMga((p as any).heuresSup) : "—"}</td>
                     <td className="px-3 py-2 text-orange-500 font-mono text-xs">{formatMga((p as any).cnapsEmp ?? 0)}</td>
                     <td className="px-3 py-2 text-orange-500 font-mono text-xs">{formatMga((p as any).ostieEmp ?? 0)}</td>
                     <td className="px-3 py-2 text-red-500 font-mono text-xs">{formatMga((p as any).irsa ?? 0)}</td>
                     <td className="px-3 py-2 text-red-400 font-mono text-xs">{p.deductions > 0 ? formatMga(p.deductions) : "—"}</td>
                     <td className="px-3 py-2 text-emerald-700 font-bold font-mono text-xs">{formatMga(p.netSalary)}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => openPdf(p.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-gray-50">
-                        <FileText className="h-3 w-3" /> PDF
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openPdf(p.id)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                          title="Voir le bulletin PDF"
+                        >
+                          <FileText className="h-3 w-3" /> PDF
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({
+                            id: p.id,
+                            name: (p.employee as any)?.name ?? p.employeeId,
+                            month: p.month,
+                          })}
+                          className="flex items-center gap-1 px-2 py-1 text-xs border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
+                          title="Supprimer cette fiche de paie"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -200,15 +231,20 @@ export default function PayrollPage() {
         </div>
       )}
 
+      {/* Générer une fiche */}
       {showModal && (
-        <Modal title="Générer une fiche de paie" onClose={() => setShowModal(false)}>
+        <Modal title="Générer une fiche de paie" onClose={() => { setShowModal(false); setError(""); }}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Employé *</label>
               <select {...register("employeeId", { required: true })} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                 <option value="">— Sélectionner —</option>
-                {(employees ?? []).filter(e => e.isActive).map((e) => <option key={e.id} value={e.id}>{(e as any).matricule ? `[${(e as any).matricule}] ` : ""}{e.name}</option>)}
+                {(employees ?? []).filter(e => e.isActive).map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {(e as any).matricule ? `[${(e as any).matricule}] ` : ""}{e.name}
+                  </option>
+                ))}
               </select>
               {errors.employeeId && <p className="text-red-500 text-xs mt-1">Requis</p>}
             </div>
@@ -229,7 +265,7 @@ export default function PayrollPage() {
               <p>• Absences déduites automatiquement (pointage)</p>
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+              <button type="button" onClick={() => { setShowModal(false); setError(""); }} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
                 Annuler
               </button>
               <button type="submit" className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
@@ -237,6 +273,35 @@ export default function PayrollPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Confirmation suppression */}
+      {confirmDelete && (
+        <Modal title="Supprimer la fiche de paie ?" onClose={() => setConfirmDelete(null)}>
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-800">
+              <p className="font-medium mb-1">Cette action est irréversible.</p>
+              <p>Fiche de <strong>{confirmDelete.name}</strong> pour le mois de <strong>{confirmDelete.month}</strong> sera définitivement supprimée.</p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
