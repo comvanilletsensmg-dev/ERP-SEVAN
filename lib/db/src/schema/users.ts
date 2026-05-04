@@ -8,6 +8,7 @@ export const usersTable = pgTable("users", {
   password: text("password").notNull(),
   name: text("name"),
   role: text("role").notNull().default("SUPER_ADMIN"),
+  employeeId: text("employee_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

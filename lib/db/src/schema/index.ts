@@ -36,3 +36,4 @@ export * from "./lot_histories";
 export * from "./lot_metrics";
 export * from "./predictions";
 export * from "./risk_events";
+export * from "./departments";

@@ -1,0 +1,230 @@
+Tu es un développeur full-stack senior expert ERP RH.
+
+Objectif :
+Implémenter le module RH avec :
+- création employés
+- liste déroulante départements
+- gestion statut (actif, suspendu, sorti)
+- création utilisateurs selon rôle
+- import initial employés
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind + React Hook Form
+- Validation : Zod
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Department {
+  id    String @id @default(uuid())
+  name  String
+  code  String
+}
+
+model Employee {
+  id            String   @id @default(uuid())
+  matricule     String   @unique
+  nom           String
+  prenom        String
+  poste         String
+  departementId String
+  statut        String   // actif, suspendu, sorti
+
+  hasAccount    Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+
+  department Department @relation(fields: [departementId], references: [id])
+}
+
+model User {
+  id         String @id @default(uuid())
+  email      String @unique
+  password   String
+  role       String
+  employeeId String @unique
+}
+
+-----------------------------------
+2. DÉPARTEMENTS À INSÉRER (SEED)
+-----------------------------------
+
+[
+  { name: "IT", code: "100" },
+  { name: "Logistique", code: "101" },
+  { name: "Production", code: "102" },
+  { name: "Commercial", code: "103" },
+  { name: "RH", code: "104" },
+  { name: "Comptabilité", code: "105" },
+  { name: "Support", code: "106" }
+]
+
+-----------------------------------
+3. RÔLES AUTORISÉS (AVEC COMPTE)
+-----------------------------------
+
+Créer utilisateurs uniquement pour :
+
+- Directeur Général → SUPER_ADMIN
+- Directeur Adjoint → ADMIN
+- Business Developer → BD
+- Commercial → SALES
+- Responsable Logistique → LOG_MANAGER
+- RH → HR_MANAGER
+- Comptable → ACCOUNTANT
+
+-----------------------------------
+4. RÈGLE IMPORTANTE
+-----------------------------------
+
+Agents suivants n’ont PAS de compte :
+
+- Agent opération
+- Agent DSI (support)
+- Femme de ménage
+
+-----------------------------------
+5. API BACKEND
+-----------------------------------
+
+POST /api/hr/employees
+
+LOGIQUE :
+
+- créer employé
+- vérifier poste
+
+SI poste ∈ rôles autorisés :
+  → créer User
+  → hasAccount = true
+
+SINON :
+  → hasAccount = false
+
+-----------------------------------
+6. FORMULAIRE REACT (UI)
+-----------------------------------
+
+Page :
+
+/hr/employees/new
+
+-----------------------------------
+
+Champs :
+
+- nom
+- prenom
+- poste (select)
+- département (select dynamique)
+- statut (select)
+
+-----------------------------------
+
+Select STATUT :
+
+- actif
+- suspendu
+- sorti
+
+-----------------------------------
+
+Select POSTE :
+
+- Directeur Général
+- Directeur Adjoint
+- Business Developer
+- Commercial
+- Responsable Logistique
+- Agent Logistique
+- RH
+- Comptable
+- Agent opération
+- Agent DSI
+- Femme de ménage
+
+-----------------------------------
+7. LOGIQUE FRONTEND
+-----------------------------------
+
+- charger départements via API
+- afficher dropdown
+
+-----------------------------------
+8. TABLE EMPLOYÉS (UI)
+-----------------------------------
+
+Afficher :
+
+- matricule
+- nom
+- poste
+- département
+- statut
+- compte (oui/non)
+
+-----------------------------------
+9. MODIFICATION STATUT
+-----------------------------------
+
+PUT /api/hr/employees/:id/status
+
+Body :
+
+{
+  statut: "actif | suspendu | sorti"
+}
+
+-----------------------------------
+10. UI ACTIONS
+-----------------------------------
+
+Dans table :
+
+- bouton "Modifier statut"
+- dropdown inline
+
+-----------------------------------
+11. IMPORT INITIAL EMPLOYÉS
+-----------------------------------
+
+Créer script seed :
+
+- insérer tous les employés fournis
+- générer matricules
+- assigner département
+- créer comptes uniquement pour rôles autorisés
+
+-----------------------------------
+12. SÉCURITÉ
+-----------------------------------
+
+- HR_MANAGER uniquement :
+  - créer employés
+  - modifier statut
+
+-----------------------------------
+13. BONUS
+-----------------------------------
+
+- badge couleur statut :
+  - vert = actif
+  - jaune = suspendu
+  - rouge = sorti
+
+-----------------------------------
+14. LIVRABLE
+-----------------------------------
+
+- module RH complet
+- dropdown départements
+- gestion statut
+- comptes utilisateurs contrôlés
+
+Commence par :
+1. modèles Prisma
+2. seed départements
+3. formulaire UI

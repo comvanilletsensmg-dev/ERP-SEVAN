@@ -8,10 +8,11 @@ import { Router, type IRouter } from "express";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { z } from "zod/v4";
-import { db, employeesTable, importBatchesTable, importErrorsTable } from "@workspace/db";
+import { db, employeesTable, importBatchesTable, importErrorsTable, departmentsTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole, ROLES } from "../middlewares/roles";
+import { generateMatricule } from "../lib/matricule";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -19,7 +20,7 @@ const hrAccess = requireRole(ROLES.SUPER_ADMIN, ROLES.HR_MANAGER);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const RowSchema = z.object({
-  matricule: z.string().min(1, "Matricule obligatoire"),
+  matricule: z.string().optional(),
   nom: z.string().min(1, "Nom obligatoire"),
   prenom: z.string().optional().default(""),
   sexe: z.enum(["M", "F", "m", "f"]).optional(),
@@ -186,17 +187,42 @@ router.post("/hr/import/execute", requireAuth, hrAccess, async (req, res): Promi
   let failed = 0;
   const errors: { rowNumber: number; message: string }[] = [];
 
+  // Pre-load departments for code lookup
+  const allDepts = await db.select().from(departmentsTable);
+  const deptByName = (name: string) => allDepts.find((d) => d.name.toLowerCase() === name.toLowerCase());
+
   for (const row of rows) {
     if (!row.valid) { failed++; errors.push({ rowNumber: row.rowNumber, message: "Ligne invalide ignorée" }); continue; }
 
     const d = row.data;
+
+    // Resolve department
+    let departmentId: string | null = null;
+    let departmentName: string | null = d.departement || null;
+    if (d.departement) {
+      const dept = deptByName(d.departement);
+      if (dept) { departmentId = dept.id; departmentName = dept.name; }
+    }
+
+    // Auto-generate matricule if missing
+    let matricule = d.matricule || null;
+    if (!matricule && row.action === "create") {
+      const deptCode = allDepts.find((dep) => dep.id === departmentId)?.code ?? "000";
+      matricule = await generateMatricule(deptCode);
+    }
+
+    const nom = d.nom ?? "";
+    const prenom = d.prenom ?? "";
     const employeeData = {
-      matricule: d.matricule,
-      name: `${d.nom} ${d.prenom ?? ""}`.trim(),
+      matricule,
+      name: `${prenom} ${nom}`.trim() || nom,
+      nom: nom || null,
+      prenom: prenom || null,
       sexe: d.sexe ?? null,
       email: d.email || null,
       position: d.poste || "—",
-      department: d.departement || null,
+      department: departmentName,
+      departmentId,
       salary: d.salaireBase,
       hireDate: d.dateEmbauche ? new Date(d.dateEmbauche) : null,
       typeContrat: d.typeContrat ?? "CDI",
