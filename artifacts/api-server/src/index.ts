@@ -4,6 +4,7 @@ import { seedDatabase } from "./lib/seed";
 import { checkOverdueInvoices } from "./routes/crm-reminders";
 import { recalcAllLotRisks } from "./lib/lot-risk-cron";
 import { runAiPredictions } from "./lib/ai/predict-cron";
+import { runMonthlyPayroll } from "./lib/payroll-cron";
 
 const rawPort = process.env["PORT"];
 
@@ -58,6 +59,20 @@ setTimeout(() => {
     .then(r => logger.info(r, "Startup: AI predictions complete"))
     .catch(err => logger.error({ err }, "Startup: AI predictions failed"));
 }, 8000);
+
+// Monthly payroll cron: runs at startup if today is the 1st, then checks daily
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+function scheduleMonthlyPayroll() {
+  const now = new Date();
+  if (now.getDate() === 1 && now.getHours() < 6) {
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    runMonthlyPayroll(month)
+      .then(r => logger.info(r, "Monthly cron: payroll batch complete"))
+      .catch(err => logger.error({ err }, "Monthly cron: payroll batch failed"));
+  }
+}
+setTimeout(scheduleMonthlyPayroll, 12_000);
+setInterval(scheduleMonthlyPayroll, ONE_DAY_MS);
 
 app.listen(port, (err) => {
   if (err) {

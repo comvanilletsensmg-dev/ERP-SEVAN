@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useGetEmployees, useCreateEmployee, useUpdateEmployee, useExportEmployeesCsv } from "@workspace/api-client-react";
-import { Employee, CreateEmployeeBody } from "@workspace/api-zod";
-import { useForm } from "react-hook-form";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
-const DEPARTMENTS = ["Production", "Séchage", "Qualité", "Logistique", "Administration", "Finance"];
+const DEPARTMENTS = ["Production", "Séchage", "Qualité", "Logistique", "Administration", "Finance", "Autre"];
+const STATUTS = ["actif", "suspendu", "sorti"] as const;
+const CONTRATS = ["CDI", "CDD", "journalier"] as const;
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="flex justify-between items-center p-5 border-b">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white">
           <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
         </div>
@@ -19,117 +20,152 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-type FormData = { name: string; position: string; department: string; salary: number; phone: string };
+type EmpForm = {
+  matricule: string; name: string; sexe: string; email: string; position: string;
+  department: string; salary: string; phone: string; hireDate: string;
+  typeContrat: string; cnapsNumber: string; ostieNumber: string; statut: string;
+};
+
+type Emp = Record<string, any>;
+
+async function fetchEmployees(): Promise<Emp[]> {
+  const r = await fetch("/api/employees", { credentials: "include" });
+  return r.json();
+}
+
+function statutBadge(s: string) {
+  if (s === "actif") return <Badge className="bg-green-100 text-green-800 text-xs">Actif</Badge>;
+  if (s === "suspendu") return <Badge className="bg-amber-100 text-amber-800 text-xs">Suspendu</Badge>;
+  return <Badge variant="secondary" className="text-xs">Sorti</Badge>;
+}
 
 export default function EmployeesPage() {
-  const { data: employees, isLoading, refetch } = useGetEmployees();
-  const createEmployee = useCreateEmployee();
-  const updateEmployee = useUpdateEmployee();
+  const qc = useQueryClient();
+  const { data: employees = [], isLoading } = useQuery({ queryKey: ["employees"], queryFn: fetchEmployees });
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<Employee | null>(null);
+  const [editing, setEditing] = useState<Emp | null>(null);
   const [search, setSearch] = useState("");
+  const [form, setForm] = useState<EmpForm>({
+    matricule: "", name: "", sexe: "", email: "", position: "",
+    department: "", salary: "", phone: "", hireDate: "",
+    typeContrat: "CDI", cnapsNumber: "", ostieNumber: "", statut: "actif",
+  });
+  const [error, setError] = useState("");
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>();
+  const saveMut = useMutation({
+    mutationFn: async (data: EmpForm) => {
+      const url = editing ? `/api/employees/${editing.id}` : "/api/employees";
+      const r = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          salary: data.salary ? Number(data.salary) : null,
+          hireDate: data.hireDate || null,
+          isActive: data.statut === "actif",
+        }),
+      });
+      if (!r.ok) { const j = await r.json(); throw new Error(j.error); }
+      return r.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employees"] }); setShowModal(false); setError(""); },
+    onError: (e: Error) => setError(e.message),
+  });
 
-  const openCreate = () => { setEditing(null); reset({}); setShowModal(true); };
-  const openEdit = (e: Employee) => {
-    setEditing(e);
-    reset({ name: e.name, position: e.position, department: e.department ?? "", salary: e.salary ?? undefined, phone: e.phone ?? "" });
-    setShowModal(true);
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ matricule: "", name: "", sexe: "", email: "", position: "", department: "", salary: "", phone: "", hireDate: "", typeContrat: "CDI", cnapsNumber: "", ostieNumber: "", statut: "actif" });
+    setError(""); setShowModal(true);
   };
 
-  const onSubmit = async (data: FormData) => {
-    const body: CreateEmployeeBody = {
-      name: data.name,
-      position: data.position,
-      department: data.department || null,
-      salary: data.salary ? Number(data.salary) : null,
-      phone: data.phone || null,
-    };
-
-    if (editing) {
-      await updateEmployee.mutateAsync({ id: editing.id, data: body });
-    } else {
-      await createEmployee.mutateAsync({ data: body });
-    }
-    setShowModal(false);
-    refetch();
+  const openEdit = (e: Emp) => {
+    setEditing(e);
+    setForm({
+      matricule: e.matricule ?? "", name: e.name, sexe: e.sexe ?? "", email: e.email ?? "",
+      position: e.position, department: e.department ?? "", salary: e.salary?.toString() ?? "",
+      phone: e.phone ?? "", hireDate: e.hireDate ? e.hireDate.slice(0, 10) : "",
+      typeContrat: e.typeContrat ?? "CDI", cnapsNumber: e.cnapsNumber ?? "",
+      ostieNumber: e.ostieNumber ?? "", statut: e.statut ?? "actif",
+    });
+    setError(""); setShowModal(true);
   };
 
   const handleCsvExport = async () => {
-    const res = await fetch("/api/employees/export/csv", { credentials: "include" });
-    const text = await res.text();
-    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const r = await fetch("/api/employees/export/csv", { credentials: "include" });
+    const blob = new Blob([await r.text()], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
-    a.href = url; a.download = "employes.csv"; a.click();
-    URL.revokeObjectURL(url);
+    a.href = URL.createObjectURL(blob); a.download = "employes.csv"; a.click();
   };
 
-  const filtered = (employees ?? []).filter(
-    (e) => e.name.toLowerCase().includes(search.toLowerCase()) || e.position.toLowerCase().includes(search.toLowerCase())
+  const filtered = employees.filter(
+    (e) => e.name.toLowerCase().includes(search.toLowerCase()) ||
+      (e.matricule ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (e.position ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const field = (label: string, key: keyof EmpForm, type = "text", required = false) => (
+    <div key={key}>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}{required ? " *" : ""}</label>
+      <input type={type} required={required} value={form[key]}
+        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+        className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+    </div>
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Employés</h1>
-          <p className="text-gray-500 text-sm mt-1">{employees?.length ?? 0} employé(s) enregistré(s)</p>
+          <p className="text-gray-500 text-sm mt-1">{employees.length} enregistré(s) — {employees.filter(e => e.statut === "actif").length} actifs</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleCsvExport} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
-            Exporter CSV
-          </button>
-          <button onClick={openCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
-            + Nouvel employé
-          </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleCsvExport} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">Exporter CSV</button>
+          <button onClick={openCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">+ Nouvel employé</button>
         </div>
       </div>
 
       <div className="mb-4">
-        <input
-          className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="Rechercher un employé…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <input className="w-full sm:w-72 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          placeholder="Rechercher (nom, matricule, poste)…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {isLoading ? (
         <div className="text-center py-16 text-gray-400">Chargement…</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b">
               <tr>
-                {["Nom", "Poste", "Département", "Salaire (MGA)", "Téléphone", "Date embauche", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 font-medium text-gray-600 text-xs uppercase tracking-wider">{h}</th>
+                {["Matricule", "Nom", "Poste", "Département", "Contrat", "Salaire (MGA)", "CNAPS / OSTIE", "Statut", ""].map((h) => (
+                  <th key={h} className="text-left px-3 py-3 font-medium text-gray-600 text-xs uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-gray-400">Aucun employé trouvé</td></tr>
-              ) : (
-                filtered.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800">{emp.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{emp.position}</td>
-                    <td className="px-4 py-3 text-gray-500">{emp.department || "—"}</td>
-                    <td className="px-4 py-3 text-gray-700 font-mono">
-                      {emp.salary ? emp.salary.toLocaleString("fr-FR") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{emp.phone || "—"}</td>
-                    <td className="px-4 py-3 text-gray-500">{new Date(emp.createdAt).toLocaleDateString("fr-FR")}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => openEdit(emp)} className="text-emerald-600 hover:text-emerald-800 text-xs font-medium">
-                        Modifier
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+                <tr><td colSpan={9} className="text-center py-12 text-gray-400">Aucun employé trouvé</td></tr>
+              ) : filtered.map((emp) => (
+                <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-3 py-3 font-mono text-xs text-gray-500">{emp.matricule ?? "—"}</td>
+                  <td className="px-3 py-3 font-medium text-gray-800">{emp.name}</td>
+                  <td className="px-3 py-3 text-gray-600">{emp.position}</td>
+                  <td className="px-3 py-3 text-gray-500 text-xs">{emp.department || "—"}</td>
+                  <td className="px-3 py-3">
+                    <Badge variant="outline" className="text-xs">{emp.typeContrat ?? "CDI"}</Badge>
+                  </td>
+                  <td className="px-3 py-3 font-mono text-xs">{emp.salary ? emp.salary.toLocaleString("fr-FR") : "—"}</td>
+                  <td className="px-3 py-3 text-xs text-gray-500">
+                    {emp.cnapsNumber ? `CNAPS: ${emp.cnapsNumber}` : ""}{emp.cnapsNumber && emp.ostieNumber ? " / " : ""}{emp.ostieNumber ? `OSTIE: ${emp.ostieNumber}` : ""}
+                    {!emp.cnapsNumber && !emp.ostieNumber ? "—" : ""}
+                  </td>
+                  <td className="px-3 py-3">{statutBadge(emp.statut ?? "actif")}</td>
+                  <td className="px-3 py-3 text-right">
+                    <button onClick={() => openEdit(emp)} className="text-emerald-600 hover:text-emerald-800 text-xs font-medium">Modifier</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -137,38 +173,70 @@ export default function EmployeesPage() {
 
       {showModal && (
         <Modal title={editing ? "Modifier l'employé" : "Nouvel employé"} onClose={() => setShowModal(false)}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
-              <input {...register("name", { required: true })} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
-              {errors.name && <p className="text-red-500 text-xs mt-1">Requis</p>}
+          <form onSubmit={(e) => { e.preventDefault(); saveMut.mutate(form); }} className="space-y-4">
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
+
+            <div className="grid grid-cols-2 gap-3">
+              {field("Matricule", "matricule")}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sexe</label>
+                <select value={form.sexe} onChange={(e) => setForm(f => ({ ...f, sexe: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="">—</option>
+                  <option value="M">Masculin</option>
+                  <option value="F">Féminin</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Poste *</label>
-              <input {...register("position", { required: true })} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
-              {errors.position && <p className="text-red-500 text-xs mt-1">Requis</p>}
+
+            {field("Nom complet *", "name", "text", true)}
+            {field("Email", "email", "email")}
+
+            <div className="grid grid-cols-2 gap-3">
+              {field("Poste *", "position", "text", true)}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
+                <select value={form.department} onChange={(e) => setForm(f => ({ ...f, department: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="">— Sélectionner —</option>
+                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
-              <select {...register("department")} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <option value="">— Sélectionner —</option>
-                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type de contrat</label>
+                <select value={form.typeContrat} onChange={(e) => setForm(f => ({ ...f, typeContrat: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  {CONTRATS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                <select value={form.statut} onChange={(e) => setForm(f => ({ ...f, statut: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  {STATUTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salaire (MGA)</label>
-              <input type="number" {...register("salary")} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+
+            <div className="grid grid-cols-2 gap-3">
+              {field("Salaire base (MGA)", "salary", "number")}
+              {field("Téléphone", "phone")}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-              <input {...register("phone")} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+
+            {field("Date d'embauche", "hireDate", "date")}
+
+            <div className="grid grid-cols-2 gap-3">
+              {field("N° CNAPS", "cnapsNumber")}
+              {field("N° OSTIE", "ostieNumber")}
             </div>
+
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-                Annuler
-              </button>
-              <button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
-                {editing ? "Enregistrer" : "Créer"}
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Annuler</button>
+              <button type="submit" disabled={saveMut.isPending} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
+                {saveMut.isPending ? "Sauvegarde…" : editing ? "Enregistrer" : "Créer"}
               </button>
             </div>
           </form>

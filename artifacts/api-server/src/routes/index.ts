@@ -44,6 +44,8 @@ import productsRouter from "./products";
 import productStockRouter from "./product-stock";
 import lotStatusRouter from "./lot-status";
 import aiRouter from "./ai";
+import hrImportRouter from "./hr-import";
+import hrDeclarationsRouter from "./hr-declarations";
 
 const router: IRouter = Router();
 
@@ -93,5 +95,7 @@ router.use(importProductsRouter);
 router.use(productsRouter);
 router.use(productStockRouter);
 router.use(aiRouter);
+router.use(hrImportRouter);
+router.use(hrDeclarationsRouter);
 
 export default router;

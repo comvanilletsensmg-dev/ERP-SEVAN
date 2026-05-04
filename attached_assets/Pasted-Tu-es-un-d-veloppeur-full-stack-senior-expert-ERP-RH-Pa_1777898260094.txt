@@ -1,0 +1,297 @@
+Tu es un développeur full-stack senior expert ERP RH & Paie (Madagascar).
+
+Objectif :
+Construire un module RH complet avec :
+- base employés (adaptée import Excel)
+- import employés (CSV/XLSX) avec validation + dédoublonnage
+- gestion présence & absences
+- paie Madagascar (CNAPS, OSTIE, IRSA simplifié)
+- bulletins de paie PDF
+- déclarations (CNAPS/OSTIE/IRSA) exportables
+- dashboard RH & paie
+- RBAC (DRH uniquement pour paie)
+
+Stack :
+- Backend : Node.js + Express
+- DB : PostgreSQL + Prisma
+- Front : React + Tailwind + React Query
+- Upload : Multer
+- Parsing : XLSX + Papaparse
+- Validation : Zod
+- PDF : pdfmake ou puppeteer
+- Scheduler : node-cron
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Employee {
+  id            String   @id @default(uuid())
+  matricule     String   @unique
+  nom           String
+  prenom        String
+  sexe          String?
+  dateNaissance DateTime?
+  telephone     String?
+  email         String?
+
+  poste         String
+  departement   String
+  dateEmbauche  DateTime
+
+  typeContrat   String   // CDI, CDD, journalier
+  salaireBase   Float
+
+  cnaps         String?
+  ostie         String?
+
+  statut        String   // actif, suspendu, sorti
+  createdAt     DateTime @default(now())
+
+  attendances   Attendance[]
+  leaves        Leave[]
+  payrolls      Payroll[]
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  hours       Float?
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  employeeId  String
+  type        String   // vacation, sick
+  startDate   DateTime
+  endDate     DateTime
+  status      String   // pending, approved
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Payroll {
+  id            String   @id @default(uuid())
+  employeeId    String
+  period        String   // 2026-05
+  salaireBase   Float
+  primes        Float
+  heuresSup     Float
+
+  cnapsEmp      Float
+  ostieEmp      Float
+  irsa          Float
+
+  deductions    Float
+  netSalary     Float
+
+  createdAt     DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model PayrollItem {
+  id          String @id @default(uuid())
+  payrollId   String
+  label       String
+  amount      Float
+}
+
+model ImportBatch {
+  id         String   @id @default(uuid())
+  fileName   String
+  totalRows  Int
+  success    Int
+  failed     Int
+  createdAt  DateTime @default(now())
+}
+
+model ImportError {
+  id        String   @id @default(uuid())
+  batchId   String
+  rowNumber Int
+  message   String
+}
+
+-----------------------------------
+2. IMPORT EMPLOYÉS (EXCEL / CSV)
+-----------------------------------
+
+POST /api/hr/import/validate
+
+LOGIQUE :
+
+- parser fichier (XLSX / CSV)
+- mapping colonnes (UI)
+- validation Zod :
+
+  - matricule obligatoire
+  - nom obligatoire
+  - salaireBase > 0
+
+- détection doublons :
+  A. strict : matricule
+  B. intelligent : nom + téléphone
+
+Retour :
+
+{
+  rows: [
+    {
+      data,
+      errors,
+      warnings,
+      duplicate,
+      action: "create"
+    }
+  ]
+}
+
+-----------------------------------
+
+POST /api/hr/import/execute
+
+- create / update employés
+- log ImportBatch
+
+-----------------------------------
+3. PRÉSENCE & ABSENCES
+-----------------------------------
+
+- check-in / check-out
+- calcul heures
+- congés validés impact paie
+
+-----------------------------------
+4. PAIE MADAGASCAR (LOGIQUE)
+-----------------------------------
+
+Créer service :
+
+calculatePayroll(employeeId, period)
+
+VARIABLES :
+
+base = salaireBase
+primes = bonus
+heuresSup = heures supplémentaires
+
+-----------------------------------
+CHARGES SALARIÉ (approximation simple)
+
+CNAPS = 1% du brut
+OSTIE = 1% du brut
+
+-----------------------------------
+IRSA (simplifié)
+
+if salaire < seuil → 0
+else → calcul progressif simple
+
+-----------------------------------
+NET SALAIRE
+
+net = base + primes + heuresSup
+      - CNAPS
+      - OSTIE
+      - IRSA
+      - deductions
+
+-----------------------------------
+5. BULLETIN DE PAIE
+-----------------------------------
+
+GET /api/payroll/:id/pdf
+
+Contenu :
+
+- employé
+- salaire brut
+- charges
+- net à payer
+
+-----------------------------------
+6. DÉCLARATIONS
+-----------------------------------
+
+Créer exports :
+
+- CNAPS
+- OSTIE
+- IRSA
+
+Format :
+- Excel / CSV
+
+-----------------------------------
+7. DASHBOARD RH
+-----------------------------------
+
+Afficher :
+
+- nombre employés
+- masse salariale
+- absences
+- coût total RH
+
+-----------------------------------
+8. UI REACT
+-----------------------------------
+
+Pages :
+
+/hr/employees
+/hr/import
+/hr/attendance
+/hr/leaves
+/hr/payroll
+/hr/dashboard
+
+-----------------------------------
+9. SÉCURITÉ (RBAC)
+-----------------------------------
+
+HR_MANAGER :
+- accès complet RH + paie
+
+ACCOUNTANT :
+- lecture paie
+
+LOGISTICS :
+- aucun accès
+
+-----------------------------------
+10. AUTOMATISATION
+-----------------------------------
+
+CRON mensuel :
+
+- générer paie automatique
+- notifier RH
+
+-----------------------------------
+11. BONUS
+-----------------------------------
+
+- export Excel paie
+- historique paie
+- simulation salaire
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- module RH complet
+- import Excel fonctionnel
+- paie Madagascar opérationnelle
+- UI + PDF
+
+Commence par :
+1. modèles Prisma
+2. import employés
+3. calcul paie

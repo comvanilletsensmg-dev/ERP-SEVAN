@@ -36,7 +36,9 @@ const accountingNav = [
 ];
 
 const hrNav = [
+  { label: "Dashboard RH",      href: "/hr/dashboard",  icon: BarChart3 },
   { label: "Employés",          href: "/hr/employees",  icon: UserCheck },
+  { label: "Import Employés",   href: "/hr/import",     icon: Upload },
   { label: "Congés",            href: "/hr/leaves",     icon: CalendarDays },
   { label: "Pointage",          href: "/hr/attendance", icon: ClipboardList },
   { label: "Demandes RH",       href: "/hr/requests",   icon: MessageSquare },

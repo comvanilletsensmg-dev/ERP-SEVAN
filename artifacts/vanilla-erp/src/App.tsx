@@ -24,6 +24,8 @@ import HrRequests from "@/pages/HrRequests";
 import Payroll from "@/pages/Payroll";
 import Bonuses from "@/pages/Bonuses";
 import Candidates from "@/pages/Candidates";
+import HrDashboard from "@/pages/hr/Dashboard";
+import HrImport from "@/pages/hr/Import";
 import AccountingInvoices from "@/pages/accounting/Invoices";
 import AccountingPartners from "@/pages/accounting/Partners";
 import AccountingBank from "@/pages/accounting/Bank";
@@ -88,6 +90,8 @@ function Router() {
       <Route path="/hr/payroll" component={() => <ProtectedRoute component={Payroll} />} />
       <Route path="/hr/bonuses" component={() => <ProtectedRoute component={Bonuses} />} />
       <Route path="/hr/candidates" component={() => <ProtectedRoute component={Candidates} />} />
+      <Route path="/hr/dashboard" component={() => <ProtectedRoute component={HrDashboard} />} />
+      <Route path="/hr/import" component={() => <ProtectedRoute component={HrImport} />} />
       <Route path="/accounting/invoices" component={() => <ProtectedRoute component={AccountingInvoices} />} />
       <Route path="/accounting/partners" component={() => <ProtectedRoute component={AccountingPartners} />} />
       <Route path="/accounting/bank" component={() => <ProtectedRoute component={AccountingBank} />} />
