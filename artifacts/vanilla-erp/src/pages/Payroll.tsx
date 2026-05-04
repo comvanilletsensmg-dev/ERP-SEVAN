@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useGetPayrolls, useGeneratePayroll, useGetEmployees } from "@workspace/api-client-react";
+import { useGetPayrolls, useGetEmployees } from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
-import { FileText, Download, RefreshCw, Trash2 } from "lucide-react";
+import { FileText, Download, RefreshCw, Trash2, X, ExternalLink, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -26,6 +26,51 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+// ── Bulletin preview modal ────────────────────────────────────────────────────
+function BulletinModal({ payrollId, employeeName, month, onClose }: {
+  payrollId: string; employeeName: string; month: string; onClose: () => void;
+}) {
+  const pdfUrl = `/api/payroll/${payrollId}/pdf`;
+  return (
+    <div className="fixed inset-0 bg-black/60 flex flex-col z-50">
+      {/* Top bar */}
+      <div className="bg-gray-900 text-white flex items-center justify-between px-5 py-3 shrink-0 gap-4">
+        <div>
+          <div className="font-semibold text-sm">{employeeName}</div>
+          <div className="text-xs text-gray-400">{month} — Bulletin de paie</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <a href={pdfUrl} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors">
+            <ExternalLink className="w-3.5 h-3.5" /> Ouvrir onglet
+          </a>
+          <button
+            onClick={() => {
+              const iframe = document.getElementById("payslip-iframe") as HTMLIFrameElement | null;
+              iframe?.contentWindow?.print();
+            }}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors">
+            <Printer className="w-3.5 h-3.5" /> Imprimer / PDF
+          </button>
+          <button onClick={onClose}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      {/* iframe */}
+      <div className="flex-1 overflow-hidden bg-gray-100">
+        <iframe
+          id="payslip-iframe"
+          src={pdfUrl}
+          className="w-full h-full border-0"
+          title={`Bulletin ${employeeName} ${month}`}
+        />
+      </div>
+    </div>
+  );
+}
+
 type FormData = { employeeId: string; month: string; heuresSup: number };
 
 async function apiFetch(url: string, opts?: RequestInit) {
@@ -45,15 +90,17 @@ export default function PayrollPage() {
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string; month: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewEntry, setPreviewEntry] = useState<{ id: string; name: string; month: string } | null>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: { month: filterMonth, heuresSup: 0 },
   });
 
-  const totalNet = (payrolls ?? []).reduce((a, p) => a + p.netSalary, 0);
+  const totalNet   = (payrolls ?? []).reduce((a, p) => a + p.netSalary, 0);
+  const totalBrut  = (payrolls ?? []).reduce((a, p) => a + p.salaryBase + p.bonus + ((p as any).heuresSup ?? 0), 0);
   const totalCnaps = (payrolls ?? []).reduce((a, p) => a + ((p as any).cnapsEmp ?? 0), 0);
   const totalOstie = (payrolls ?? []).reduce((a, p) => a + ((p as any).ostieEmp ?? 0), 0);
-  const totalIrsa = (payrolls ?? []).reduce((a, p) => a + ((p as any).irsa ?? 0), 0);
+  const totalIrsa  = (payrolls ?? []).reduce((a, p) => a + ((p as any).irsa ?? 0), 0);
 
   const onSubmit = async (data: FormData) => {
     setError("");
@@ -105,15 +152,15 @@ export default function PayrollPage() {
     }
   };
 
-  const openPdf = (id: string) => window.open(`/api/payroll/${id}/pdf`, "_blank");
   const exportDeclaration = (type: "cnaps" | "ostie" | "irsa") =>
     window.open(`/api/hr/declarations/${type}?month=${filterMonth}`, "_blank");
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Fiche de Paie Madagascar</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Fiches de Paie</h1>
           <p className="text-gray-500 text-sm mt-1">
             {payrolls?.length ?? 0} fiche(s) — Net total : <span className="font-semibold text-emerald-700">{formatMga(totalNet)}</span>
           </p>
@@ -126,31 +173,35 @@ export default function PayrollPage() {
           >
             {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
+          <button onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
             + Générer paie
           </button>
-          <button onClick={handleBatch} disabled={batchLoading} className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 flex items-center gap-1 disabled:opacity-50">
-            {batchLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : null} Batch tous actifs
+          <button onClick={handleBatch} disabled={batchLoading}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 flex items-center gap-1 disabled:opacity-50">
+            {batchLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Batch tous actifs
           </button>
         </div>
       </div>
 
-      {/* Résumé charges */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         {[
-          { label: "Salaires de base", value: formatMga((payrolls ?? []).reduce((a, p) => a + p.salaryBase, 0)) },
-          { label: "CNAPS salarié (1%)", value: formatMga(totalCnaps), color: "text-orange-600" },
-          { label: "OSTIE salarié (1%)", value: formatMga(totalOstie), color: "text-orange-600" },
+          { label: "Salaire brut", value: formatMga(totalBrut), color: "text-gray-800" },
+          { label: "CNAPS (1%)", value: formatMga(totalCnaps), color: "text-orange-600" },
+          { label: "OSTIE (1%)", value: formatMga(totalOstie), color: "text-orange-600" },
           { label: "IRSA", value: formatMga(totalIrsa), color: "text-red-600" },
+          { label: "Net à payer", value: formatMga(totalNet), color: "text-emerald-700 text-base" },
         ].map((c) => (
-          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <div className={`text-base font-semibold ${c.color ?? "text-gray-800"}`}>{c.value}</div>
-            <div className="text-xs text-gray-500 mt-1">{c.label}</div>
+          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+            <div className={`font-semibold ${c.color}`}>{c.value}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{c.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Déclarations export */}
+      {/* Declarations */}
       <div className="flex flex-wrap gap-2 mb-5">
         <span className="text-sm text-gray-500 self-center">Déclarations :</span>
         {(["cnaps", "ostie", "irsa"] as const).map((t) => (
@@ -163,6 +214,7 @@ export default function PayrollPage() {
 
       {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
 
+      {/* Table */}
       {isLoading ? (
         <div className="text-center py-16 text-gray-400">Chargement…</div>
       ) : (
@@ -177,11 +229,15 @@ export default function PayrollPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(payrolls ?? []).length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-gray-400">Aucune fiche de paie pour ce mois</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-gray-400">
+                  Aucune fiche de paie pour ce mois — cliquez "Batch tous actifs" pour en générer
+                </td></tr>
               ) : (
-                (payrolls ?? []).map((p) => (
+                (payrolls ?? []).map((p) => {
+                  const empName = (p.employee as any)?.name ?? p.employeeId;
+                  return (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-3 py-3 font-medium text-gray-800">{(p.employee as any)?.name ?? p.employeeId}</td>
+                    <td className="px-3 py-3 font-medium text-gray-800">{empName}</td>
                     <td className="px-3 py-2 font-mono text-xs text-gray-500">{(p.employee as any)?.matricule ?? "—"}</td>
                     <td className="px-3 py-2 font-mono text-xs">{formatMga(p.salaryBase)}</td>
                     <td className="px-3 py-2 text-emerald-600 font-mono text-xs">{p.bonus > 0 ? "+" + formatMga(p.bonus) : "—"}</td>
@@ -193,28 +249,31 @@ export default function PayrollPage() {
                     <td className="px-3 py-2 text-emerald-700 font-bold font-mono text-xs">{formatMga(p.netSalary)}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
+                        {/* Preview bulletin */}
                         <button
-                          onClick={() => openPdf(p.id)}
-                          className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                          title="Voir le bulletin PDF"
-                        >
-                          <FileText className="h-3 w-3" /> PDF
+                          onClick={() => setPreviewEntry({ id: p.id, name: empName, month: p.month })}
+                          className="flex items-center gap-1 px-2 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                          title="Prévisualiser le bulletin de paie">
+                          <FileText className="h-3 w-3" /> Bulletin
                         </button>
+                        {/* Open in new tab */}
+                        <a href={`/api/payroll/${p.id}/pdf`} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          title="Ouvrir dans un nouvel onglet">
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        {/* Delete */}
                         <button
-                          onClick={() => setConfirmDelete({
-                            id: p.id,
-                            name: (p.employee as any)?.name ?? p.employeeId,
-                            month: p.month,
-                          })}
-                          className="flex items-center gap-1 px-2 py-1 text-xs border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                          title="Supprimer cette fiche de paie"
-                        >
+                          onClick={() => setConfirmDelete({ id: p.id, name: empName, month: p.month })}
+                          className="flex items-center gap-1 px-2 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Supprimer cette fiche de paie">
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -231,7 +290,17 @@ export default function PayrollPage() {
         </div>
       )}
 
-      {/* Générer une fiche */}
+      {/* ── Bulletin preview modal ── */}
+      {previewEntry && (
+        <BulletinModal
+          payrollId={previewEntry.id}
+          employeeName={previewEntry.name}
+          month={previewEntry.month}
+          onClose={() => setPreviewEntry(null)}
+        />
+      )}
+
+      {/* ── Generate payroll modal ── */}
       {showModal && (
         <Modal title="Générer une fiche de paie" onClose={() => { setShowModal(false); setError(""); }}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -276,7 +345,7 @@ export default function PayrollPage() {
         </Modal>
       )}
 
-      {/* Confirmation suppression */}
+      {/* ── Confirm delete modal ── */}
       {confirmDelete && (
         <Modal title="Supprimer la fiche de paie ?" onClose={() => setConfirmDelete(null)}>
           <div className="space-y-4">
@@ -285,18 +354,12 @@ export default function PayrollPage() {
               <p>Fiche de <strong>{confirmDelete.name}</strong> pour le mois de <strong>{confirmDelete.month}</strong> sera définitivement supprimée.</p>
             </div>
             <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 font-medium"
-              >
+              <button type="button" onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 font-medium">
                 Annuler
               </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteLoading}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button onClick={handleDelete} disabled={deleteLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {deleteLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                 Supprimer définitivement
               </button>

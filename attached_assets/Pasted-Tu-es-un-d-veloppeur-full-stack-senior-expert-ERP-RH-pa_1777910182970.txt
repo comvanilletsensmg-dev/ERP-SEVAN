@@ -1,0 +1,215 @@
+Tu es un développeur full-stack senior expert ERP RH + paie.
+
+Objectif :
+Créer un système de BULLETIN DE PAIE PDF professionnel
+inspiré du modèle fourni (structure Madagascar),
+avec :
+
+- auto-remplissage depuis Employee + Payroll
+- calcul automatique
+- branding dynamique (logo + couleurs)
+- export PDF téléchargeable
+- conforme Madagascar (CNAPS, OSTIE, IRSA)
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- PDF : Puppeteer (HTML → PDF)
+- Front : React + Tailwind
+
+-----------------------------------
+1. STRUCTURE DONNÉES
+-----------------------------------
+
+Utiliser :
+
+Employee
+Payroll
+PayrollItem
+CompanySettings
+Branding
+
+-----------------------------------
+2. CALCUL PAIE (MADAGASCAR)
+-----------------------------------
+
+brut = salaireBase + primes
+
+CNAPS = brut * 0.01
+OSTIE = brut * 0.01
+
+IRSA = calcul progressif
+
+net = brut - CNAPS - OSTIE - IRSA
+
+-----------------------------------
+3. TEMPLATE HTML BULLETIN
+-----------------------------------
+
+Créer :
+
+/templates/payroll.html
+
+-----------------------------------
+
+Structure inspirée du PDF :
+
+HEADER :
+
+- logo entreprise (branding.logoUrl)
+- nom entreprise
+- adresse
+- téléphone
+
+-----------------------------------
+
+INFOS EMPLOYÉ :
+
+- nom
+- matricule
+- poste
+- département
+- date embauche
+- CNAPS
+
+-----------------------------------
+
+TABLEAU PAIE :
+
+Colonnes :
+
+- Désignation
+- Nombre
+- Base
+- Taux
+- Gain
+- Retenue
+
+-----------------------------------
+
+LIGNES :
+
+- salaire base
+- indemnité transport
+- primes
+- heures sup
+
+-----------------------------------
+
+TOTALS :
+
+- Total Brut
+- CNAPS
+- OSTIE
+- IRSA
+- Net à payer
+
+-----------------------------------
+4. BRANDING DYNAMIQUE
+-----------------------------------
+
+Appliquer :
+
+- logo
+- couleurs entreprise
+
+CSS :
+
+.header {
+  background: {{primaryColor}};
+}
+
+-----------------------------------
+5. API PDF
+-----------------------------------
+
+GET /api/payroll/:id/pdf
+
+LOGIQUE :
+
+- récupérer employee
+- récupérer payroll
+- récupérer branding
+- injecter dans HTML
+- générer PDF avec Puppeteer
+
+-----------------------------------
+6. CODE PDF
+-----------------------------------
+
+import puppeteer from "puppeteer";
+
+const browser = await puppeteer.launch();
+const page = await browser.newPage();
+
+await page.setContent(html);
+
+const pdf = await page.pdf({
+  format: "A4",
+  printBackground: true
+});
+
+-----------------------------------
+7. FRONTEND
+-----------------------------------
+
+Page :
+
+/hr/payroll
+
+-----------------------------------
+
+Boutons :
+
+- Générer paie
+- Télécharger PDF
+
+-----------------------------------
+8. AUTO-REMPLISSAGE
+-----------------------------------
+
+Quand paie générée :
+
+- remplir automatiquement :
+  salaire
+  primes
+  charges
+
+-----------------------------------
+9. ADAPTATION SELON PAYS
+-----------------------------------
+
+if country === MADAGASCAR:
+  afficher CNAPS / OSTIE
+
+if EUROPE:
+  afficher TVA / charges sociales
+
+-----------------------------------
+10. DESIGN PRO
+-----------------------------------
+
+- tableau structuré
+- sections claires
+- net à payer en gros
+
+-----------------------------------
+11. BONUS
+-----------------------------------
+
+- signature entreprise
+- watermark
+- historique PDF
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- bulletin pro
+- PDF téléchargeable
+- branding automatique
+
+Commence par :
+1. template HTML
+2. API PDF
+3. calcul paie
