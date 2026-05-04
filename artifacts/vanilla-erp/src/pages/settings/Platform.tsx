@@ -94,6 +94,86 @@ function FileUrlField({ value, onChange, onUpload, uploading }: {
   );
 }
 
+// ─── Support hours field ──────────────────────────────────────────────────────
+const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
+
+const HOURS = Array.from({ length: 25 }, (_, i) =>
+  `${String(i).padStart(2, "0")}:00`
+);
+
+function parseSupportHours(raw: string): { days: string[]; start: string; end: string } {
+  // Expected storage format: "Lun,Mar,Mer,Jeu,Ven|08:00-17:00"
+  const [daysPart = "", timePart = ""] = raw.split("|");
+  const days = daysPart ? daysPart.split(",").map(d => d.trim()).filter(Boolean) : [];
+  const [start = "08:00", end = "17:00"] = timePart ? timePart.split("-") : [];
+  return { days, start, end };
+}
+
+function serializeSupportHours(days: string[], start: string, end: string): string {
+  return `${days.join(",")}|${start}-${end}`;
+}
+
+function SupportHoursField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const parsed = parseSupportHours(value);
+  const [days, setDays] = useState<string[]>(parsed.days);
+  const [start, setStart] = useState(parsed.start || "08:00");
+  const [end, setEnd] = useState(parsed.end || "17:00");
+
+  function toggleDay(day: string) {
+    const next = days.includes(day) ? days.filter(d => d !== day) : [...days, day];
+    const ordered = DAYS.filter(d => next.includes(d));
+    setDays(ordered);
+    onChange(serializeSupportHours(ordered, start, end));
+  }
+
+  function updateStart(v: string) { setStart(v); onChange(serializeSupportHours(days, v, end)); }
+  function updateEnd(v: string) { setEnd(v); onChange(serializeSupportHours(days, start, v)); }
+
+  const selectCls = "border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white";
+
+  return (
+    <div className="space-y-3">
+      {/* Days */}
+      <div className="flex flex-wrap gap-2">
+        {DAYS.map(day => {
+          const active = days.includes(day);
+          return (
+            <button key={day} type="button" onClick={() => toggleDay(day)}
+              className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors select-none
+                ${active
+                  ? "bg-emerald-600 border-emerald-600 text-white"
+                  : "bg-white border-gray-300 text-gray-500 hover:border-emerald-400 hover:text-emerald-600"
+                }`}>
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Time range */}
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <span className="font-medium">De</span>
+        <select value={start} onChange={e => updateStart(e.target.value)} className={selectCls}>
+          {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+        </select>
+        <span className="font-medium">à</span>
+        <select value={end} onChange={e => updateEnd(e.target.value)} className={selectCls}>
+          {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+        </select>
+      </div>
+
+      {/* Preview */}
+      {days.length > 0 && (
+        <p className="text-xs text-gray-400">
+          Affiché : <span className="text-gray-600 font-medium">
+            {days.join(", ")} · {start.replace(":00", "h")}–{end.replace(":00", "h")}
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ToggleField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const on = value === "true";
   return (
@@ -125,7 +205,9 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
       </div>
       {setting.description && <p className="text-xs text-gray-400">{setting.description}</p>}
 
-      {setting.settingType === "boolean" ? (
+      {setting.settingKey === "support_hours" ? (
+        <SupportHoursField value={value} onChange={v => onChange(setting.settingKey, v)} />
+      ) : setting.settingType === "boolean" ? (
         <ToggleField value={value} onChange={v => onChange(setting.settingKey, v)} />
       ) : setting.settingType === "color" ? (
         <ColorField value={value} onChange={v => onChange(setting.settingKey, v)} />
