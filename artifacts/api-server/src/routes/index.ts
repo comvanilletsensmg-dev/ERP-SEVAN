@@ -50,6 +50,7 @@ import departmentsRouter from "./departments";
 import settingsRouter from "./settings";
 import platformSettingsRouter from "./platform-settings";
 import planningRouter from "./planning";
+import recruitmentRouter from "./recruitment";
 
 const router: IRouter = Router();
 
@@ -105,5 +106,6 @@ router.use(hrDeclarationsRouter);
 router.use(settingsRouter);
 router.use(platformSettingsRouter);
 router.use(planningRouter);
+router.use(recruitmentRouter);
 
 export default router;

@@ -1,0 +1,234 @@
+Tu es un développeur full-stack senior expert ERP RH + ATS.
+
+Objectif :
+Créer un module complet de RECRUTEMENT + ONBOARDING avec :
+
+- formulaire candidat pro
+- upload CV (PDF, image)
+- OCR + parsing CV → données structurées
+- pipeline recrutement (kanban)
+- conversion candidat → employé
+- intégration RH ERP
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind + React Hook Form
+- Upload : Multer
+- OCR : Tesseract.js (image) + pdf-parse (PDF)
+- NLP parsing : custom regex + AI (option)
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Candidate {
+  id          String   @id @default(uuid())
+
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+
+  address     String?
+  city        String?
+
+  skills      String[]
+  experience  String?
+  education   String?
+
+  cvUrl       String?
+  status      String   // applied, interview, hired, rejected
+
+  createdAt   DateTime @default(now())
+}
+
+-----------------------------------
+
+model RecruitmentStage {
+  id     String @id @default(uuid())
+  name   String   // Applied, Interview, Offer, Hired
+  order  Int
+}
+
+-----------------------------------
+
+model CandidateStage {
+  id           String @id @default(uuid())
+  candidateId  String
+  stageId      String
+}
+
+-----------------------------------
+2. UPLOAD CV
+-----------------------------------
+
+POST /api/recruitment/upload
+
+- accepter PDF / JPG / PNG
+- stocker fichier
+- retourner URL
+
+-----------------------------------
+3. OCR + PARSING CV
+-----------------------------------
+
+Créer service :
+
+parseCV(file)
+
+-----------------------------------
+
+PDF :
+
+- utiliser pdf-parse
+
+Image :
+
+- utiliser Tesseract.js
+
+-----------------------------------
+
+Extraire :
+
+- nom
+- email
+- téléphone
+- compétences
+- expériences
+
+-----------------------------------
+
+Exemple parsing :
+
+const email = text.match(/\S+@\S+\.\S+/)
+const phone = text.match(/(03|032|033|034|038)\d+/)
+
+-----------------------------------
+4. AUTO-REMPLISSAGE FORMULAIRE
+-----------------------------------
+
+Après upload :
+
+- remplir automatiquement form React
+
+-----------------------------------
+5. FORMULAIRE CANDIDAT (UI PRO)
+-----------------------------------
+
+Page :
+
+/recruitment/new
+
+-----------------------------------
+
+Champs :
+
+- nom
+- prénom
+- email
+- téléphone
+- adresse
+- compétences (tags)
+- expérience (textarea)
+- éducation
+
+-----------------------------------
+
+Section upload CV :
+
+- drag & drop
+- bouton "Analyser CV"
+
+-----------------------------------
+6. PIPELINE RECRUTEMENT
+-----------------------------------
+
+Page :
+
+/recruitment/pipeline
+
+-----------------------------------
+
+Kanban :
+
+- Applied
+- Interview
+- Offer
+- Hired
+- Rejected
+
+-----------------------------------
+
+Drag & drop candidats
+
+-----------------------------------
+7. ONBOARDING AUTOMATIQUE
+-----------------------------------
+
+Quand status = hired :
+
+- créer Employee
+
+-----------------------------------
+
+Auto remplir :
+
+- nom
+- téléphone
+- poste
+- email
+
+-----------------------------------
+8. INTÉGRATION ERP
+-----------------------------------
+
+- RH
+- Paie
+- Matricule auto
+
+-----------------------------------
+9. VALIDATION
+-----------------------------------
+
+- email valide
+- téléphone Madagascar valide
+
+-----------------------------------
+10. BONUS AVANCÉ
+-----------------------------------
+
+A. Score candidat (IA)
+
+- matching poste
+
+-----------------------------------
+
+B. Analyse CV :
+
+- nombre années expérience
+
+-----------------------------------
+
+C. Suggestions :
+
+- "profil adapté logistique"
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- RH uniquement
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- ATS complet
+- OCR CV
+- onboarding auto
+
+Commence par :
+1. upload CV
+2. OCR parsing
+3. formulaire auto-rempli
