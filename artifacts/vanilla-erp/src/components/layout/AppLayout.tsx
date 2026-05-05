@@ -10,6 +10,7 @@ import {
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
   Target, Activity, AlertTriangle, Upload, Workflow, ShieldAlert, Brain, Settings,
+  Factory,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -59,6 +60,12 @@ const crmNav = [
   { label: "Templates email",   href: "/crm/templates",     icon: Mail },
   { label: "Relances",          href: "/crm/reminders",     icon: BellRing },
   { label: "Catalogue Produits", href: "/catalogue",          icon: Package },
+];
+
+const operationsNav = [
+  { label: "Dashboard Opérations", href: "/operations/dashboard", icon: Factory },
+  { label: "Rapport journalier",   href: "/operations/report",    icon: ClipboardList },
+  { label: "Consommables",         href: "/operations/consumables",icon: Package },
 ];
 
 const adminNav = [
@@ -203,6 +210,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           {canAccess(role, "hr") && (
             <NavSection title="Ressources Humaines" items={hrNav} location={location} />
+          )}
+
+          {canAccess(role, "operations") && (
+            <NavSection title="Opérations" items={operationsNav} location={location} />
           )}
 
           {canAccess(role, "crm") && (

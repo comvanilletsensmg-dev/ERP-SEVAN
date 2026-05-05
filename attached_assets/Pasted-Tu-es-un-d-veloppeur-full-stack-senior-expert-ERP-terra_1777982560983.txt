@@ -1,0 +1,236 @@
+Tu es un développeur full-stack senior expert ERP terrain (logistique / production).
+
+Objectif :
+Créer un module OPERATION avec :
+- rapport quotidien simple (saisie rapide)
+- suivi des lots et états de la vanille
+- suivi des consommables utilisés
+- mini gestion de stock consommables
+- dashboard opération
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind + React Hook Form
+- UI : boutons + inputs rapides (mobile-first)
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model OperationReport {
+  id            String   @id @default(uuid())
+  date          DateTime
+  employeeId    String
+
+  notes         String?
+
+  createdAt     DateTime @default(now())
+}
+
+-----------------------------------
+
+model OperationLotStatus {
+  id            String   @id @default(uuid())
+  reportId      String
+  lotId         String
+
+  status        String   // processing, phenole, moldy, ready, preparing
+  quantityKg    Float
+}
+
+-----------------------------------
+
+model Consumable {
+  id          String @id @default(uuid())
+  name        String   // sachet_vide, papier_paraffine, carton, claie
+  unit        String   // unité, kg, rouleau
+  stock       Float
+}
+
+-----------------------------------
+
+model ConsumableUsage {
+  id            String @id @default(uuid())
+  reportId      String
+  consumableId  String
+  quantityUsed  Float
+}
+
+-----------------------------------
+2. TYPES DE STATUT VANILLE
+-----------------------------------
+
+- processing (en traitement)
+- phenole
+- moldy
+- ready
+- preparing
+
+-----------------------------------
+3. FORMULAIRE RAPPORT (ULTRA SIMPLE)
+-----------------------------------
+
+Page :
+
+/operations/report
+
+-----------------------------------
+
+Sections UI :
+
+A. 📦 LOTS
+
+Pour chaque lot :
+
+- sélectionner lot
+- sélectionner statut (dropdown)
+- entrer quantité (kg)
+
+-----------------------------------
+
+B. 📊 CONSOMMABLES
+
+Inputs rapides :
+
+- sachets sous vide utilisés
+- papier paraffiné (m)
+- cartons utilisés
+- claies utilisées
+
+-----------------------------------
+
+C. 📥 ENTRÉES MARCHANDISE
+
+- quantité reçue (kg)
+
+-----------------------------------
+
+D. 📤 PRÉPARATION
+
+- quantité préparée (kg)
+
+-----------------------------------
+
+E. 📝 NOTES (optionnel)
+
+-----------------------------------
+4. UX OPTIMISÉ TERRAIN
+-----------------------------------
+
+- boutons + / - pour quantités
+- valeurs rapides (10kg, 50kg, 100kg)
+- auto-save
+- mobile first
+
+-----------------------------------
+5. LOGIQUE MÉTIER
+-----------------------------------
+
+A. Mise à jour stock consommables :
+
+stock = stock - quantityUsed
+
+-----------------------------------
+
+B. Vérification :
+
+if stock < seuil:
+  alerte "Stock faible"
+
+-----------------------------------
+
+C. Mise à jour lot :
+
+- status mis à jour
+- quantité mise à jour
+
+-----------------------------------
+6. MINI GESTION STOCK
+-----------------------------------
+
+Page :
+
+/operations/consumables
+
+-----------------------------------
+
+Afficher :
+
+- nom
+- stock actuel
+- seuil minimum
+
+-----------------------------------
+
+Actions :
+
+- ajouter stock
+- corriger stock
+
+-----------------------------------
+7. DASHBOARD OPÉRATION
+-----------------------------------
+
+Afficher :
+
+- kg en traitement
+- kg phénolé
+- kg moisi
+- kg prêt
+- consommation du jour
+
+-----------------------------------
+8. AUTOMATISATION
+-----------------------------------
+
+- rapport journalier par défaut (date du jour)
+- pré-remplir lots actifs
+
+-----------------------------------
+9. ALERTES
+-----------------------------------
+
+- trop de vanille moisie
+- stock consommables faible
+- production insuffisante
+
+-----------------------------------
+10. SÉCURITÉ
+-----------------------------------
+
+- LOG_AGENT : créer rapport
+- LOG_MANAGER : voir tout
+
+-----------------------------------
+11. BONUS AVANCÉ
+-----------------------------------
+
+A. Bouton "rapport rapide"
+
+→ remplir en 30 secondes
+
+-----------------------------------
+
+B. Historique :
+
+→ voir évolution qualité vanille
+
+-----------------------------------
+
+C. Export PDF :
+
+→ rapport journalier imprimable
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- rapport simple
+- suivi qualité
+- mini stock intégré
+
+Commence par :
+1. modèles Prisma
+2. formulaire UI simple
+3. mise à jour stock

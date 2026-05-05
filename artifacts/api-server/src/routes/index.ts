@@ -51,6 +51,7 @@ import settingsRouter from "./settings";
 import platformSettingsRouter from "./platform-settings";
 import planningRouter from "./planning";
 import recruitmentRouter from "./recruitment";
+import operationsRouter from "./operations";
 
 const router: IRouter = Router();
 
@@ -107,5 +108,6 @@ router.use(settingsRouter);
 router.use(platformSettingsRouter);
 router.use(planningRouter);
 router.use(recruitmentRouter);
+router.use(operationsRouter);
 
 export default router;

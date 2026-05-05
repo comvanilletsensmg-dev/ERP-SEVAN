@@ -8,15 +8,16 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
-export type Module = "dashboard" | "logistics" | "accounting" | "hr" | "admin" | "crm";
+export type Module = "dashboard" | "logistics" | "accounting" | "hr" | "admin" | "crm" | "operations";
 
 const MODULE_ACCESS: Record<Module, Role[]> = {
-  dashboard: [ROLES.SUPER_ADMIN, ROLES.ACCOUNTANT, ROLES.LOGISTICS_MANAGER, ROLES.HR_MANAGER, ROLES.COMMERCIAL],
-  logistics: [ROLES.SUPER_ADMIN, ROLES.LOGISTICS_MANAGER],
+  dashboard:  [ROLES.SUPER_ADMIN, ROLES.ACCOUNTANT, ROLES.LOGISTICS_MANAGER, ROLES.HR_MANAGER, ROLES.COMMERCIAL],
+  logistics:  [ROLES.SUPER_ADMIN, ROLES.LOGISTICS_MANAGER],
   accounting: [ROLES.SUPER_ADMIN, ROLES.ACCOUNTANT],
-  hr: [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
-  admin: [ROLES.SUPER_ADMIN],
-  crm: [ROLES.SUPER_ADMIN, ROLES.COMMERCIAL, ROLES.LOGISTICS_MANAGER],
+  hr:         [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+  admin:      [ROLES.SUPER_ADMIN],
+  crm:        [ROLES.SUPER_ADMIN, ROLES.COMMERCIAL, ROLES.LOGISTICS_MANAGER],
+  operations: [ROLES.SUPER_ADMIN, ROLES.LOGISTICS_MANAGER],
 };
 
 export function canAccess(role: string, module: Module): boolean {

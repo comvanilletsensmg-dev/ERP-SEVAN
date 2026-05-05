@@ -53,6 +53,9 @@ import CrmInteractions from "@/pages/crm/Interactions";
 import CrmQuotes from "@/pages/crm/Quotes";
 import CrmTemplates from "@/pages/crm/Templates";
 import CrmReminders from "@/pages/crm/Reminders";
+import OperationDashboard from "@/pages/operations/OperationDashboard";
+import OperationReport from "@/pages/operations/OperationReport";
+import ConsumablesPage from "@/pages/operations/Consumables";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +133,9 @@ function Router() {
       <Route path="/crm/quotes" component={() => <ProtectedRoute component={CrmQuotes} />} />
       <Route path="/crm/templates" component={() => <ProtectedRoute component={CrmTemplates} />} />
       <Route path="/crm/reminders" component={() => <ProtectedRoute component={CrmReminders} />} />
+      <Route path="/operations/dashboard"   component={() => <ProtectedRoute component={OperationDashboard} />} />
+      <Route path="/operations/report"      component={() => <ProtectedRoute component={OperationReport} />} />
+      <Route path="/operations/consumables" component={() => <ProtectedRoute component={ConsumablesPage} />} />
       <Route component={NotFound} />
     </Switch>
   );
