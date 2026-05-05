@@ -1,0 +1,216 @@
+Tu es un développeur full-stack senior expert ERP RH.
+
+Objectif :
+Créer un module DEMANDES RH professionnel avec :
+- création de demandes (multi-types)
+- workflow validation (manager + RH)
+- génération de document imprimable (PDF)
+- auto-remplissage des données
+- export PDF et archivage
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind + React Hook Form
+- PDF : Puppeteer
+- Validation : Zod
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model HRRequest {
+  id            String   @id @default(uuid())
+  employeeId    String
+  type          String   // leave, advance, attestation, mission
+
+  startDate     DateTime?
+  endDate       DateTime?
+  amount        Float?
+  reason        String?
+
+  status        String   // draft, pending, manager_approved, hr_approved, rejected
+
+  managerId     String?
+  hrId          String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+-----------------------------------
+
+model HRRequestLog {
+  id          String   @id @default(uuid())
+  requestId   String
+  action      String   // created, approved, rejected
+  userId      String
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+-----------------------------------
+2. TYPES DE DEMANDES
+-----------------------------------
+
+- Congé
+- Avance sur salaire
+- Attestation de travail
+- Ordre de mission
+
+-----------------------------------
+3. WORKFLOW VALIDATION
+-----------------------------------
+
+1. employé crée demande → status = pending
+2. manager valide → manager_approved
+3. RH valide → hr_approved
+4. rejet possible à chaque étape
+
+-----------------------------------
+4. AUTO-REMPLISSAGE
+-----------------------------------
+
+Récupérer :
+
+- nom employé
+- matricule
+- poste
+- département
+- solde congés (si type = leave)
+- salaire (si avance)
+
+-----------------------------------
+5. TEMPLATE DOCUMENT PDF
+-----------------------------------
+
+Créer :
+
+/templates/hr_request.html
+
+-----------------------------------
+
+STRUCTURE :
+
+HEADER :
+- logo entreprise
+- nom entreprise
+- adresse
+
+-----------------------------------
+
+TITRE :
+"DEMANDE OFFICIELLE"
+
+-----------------------------------
+
+INFOS EMPLOYÉ :
+- Nom
+- Matricule
+- Poste
+
+-----------------------------------
+
+CONTENU :
+- Type demande
+- Dates / montant
+- Motif
+
+-----------------------------------
+
+SIGNATURES :
+- Employé
+- Manager
+- RH
+
+-----------------------------------
+
+FOOTER :
+- date génération
+- référence document
+
+-----------------------------------
+6. API PDF
+-----------------------------------
+
+GET /api/hr/request/:id/pdf
+
+LOGIQUE :
+
+- récupérer request
+- récupérer employee
+- récupérer branding
+- injecter HTML
+- générer PDF
+
+-----------------------------------
+7. UI EMPLOYÉ
+-----------------------------------
+
+/hr/requests
+
+-----------------------------------
+
+Fonctionnalités :
+
+- créer demande
+- voir statut
+- télécharger PDF
+
+-----------------------------------
+8. UI RH
+-----------------------------------
+
+/hr/requests/admin
+
+-----------------------------------
+
+Fonctionnalités :
+
+- valider / refuser
+- filtrer (type, statut)
+- historique
+
+-----------------------------------
+9. VALIDATION
+-----------------------------------
+
+- congé ≤ solde
+- avance ≤ % salaire
+- dates valides
+
+-----------------------------------
+10. EXPORT
+-----------------------------------
+
+- PDF individuel
+- export Excel (liste demandes)
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- employé voit ses demandes
+- RH voit tout
+- manager voit son équipe
+
+-----------------------------------
+12. BONUS PRO
+-----------------------------------
+
+- signature numérique
+- QR code vérification
+- numéro unique document
+
+-----------------------------------
+13. LIVRABLE
+-----------------------------------
+
+- module demandes complet
+- document officiel PDF
+- workflow pro
+
+Commence par :
+1. modèles Prisma
+2. template PDF
+3. API export
