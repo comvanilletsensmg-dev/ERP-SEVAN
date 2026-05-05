@@ -1,0 +1,263 @@
+Tu es un développeur full-stack senior expert ERP logistique export.
+
+Objectif :
+Créer un système complet connecté :
+
+- planning production
+- stock (lots vanille)
+- commandes export
+- congés employés
+
+Le système doit être AUTOMATIQUE, INTELLIGENT et CONNECTÉ.
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- Calendar : FullCalendar
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Lot {
+  id            String @id @default(uuid())
+  quantityKg    Float
+  status        String   // raw, drying, ready, exported
+  quality       String
+}
+
+-----------------------------------
+
+model ProductionTask {
+  id            String @id @default(uuid())
+  lotId         String
+  type          String   // drying, sorting, packaging
+  startDate     DateTime
+  endDate       DateTime
+  requiredStaff Int
+}
+
+-----------------------------------
+
+model ExportOrder {
+  id            String @id @default(uuid())
+  clientId      String
+  quantityKg    Float
+  status        String   // pending, preparing, shipped
+  deadline      DateTime
+}
+
+-----------------------------------
+
+model TaskAssignment {
+  id          String @id @default(uuid())
+  taskId      String
+  employeeId  String
+}
+
+-----------------------------------
+2. LIEN PRODUCTION ↔ STOCK
+-----------------------------------
+
+Quand une tâche est créée :
+
+- associer à un lot
+- vérifier stock disponible
+
+-----------------------------------
+
+LOGIQUE :
+
+if lot.quantityKg < task.requiredQuantity:
+  bloquer tâche
+
+-----------------------------------
+
+Quand tâche terminée :
+
+- mettre à jour statut lot
+
+ex :
+
+drying → ready
+
+-----------------------------------
+3. LIEN PRODUCTION ↔ COMMANDES EXPORT
+-----------------------------------
+
+Créer service :
+
+linkProductionToOrders()
+
+-----------------------------------
+
+LOGIQUE :
+
+- récupérer commandes export
+- trier par deadline (priorité)
+- assigner lots disponibles
+
+-----------------------------------
+
+SI :
+
+lot.ready >= order.quantity
+
+→ assigner lot à commande
+
+-----------------------------------
+
+SINON :
+
+→ créer tâche production automatique
+
+-----------------------------------
+4. PLANIFICATION AUTOMATIQUE
+-----------------------------------
+
+Créer :
+
+autoScheduleProduction()
+
+-----------------------------------
+
+LOGIQUE :
+
+- analyser commandes en attente
+- vérifier stock
+- créer tâches manquantes
+
+-----------------------------------
+5. CONSOMMATION STOCK
+-----------------------------------
+
+Quand commande validée :
+
+- déduire stock :
+
+lot.quantityKg -= order.quantityKg
+
+-----------------------------------
+
+Changer statut :
+
+ready → exported
+
+-----------------------------------
+6. CALENDRIER GLOBAL
+-----------------------------------
+
+Afficher :
+
+- production (bleu)
+- congés (rouge)
+- commandes urgentes (violet)
+
+-----------------------------------
+7. PRIORITÉ INTELLIGENTE
+-----------------------------------
+
+Tri :
+
+1. commandes export urgentes
+2. qualité élevée
+3. production interne
+
+-----------------------------------
+8. DASHBOARD GLOBAL
+-----------------------------------
+
+Afficher :
+
+- stock total (kg)
+- commandes en attente
+- production en cours
+- capacité réelle
+
+-----------------------------------
+9. ALERTES AUTOMATIQUES
+-----------------------------------
+
+SI :
+
+stock < commandes
+
+→ "Production insuffisante"
+
+-----------------------------------
+
+SI :
+
+retard production
+
+→ "Risque retard export"
+
+-----------------------------------
+10. INTÉGRATION CONGÉS
+-----------------------------------
+
+Avant assigner tâche :
+
+- vérifier disponibilité employé
+
+-----------------------------------
+
+SI manque personnel :
+
+→ ajuster planning
+
+-----------------------------------
+11. AUTOMATISATION AVANCÉE
+-----------------------------------
+
+A. Suggestion automatique :
+
+- proposer meilleurs lots
+
+-----------------------------------
+
+B. IA prévision :
+
+- prédire manque stock
+
+-----------------------------------
+
+C. Optimisation :
+
+- regrouper tâches similaires
+
+-----------------------------------
+12. UI
+-----------------------------------
+
+Page :
+
+/logistics/planning
+
+-----------------------------------
+
+Sections :
+
+- calendrier
+- commandes
+- stock
+
+-----------------------------------
+13. SÉCURITÉ
+-----------------------------------
+
+- LOG_MANAGER uniquement
+
+-----------------------------------
+14. LIVRABLE
+-----------------------------------
+
+- système connecté complet
+- zéro rupture stock
+- export maîtrisé
+
+Commence par :
+1. modèles Prisma
+2. lien stock
+3. lien commandes

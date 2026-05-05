@@ -714,6 +714,230 @@ paths:
               schema:
                 $ref: "#/components/schemas/Leave"
 
+  /planning/tasks:
+    get:
+      operationId: getPlanningTasks
+      tags: [planning]
+      summary: List production tasks
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: lotId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of production tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductionTask"
+    post:
+      operationId: createPlanningTask
+      tags: [planning]
+      summary: Create a production task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductionTaskBody"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionTask"
+
+  /planning/tasks/{id}:
+    put:
+      operationId: updatePlanningTask
+      tags: [planning]
+      summary: Update a production task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductionTaskBody"
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionTask"
+    delete:
+      operationId: deletePlanningTask
+      tags: [planning]
+      summary: Delete a production task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/orders:
+    get:
+      operationId: getExportOrders
+      tags: [planning]
+      summary: List export orders
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of export orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExportOrder"
+    post:
+      operationId: createExportOrder
+      tags: [planning]
+      summary: Create an export order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportOrderBody"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportOrder"
+
+  /planning/orders/{id}:
+    put:
+      operationId: updateExportOrder
+      tags: [planning]
+      summary: Update an export order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportOrderBody"
+      responses:
+        "200":
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportOrder"
+    delete:
+      operationId: deleteExportOrder
+      tags: [planning]
+      summary: Delete an export order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/orders/{id}/ship:
+    post:
+      operationId: shipExportOrder
+      tags: [planning]
+      summary: Mark an export order as shipped (deducts stock)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Order shipped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportOrder"
+
+  /planning/calendar:
+    get:
+      operationId: getPlanningCalendar
+      tags: [planning]
+      summary: Get all calendar events (tasks + leaves + urgent orders)
+      parameters:
+        - name: month
+          in: query
+          schema: { type: string }
+          description: YYYY-MM
+      responses:
+        "200":
+          description: Calendar events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanningCalendarEvent"
+
+  /planning/stats:
+    get:
+      operationId: getPlanningStats
+      tags: [planning]
+      summary: Get planning dashboard stats and alerts
+      responses:
+        "200":
+          description: Planning stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanningStats"
+
+  /planning/auto-schedule:
+    post:
+      operationId: autoSchedulePlanning
+      tags: [planning]
+      summary: Auto-schedule production tasks from pending orders
+      responses:
+        "200":
+          description: Auto-schedule result
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /planning/link-orders:
+    post:
+      operationId: linkProductionToOrders
+      tags: [planning]
+      summary: Link available lots to pending export orders
+      responses:
+        "200":
+          description: Link result
+          content:
+            application/json:
+              schema:
+                type: object
+
   /attendance:
     get:
       operationId: getAttendance
@@ -2842,3 +3066,87 @@ components:
         - tvaCollectee
         - tvaDeduite
         - solde
+
+    ProductionTask:
+      type: object
+      properties:
+        id:          { type: string }
+        lotId:       { type: string, nullable: true }
+        type:        { type: string }
+        status:      { type: string }
+        startDate:   { type: string }
+        endDate:     { type: string }
+        requiredStaff: { type: number }
+        notes:       { type: string, nullable: true }
+        autoCreated: { type: string }
+        createdAt:   { type: string }
+        lot:         { type: object, nullable: true }
+        assignees:   { type: array, items: { type: object } }
+      required: [id, type, status, startDate, endDate, requiredStaff, createdAt]
+
+    ExportOrder:
+      type: object
+      properties:
+        id:          { type: string }
+        reference:   { type: string }
+        clientName:  { type: string }
+        clientId:    { type: string, nullable: true }
+        quantityKg:  { type: number }
+        status:      { type: string }
+        priority:    { type: number }
+        deadline:    { type: string }
+        lotId:       { type: string, nullable: true }
+        destination: { type: string, nullable: true }
+        notes:       { type: string, nullable: true }
+        createdAt:   { type: string }
+        lot:         { type: object, nullable: true }
+      required: [id, reference, clientName, quantityKg, status, priority, deadline, createdAt]
+
+    CreateProductionTaskBody:
+      type: object
+      properties:
+        lotId:         { type: string, nullable: true }
+        type:          { type: string }
+        startDate:     { type: string }
+        endDate:       { type: string }
+        requiredStaff: { type: number }
+        notes:         { type: string, nullable: true }
+        assigneeIds:   { type: array, items: { type: string } }
+      required: [type, startDate, endDate, requiredStaff]
+
+    CreateExportOrderBody:
+      type: object
+      properties:
+        reference:   { type: string }
+        clientName:  { type: string }
+        clientId:    { type: string, nullable: true }
+        quantityKg:  { type: number }
+        priority:    { type: number }
+        deadline:    { type: string }
+        lotId:       { type: string, nullable: true }
+        destination: { type: string, nullable: true }
+        notes:       { type: string, nullable: true }
+      required: [reference, clientName, quantityKg, deadline]
+
+    PlanningCalendarEvent:
+      type: object
+      properties:
+        id:       { type: string }
+        type:     { type: string }
+        title:    { type: string }
+        start:    { type: string }
+        end:      { type: string }
+        color:    { type: string }
+        meta:     { type: object }
+      required: [id, type, title, start, end, color]
+
+    PlanningStats:
+      type: object
+      properties:
+        totalStockKg:      { type: number }
+        pendingOrdersKg:   { type: number }
+        stockAlert:        { type: boolean }
+        activeTasksCount:  { type: number }
+        pendingOrdersCount: { type: number }
+        alerts:            { type: array, items: { type: object } }
+      required: [totalStockKg, pendingOrdersKg, stockAlert, activeTasksCount, pendingOrdersCount, alerts]

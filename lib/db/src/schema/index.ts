@@ -39,3 +39,4 @@ export * from "./risk_events";
 export * from "./departments";
 export * from "./company_settings";
 export * from "./platform_settings";
+export * from "./planning";

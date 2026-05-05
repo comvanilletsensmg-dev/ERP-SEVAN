@@ -14,10 +14,11 @@ import {
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
 const logisticsNav = [
+  { label: "Planning & Export",   href: "/logistics/planning",        icon: Workflow },
   { label: "Fournisseurs",        href: "/suppliers",                 icon: Users },
   { label: "Achats",              href: "/purchases",                 icon: ShoppingCart },
   { label: "Lots",                href: "/lots",                      icon: Package },
-  { label: "Statuts vanille",     href: "/logistics/lots-status",     icon: Workflow },
+  { label: "Statuts vanille",     href: "/logistics/lots-status",     icon: Target },
   { label: "Lots à risque",       href: "/logistics/risk",            icon: ShieldAlert },
   { label: "IA Vanille",          href: "/logistics/ai",              icon: Brain },
   { label: "Paiements",           href: "/payments",                  icon: CreditCard },

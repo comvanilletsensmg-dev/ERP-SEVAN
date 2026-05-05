@@ -869,6 +869,228 @@ export const ApproveLeaveResponse = zod.object({
 });
 
 /**
+ * @summary List production tasks
+ */
+export const GetPlanningTasksQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+  lotId: zod.coerce.string().optional(),
+});
+
+export const GetPlanningTasksResponseItem = zod.object({
+  id: zod.string(),
+  lotId: zod.string().nullish(),
+  type: zod.string(),
+  status: zod.string(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  requiredStaff: zod.number(),
+  notes: zod.string().nullish(),
+  autoCreated: zod.string().optional(),
+  createdAt: zod.string(),
+  lot: zod.object({}).passthrough().nullish(),
+  assignees: zod.array(zod.object({}).passthrough()).optional(),
+});
+export const GetPlanningTasksResponse = zod.array(GetPlanningTasksResponseItem);
+
+/**
+ * @summary Create a production task
+ */
+export const CreatePlanningTaskBody = zod.object({
+  lotId: zod.string().nullish(),
+  type: zod.string(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  requiredStaff: zod.number(),
+  notes: zod.string().nullish(),
+  assigneeIds: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Update a production task
+ */
+export const UpdatePlanningTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdatePlanningTaskBody = zod.object({
+  lotId: zod.string().nullish(),
+  type: zod.string(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  requiredStaff: zod.number(),
+  notes: zod.string().nullish(),
+  assigneeIds: zod.array(zod.string()).optional(),
+});
+
+export const UpdatePlanningTaskResponse = zod.object({
+  id: zod.string(),
+  lotId: zod.string().nullish(),
+  type: zod.string(),
+  status: zod.string(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  requiredStaff: zod.number(),
+  notes: zod.string().nullish(),
+  autoCreated: zod.string().optional(),
+  createdAt: zod.string(),
+  lot: zod.object({}).passthrough().nullish(),
+  assignees: zod.array(zod.object({}).passthrough()).optional(),
+});
+
+/**
+ * @summary Delete a production task
+ */
+export const DeletePlanningTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List export orders
+ */
+export const GetExportOrdersQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+});
+
+export const GetExportOrdersResponseItem = zod.object({
+  id: zod.string(),
+  reference: zod.string(),
+  clientName: zod.string(),
+  clientId: zod.string().nullish(),
+  quantityKg: zod.number(),
+  status: zod.string(),
+  priority: zod.number(),
+  deadline: zod.string(),
+  lotId: zod.string().nullish(),
+  destination: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+  lot: zod.object({}).passthrough().nullish(),
+});
+export const GetExportOrdersResponse = zod.array(GetExportOrdersResponseItem);
+
+/**
+ * @summary Create an export order
+ */
+export const CreateExportOrderBody = zod.object({
+  reference: zod.string(),
+  clientName: zod.string(),
+  clientId: zod.string().nullish(),
+  quantityKg: zod.number(),
+  priority: zod.number().optional(),
+  deadline: zod.string(),
+  lotId: zod.string().nullish(),
+  destination: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update an export order
+ */
+export const UpdateExportOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateExportOrderBody = zod.object({
+  reference: zod.string(),
+  clientName: zod.string(),
+  clientId: zod.string().nullish(),
+  quantityKg: zod.number(),
+  priority: zod.number().optional(),
+  deadline: zod.string(),
+  lotId: zod.string().nullish(),
+  destination: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateExportOrderResponse = zod.object({
+  id: zod.string(),
+  reference: zod.string(),
+  clientName: zod.string(),
+  clientId: zod.string().nullish(),
+  quantityKg: zod.number(),
+  status: zod.string(),
+  priority: zod.number(),
+  deadline: zod.string(),
+  lotId: zod.string().nullish(),
+  destination: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+  lot: zod.object({}).passthrough().nullish(),
+});
+
+/**
+ * @summary Delete an export order
+ */
+export const DeleteExportOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Mark an export order as shipped (deducts stock)
+ */
+export const ShipExportOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ShipExportOrderResponse = zod.object({
+  id: zod.string(),
+  reference: zod.string(),
+  clientName: zod.string(),
+  clientId: zod.string().nullish(),
+  quantityKg: zod.number(),
+  status: zod.string(),
+  priority: zod.number(),
+  deadline: zod.string(),
+  lotId: zod.string().nullish(),
+  destination: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+  lot: zod.object({}).passthrough().nullish(),
+});
+
+/**
+ * @summary Get all calendar events (tasks + leaves + urgent orders)
+ */
+export const GetPlanningCalendarQueryParams = zod.object({
+  month: zod.coerce.string().optional().describe("YYYY-MM"),
+});
+
+export const GetPlanningCalendarResponseItem = zod.object({
+  id: zod.string(),
+  type: zod.string(),
+  title: zod.string(),
+  start: zod.string(),
+  end: zod.string(),
+  color: zod.string(),
+  meta: zod.object({}).passthrough().optional(),
+});
+export const GetPlanningCalendarResponse = zod.array(
+  GetPlanningCalendarResponseItem,
+);
+
+/**
+ * @summary Get planning dashboard stats and alerts
+ */
+export const GetPlanningStatsResponse = zod.object({
+  totalStockKg: zod.number(),
+  pendingOrdersKg: zod.number(),
+  stockAlert: zod.boolean(),
+  activeTasksCount: zod.number(),
+  pendingOrdersCount: zod.number(),
+  alerts: zod.array(zod.object({}).passthrough()),
+});
+
+/**
+ * @summary Auto-schedule production tasks from pending orders
+ */
+export const AutoSchedulePlanningResponse = zod.object({}).passthrough();
+
+/**
+ * @summary Link available lots to pending export orders
+ */
+export const LinkProductionToOrdersResponse = zod.object({}).passthrough();
+
+/**
  * @summary List attendance records
  */
 export const GetAttendanceQueryParams = zod.object({

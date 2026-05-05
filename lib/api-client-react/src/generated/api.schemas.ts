@@ -601,6 +601,88 @@ export interface TvaReport {
   fromInvoices?: TvaReportFromInvoices;
 }
 
+export type ProductionTaskLot = { [key: string]: unknown } | null;
+
+export type ProductionTaskAssigneesItem = { [key: string]: unknown };
+
+export interface ProductionTask {
+  id: string;
+  lotId?: string | null;
+  type: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  requiredStaff: number;
+  notes?: string | null;
+  autoCreated?: string;
+  createdAt: string;
+  lot?: ProductionTaskLot;
+  assignees?: ProductionTaskAssigneesItem[];
+}
+
+export type ExportOrderLot = { [key: string]: unknown } | null;
+
+export interface ExportOrder {
+  id: string;
+  reference: string;
+  clientName: string;
+  clientId?: string | null;
+  quantityKg: number;
+  status: string;
+  priority: number;
+  deadline: string;
+  lotId?: string | null;
+  destination?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  lot?: ExportOrderLot;
+}
+
+export interface CreateProductionTaskBody {
+  lotId?: string | null;
+  type: string;
+  startDate: string;
+  endDate: string;
+  requiredStaff: number;
+  notes?: string | null;
+  assigneeIds?: string[];
+}
+
+export interface CreateExportOrderBody {
+  reference: string;
+  clientName: string;
+  clientId?: string | null;
+  quantityKg: number;
+  priority?: number;
+  deadline: string;
+  lotId?: string | null;
+  destination?: string | null;
+  notes?: string | null;
+}
+
+export type PlanningCalendarEventMeta = { [key: string]: unknown };
+
+export interface PlanningCalendarEvent {
+  id: string;
+  type: string;
+  title: string;
+  start: string;
+  end: string;
+  color: string;
+  meta?: PlanningCalendarEventMeta;
+}
+
+export type PlanningStatsAlertsItem = { [key: string]: unknown };
+
+export interface PlanningStats {
+  totalStockKg: number;
+  pendingOrdersKg: number;
+  stockAlert: boolean;
+  activeTasksCount: number;
+  pendingOrdersCount: number;
+  alerts: PlanningStatsAlertsItem[];
+}
+
 export type GetLeavesParams = {
   /**
    * Filter by employee
@@ -626,6 +708,26 @@ export type GetLeaveBalancesParams = {
 export type GetLeaveBalanceParams = {
   year?: number;
 };
+
+export type GetPlanningTasksParams = {
+  status?: string;
+  lotId?: string;
+};
+
+export type GetExportOrdersParams = {
+  status?: string;
+};
+
+export type GetPlanningCalendarParams = {
+  /**
+   * YYYY-MM
+   */
+  month?: string;
+};
+
+export type AutoSchedulePlanning200 = { [key: string]: unknown };
+
+export type LinkProductionToOrders200 = { [key: string]: unknown };
 
 export type GetAttendanceParams = {
   /**

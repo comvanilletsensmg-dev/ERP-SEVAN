@@ -23,6 +23,7 @@ import type {
   ActivityItem,
   ApproveLeaveBody,
   AttendanceRecord,
+  AutoSchedulePlanning200,
   BalanceLine,
   BankTransaction,
   BonusRecord,
@@ -36,12 +37,14 @@ import type {
   CreateCandidateBody,
   CreateClientBody,
   CreateEmployeeBody,
+  CreateExportOrderBody,
   CreateHrRequestBody,
   CreateInvoiceBody,
   CreateLeaveBody,
   CreateOnboardingTaskBody,
   CreatePartnerBody,
   CreatePaymentBody,
+  CreateProductionTaskBody,
   CreatePurchaseBody,
   CreateSaleBody,
   CreateSupplierBody,
@@ -49,17 +52,21 @@ import type {
   DepreciateAsset200,
   Employee,
   ErrorResponse,
+  ExportOrder,
   FixedAsset,
   GeneratePayrollBody,
   GetAttendanceMonthParams,
   GetAttendanceParams,
   GetBonusesParams,
+  GetExportOrdersParams,
   GetInvoicesParams,
   GetLeaveBalanceParams,
   GetLeaveBalancesParams,
   GetLeavesParams,
   GetOnboardingTasksParams,
   GetPayrollsParams,
+  GetPlanningCalendarParams,
+  GetPlanningTasksParams,
   HealthStatus,
   HrDashboardSummary,
   HrRequest,
@@ -70,6 +77,7 @@ import type {
   Leave,
   LeaveBalance,
   LeaveStats,
+  LinkProductionToOrders200,
   LoginBody,
   LoginResponse,
   Lot,
@@ -79,6 +87,9 @@ import type {
   OnboardingTask,
   Payment,
   PayrollRecord,
+  PlanningCalendarEvent,
+  PlanningStats,
+  ProductionTask,
   Purchase,
   PurchaseWithLot,
   Sale,
@@ -3173,6 +3184,1138 @@ export const useApproveLeave = <
   TContext
 > => {
   return useMutation(getApproveLeaveMutationOptions(options));
+};
+
+/**
+ * @summary List production tasks
+ */
+export const getGetPlanningTasksUrl = (params?: GetPlanningTasksParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/planning/tasks?${stringifiedParams}`
+    : `/api/planning/tasks`;
+};
+
+export const getPlanningTasks = async (
+  params?: GetPlanningTasksParams,
+  options?: RequestInit,
+): Promise<ProductionTask[]> => {
+  return customFetch<ProductionTask[]>(getGetPlanningTasksUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlanningTasksQueryKey = (
+  params?: GetPlanningTasksParams,
+) => {
+  return [`/api/planning/tasks`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPlanningTasksQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlanningTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPlanningTasksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlanningTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPlanningTasksQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPlanningTasks>>
+  > = ({ signal }) => getPlanningTasks(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlanningTasks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlanningTasksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlanningTasks>>
+>;
+export type GetPlanningTasksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List production tasks
+ */
+
+export function useGetPlanningTasks<
+  TData = Awaited<ReturnType<typeof getPlanningTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPlanningTasksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlanningTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlanningTasksQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a production task
+ */
+export const getCreatePlanningTaskUrl = () => {
+  return `/api/planning/tasks`;
+};
+
+export const createPlanningTask = async (
+  createProductionTaskBody: CreateProductionTaskBody,
+  options?: RequestInit,
+): Promise<ProductionTask> => {
+  return customFetch<ProductionTask>(getCreatePlanningTaskUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProductionTaskBody),
+  });
+};
+
+export const getCreatePlanningTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlanningTask>>,
+    TError,
+    { data: BodyType<CreateProductionTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPlanningTask>>,
+  TError,
+  { data: BodyType<CreateProductionTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["createPlanningTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPlanningTask>>,
+    { data: BodyType<CreateProductionTaskBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPlanningTask(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePlanningTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPlanningTask>>
+>;
+export type CreatePlanningTaskMutationBody = BodyType<CreateProductionTaskBody>;
+export type CreatePlanningTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a production task
+ */
+export const useCreatePlanningTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlanningTask>>,
+    TError,
+    { data: BodyType<CreateProductionTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPlanningTask>>,
+  TError,
+  { data: BodyType<CreateProductionTaskBody> },
+  TContext
+> => {
+  return useMutation(getCreatePlanningTaskMutationOptions(options));
+};
+
+/**
+ * @summary Update a production task
+ */
+export const getUpdatePlanningTaskUrl = (id: string) => {
+  return `/api/planning/tasks/${id}`;
+};
+
+export const updatePlanningTask = async (
+  id: string,
+  createProductionTaskBody: CreateProductionTaskBody,
+  options?: RequestInit,
+): Promise<ProductionTask> => {
+  return customFetch<ProductionTask>(getUpdatePlanningTaskUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProductionTaskBody),
+  });
+};
+
+export const getUpdatePlanningTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlanningTask>>,
+    TError,
+    { id: string; data: BodyType<CreateProductionTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePlanningTask>>,
+  TError,
+  { id: string; data: BodyType<CreateProductionTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePlanningTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePlanningTask>>,
+    { id: string; data: BodyType<CreateProductionTaskBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePlanningTask(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePlanningTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePlanningTask>>
+>;
+export type UpdatePlanningTaskMutationBody = BodyType<CreateProductionTaskBody>;
+export type UpdatePlanningTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a production task
+ */
+export const useUpdatePlanningTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlanningTask>>,
+    TError,
+    { id: string; data: BodyType<CreateProductionTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePlanningTask>>,
+  TError,
+  { id: string; data: BodyType<CreateProductionTaskBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePlanningTaskMutationOptions(options));
+};
+
+/**
+ * @summary Delete a production task
+ */
+export const getDeletePlanningTaskUrl = (id: string) => {
+  return `/api/planning/tasks/${id}`;
+};
+
+export const deletePlanningTask = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePlanningTaskUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePlanningTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlanningTask>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePlanningTask>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deletePlanningTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePlanningTask>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePlanningTask(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePlanningTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePlanningTask>>
+>;
+
+export type DeletePlanningTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a production task
+ */
+export const useDeletePlanningTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlanningTask>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePlanningTask>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeletePlanningTaskMutationOptions(options));
+};
+
+/**
+ * @summary List export orders
+ */
+export const getGetExportOrdersUrl = (params?: GetExportOrdersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/planning/orders?${stringifiedParams}`
+    : `/api/planning/orders`;
+};
+
+export const getExportOrders = async (
+  params?: GetExportOrdersParams,
+  options?: RequestInit,
+): Promise<ExportOrder[]> => {
+  return customFetch<ExportOrder[]>(getGetExportOrdersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExportOrdersQueryKey = (params?: GetExportOrdersParams) => {
+  return [`/api/planning/orders`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetExportOrdersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExportOrders>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetExportOrdersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExportOrders>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetExportOrdersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getExportOrders>>> = ({
+    signal,
+  }) => getExportOrders(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExportOrders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExportOrdersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExportOrders>>
+>;
+export type GetExportOrdersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List export orders
+ */
+
+export function useGetExportOrders<
+  TData = Awaited<ReturnType<typeof getExportOrders>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetExportOrdersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getExportOrders>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExportOrdersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an export order
+ */
+export const getCreateExportOrderUrl = () => {
+  return `/api/planning/orders`;
+};
+
+export const createExportOrder = async (
+  createExportOrderBody: CreateExportOrderBody,
+  options?: RequestInit,
+): Promise<ExportOrder> => {
+  return customFetch<ExportOrder>(getCreateExportOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExportOrderBody),
+  });
+};
+
+export const getCreateExportOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExportOrder>>,
+    TError,
+    { data: BodyType<CreateExportOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createExportOrder>>,
+  TError,
+  { data: BodyType<CreateExportOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createExportOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createExportOrder>>,
+    { data: BodyType<CreateExportOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createExportOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateExportOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createExportOrder>>
+>;
+export type CreateExportOrderMutationBody = BodyType<CreateExportOrderBody>;
+export type CreateExportOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an export order
+ */
+export const useCreateExportOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createExportOrder>>,
+    TError,
+    { data: BodyType<CreateExportOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createExportOrder>>,
+  TError,
+  { data: BodyType<CreateExportOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreateExportOrderMutationOptions(options));
+};
+
+/**
+ * @summary Update an export order
+ */
+export const getUpdateExportOrderUrl = (id: string) => {
+  return `/api/planning/orders/${id}`;
+};
+
+export const updateExportOrder = async (
+  id: string,
+  createExportOrderBody: CreateExportOrderBody,
+  options?: RequestInit,
+): Promise<ExportOrder> => {
+  return customFetch<ExportOrder>(getUpdateExportOrderUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExportOrderBody),
+  });
+};
+
+export const getUpdateExportOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExportOrder>>,
+    TError,
+    { id: string; data: BodyType<CreateExportOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateExportOrder>>,
+  TError,
+  { id: string; data: BodyType<CreateExportOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["updateExportOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateExportOrder>>,
+    { id: string; data: BodyType<CreateExportOrderBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateExportOrder(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateExportOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateExportOrder>>
+>;
+export type UpdateExportOrderMutationBody = BodyType<CreateExportOrderBody>;
+export type UpdateExportOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an export order
+ */
+export const useUpdateExportOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateExportOrder>>,
+    TError,
+    { id: string; data: BodyType<CreateExportOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateExportOrder>>,
+  TError,
+  { id: string; data: BodyType<CreateExportOrderBody> },
+  TContext
+> => {
+  return useMutation(getUpdateExportOrderMutationOptions(options));
+};
+
+/**
+ * @summary Delete an export order
+ */
+export const getDeleteExportOrderUrl = (id: string) => {
+  return `/api/planning/orders/${id}`;
+};
+
+export const deleteExportOrder = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteExportOrderUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteExportOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExportOrder>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteExportOrder>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteExportOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteExportOrder>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteExportOrder(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteExportOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteExportOrder>>
+>;
+
+export type DeleteExportOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an export order
+ */
+export const useDeleteExportOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteExportOrder>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteExportOrder>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteExportOrderMutationOptions(options));
+};
+
+/**
+ * @summary Mark an export order as shipped (deducts stock)
+ */
+export const getShipExportOrderUrl = (id: string) => {
+  return `/api/planning/orders/${id}/ship`;
+};
+
+export const shipExportOrder = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ExportOrder> => {
+  return customFetch<ExportOrder>(getShipExportOrderUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getShipExportOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shipExportOrder>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof shipExportOrder>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["shipExportOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof shipExportOrder>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return shipExportOrder(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ShipExportOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof shipExportOrder>>
+>;
+
+export type ShipExportOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark an export order as shipped (deducts stock)
+ */
+export const useShipExportOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shipExportOrder>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof shipExportOrder>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getShipExportOrderMutationOptions(options));
+};
+
+/**
+ * @summary Get all calendar events (tasks + leaves + urgent orders)
+ */
+export const getGetPlanningCalendarUrl = (
+  params?: GetPlanningCalendarParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/planning/calendar?${stringifiedParams}`
+    : `/api/planning/calendar`;
+};
+
+export const getPlanningCalendar = async (
+  params?: GetPlanningCalendarParams,
+  options?: RequestInit,
+): Promise<PlanningCalendarEvent[]> => {
+  return customFetch<PlanningCalendarEvent[]>(
+    getGetPlanningCalendarUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPlanningCalendarQueryKey = (
+  params?: GetPlanningCalendarParams,
+) => {
+  return [`/api/planning/calendar`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPlanningCalendarQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlanningCalendar>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPlanningCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlanningCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPlanningCalendarQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPlanningCalendar>>
+  > = ({ signal }) =>
+    getPlanningCalendar(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlanningCalendar>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlanningCalendarQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlanningCalendar>>
+>;
+export type GetPlanningCalendarQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all calendar events (tasks + leaves + urgent orders)
+ */
+
+export function useGetPlanningCalendar<
+  TData = Awaited<ReturnType<typeof getPlanningCalendar>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPlanningCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlanningCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlanningCalendarQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get planning dashboard stats and alerts
+ */
+export const getGetPlanningStatsUrl = () => {
+  return `/api/planning/stats`;
+};
+
+export const getPlanningStats = async (
+  options?: RequestInit,
+): Promise<PlanningStats> => {
+  return customFetch<PlanningStats>(getGetPlanningStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlanningStatsQueryKey = () => {
+  return [`/api/planning/stats`] as const;
+};
+
+export const getGetPlanningStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlanningStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPlanningStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPlanningStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPlanningStats>>
+  > = ({ signal }) => getPlanningStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlanningStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlanningStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlanningStats>>
+>;
+export type GetPlanningStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get planning dashboard stats and alerts
+ */
+
+export function useGetPlanningStats<
+  TData = Awaited<ReturnType<typeof getPlanningStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPlanningStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlanningStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Auto-schedule production tasks from pending orders
+ */
+export const getAutoSchedulePlanningUrl = () => {
+  return `/api/planning/auto-schedule`;
+};
+
+export const autoSchedulePlanning = async (
+  options?: RequestInit,
+): Promise<AutoSchedulePlanning200> => {
+  return customFetch<AutoSchedulePlanning200>(getAutoSchedulePlanningUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAutoSchedulePlanningMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof autoSchedulePlanning>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof autoSchedulePlanning>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["autoSchedulePlanning"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof autoSchedulePlanning>>,
+    void
+  > = () => {
+    return autoSchedulePlanning(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AutoSchedulePlanningMutationResult = NonNullable<
+  Awaited<ReturnType<typeof autoSchedulePlanning>>
+>;
+
+export type AutoSchedulePlanningMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Auto-schedule production tasks from pending orders
+ */
+export const useAutoSchedulePlanning = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof autoSchedulePlanning>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof autoSchedulePlanning>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getAutoSchedulePlanningMutationOptions(options));
+};
+
+/**
+ * @summary Link available lots to pending export orders
+ */
+export const getLinkProductionToOrdersUrl = () => {
+  return `/api/planning/link-orders`;
+};
+
+export const linkProductionToOrders = async (
+  options?: RequestInit,
+): Promise<LinkProductionToOrders200> => {
+  return customFetch<LinkProductionToOrders200>(
+    getLinkProductionToOrdersUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getLinkProductionToOrdersMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkProductionToOrders>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof linkProductionToOrders>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["linkProductionToOrders"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof linkProductionToOrders>>,
+    void
+  > = () => {
+    return linkProductionToOrders(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LinkProductionToOrdersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof linkProductionToOrders>>
+>;
+
+export type LinkProductionToOrdersMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Link available lots to pending export orders
+ */
+export const useLinkProductionToOrders = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkProductionToOrders>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof linkProductionToOrders>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getLinkProductionToOrdersMutationOptions(options));
 };
 
 /**
