@@ -94,11 +94,60 @@ router.get("/operations/dashboard", loadUser, async (req, res): Promise<void> =>
   });
 });
 
-// ── GET /operations/reports ────────────────────────────────────────────────────
+// ── GET /operations/reports ─────────────────────────────────────────────────────
+// Returns reports with computed lot-status totals (for history page)
 router.get("/operations/reports", loadUser, async (_req, res): Promise<void> => {
   const reports = await db.select().from(operationReportsTable)
-    .orderBy(desc(operationReportsTable.date)).limit(30);
-  res.json(reports.map(fmtReport));
+    .orderBy(desc(operationReportsTable.date)).limit(60);
+
+  // For each report, aggregate lot statuses in one query
+  const reportIds = reports.map(r => r.id);
+  let lotAgg: { reportId: string; status: string; total: number }[] = [];
+  if (reportIds.length > 0) {
+    lotAgg = await db
+      .select({
+        reportId: operationLotStatusesTable.reportId,
+        status:   operationLotStatusesTable.status,
+        total:    sql<number>`COALESCE(SUM(${operationLotStatusesTable.quantityKg}), 0)`,
+      })
+      .from(operationLotStatusesTable)
+      .where(sql`${operationLotStatusesTable.reportId} = ANY(ARRAY[${sql.raw(reportIds.map(id => `'${id}'`).join(","))}])`)
+      .groupBy(operationLotStatusesTable.reportId, operationLotStatusesTable.status);
+  }
+
+  // Pivot lot aggregates per report
+  const lotMap: Record<string, Record<string, number>> = {};
+  for (const r of lotAgg) {
+    if (!lotMap[r.reportId]) lotMap[r.reportId] = {};
+    lotMap[r.reportId][r.status] = r.total;
+  }
+
+  // Also get consumable usage count per report
+  let usageAgg: { reportId: string; count: number }[] = [];
+  if (reportIds.length > 0) {
+    usageAgg = await db
+      .select({
+        reportId: consumableUsagesTable.reportId,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(consumableUsagesTable)
+      .where(sql`${consumableUsagesTable.reportId} = ANY(ARRAY[${sql.raw(reportIds.map(id => `'${id}'`).join(","))}])`)
+      .groupBy(consumableUsagesTable.reportId);
+  }
+  const usageMap: Record<string, number> = {};
+  for (const u of usageAgg) usageMap[u.reportId] = u.count;
+
+  res.json(reports.map(r => ({
+    ...fmtReport(r),
+    lotTotals: {
+      processing: lotMap[r.id]?.processing ?? 0,
+      phenole:    lotMap[r.id]?.phenole    ?? 0,
+      moldy:      lotMap[r.id]?.moldy      ?? 0,
+      ready:      lotMap[r.id]?.ready      ?? 0,
+      preparing:  lotMap[r.id]?.preparing  ?? 0,
+    },
+    consumableCount: usageMap[r.id] ?? 0,
+  })));
 });
 
 // ── GET /operations/reports/today ─────────────────────────────────────────────

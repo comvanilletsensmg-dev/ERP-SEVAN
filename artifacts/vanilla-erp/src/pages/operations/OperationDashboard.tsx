@@ -57,10 +57,9 @@ export default function OperationDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard Opérations</h1>
           <p className="text-sm text-gray-500 mt-0.5">Production vanille du jour · {totalKg.toFixed(1)} kg traités</p>
         </div>
-        <Link href="/operations/report">
-          <a className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 shadow-sm">
-            <ClipboardList className="w-4 h-4" />Rapport du jour
-          </a>
+        <Link href="/operations/report"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 shadow-sm">
+          <ClipboardList className="w-4 h-4" />Rapport du jour
         </Link>
       </div>
 
@@ -79,9 +78,8 @@ export default function OperationDashboard() {
               <p className="text-sm font-semibold">
                 Stock faible — <strong>{c.name}</strong> : {c.stock} {c.unit} (seuil : {c.minStock})
               </p>
-              <Link href="/operations/consumables">
-                <a className="ml-auto text-xs underline shrink-0">Réapprovisionner</a>
-              </Link>
+              <Link href="/operations/consumables"
+                className="ml-auto text-xs underline shrink-0">Réapprovisionner</Link>
             </div>
           ))}
         </div>
@@ -157,9 +155,8 @@ export default function OperationDashboard() {
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400" />Rapports récents
           </h2>
-          <Link href="/operations/report">
-            <a className="text-xs text-primary hover:underline">Voir le rapport →</a>
-          </Link>
+          <Link href="/operations/report"
+            className="text-xs text-primary hover:underline">Voir le rapport →</Link>
         </div>
         {(data?.recentReports.length ?? 0) === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">Aucun rapport encore</div>
@@ -180,9 +177,8 @@ export default function OperationDashboard() {
                   <td className="px-5 py-3 text-right text-gray-600">{(r.quantityReceivedKg ?? 0).toFixed(1)} kg</td>
                   <td className="px-5 py-3 text-right text-gray-600">{(r.quantityPreparedKg ?? 0).toFixed(1)} kg</td>
                   <td className="px-5 py-3 text-right">
-                    <Link href="/operations/report">
-                      <a className="text-gray-400 hover:text-primary"><ChevronRight className="w-4 h-4" /></a>
-                    </Link>
+                    <Link href="/operations/report"
+                      className="text-gray-400 hover:text-primary"><ChevronRight className="w-4 h-4" /></Link>
                   </td>
                 </tr>
               ))}

@@ -1,0 +1,217 @@
+Tu es un développeur full-stack senior expert ERP terrain.
+
+Objectif :
+Créer un module OPÉRATION ultra simple, rapide et professionnel avec :
+
+- rapport journalier en 1 écran
+- suivi simple des lots
+- suivi consommables
+- mini stock consommables
+- alertes automatiques
+
+IMPORTANT :
+- UX mobile-first
+- très peu de texte
+- interactions rapides (boutons + / -)
+- PAS de saisie vocale
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+
+-----------------------------------
+1. MODÈLES PRISMA (MINIMAL)
+-----------------------------------
+
+model OperationReport {
+  id            String   @id @default(uuid())
+  date          DateTime
+  employeeId    String
+
+  totalProcessedKg Float
+  totalPhenoleKg   Float
+  totalMoldyKg     Float
+  totalPreparedKg  Float
+  totalReceivedKg  Float
+
+  createdAt     DateTime @default(now())
+}
+
+-----------------------------------
+
+model OperationLot {
+  id          String @id @default(uuid())
+  reportId    String
+  lotCode     String
+  status      String   // processing, phenole, moldy, ready
+  quantityKg  Float
+}
+
+-----------------------------------
+
+model Consumable {
+  id          String @id @default(uuid())
+  name        String
+  stock       Float
+  minStock    Float
+}
+
+-----------------------------------
+
+model ConsumableUsage {
+  id            String @id @default(uuid())
+  reportId      String
+  name          String
+  quantityUsed  Float
+}
+
+-----------------------------------
+2. ÉCRAN UNIQUE (CRITIQUE)
+-----------------------------------
+
+Page :
+
+/operations
+
+-----------------------------------
+
+Sections visibles :
+
+1. 📦 LOTS
+- ajouter lot
+- sélectionner statut
+- entrer kg
+
+-----------------------------------
+
+2. 📊 CONSOMMABLES
+
+Inputs rapides :
+
+- sachets sous vide
+- papier paraffiné
+- cartons
+- claies
+
+-----------------------------------
+
+3. 📈 RÉSUMÉ JOUR
+
+- kg traités
+- kg phénolé
+- kg moisi
+- kg préparé
+- kg reçu
+
+-----------------------------------
+
+4. 📝 NOTES (optionnel)
+
+-----------------------------------
+
+5. BOUTON
+
+ENREGISTRER
+
+-----------------------------------
+3. UX SIMPLIFIÉE
+-----------------------------------
+
+- boutons + / -
+- valeurs rapides (10, 20, 50 kg)
+- auto-calcul totaux
+- sauvegarde en 1 clic
+
+-----------------------------------
+4. LOGIQUE MÉTIER
+-----------------------------------
+
+A. Totaux automatiques
+
+totalProcessedKg = somme lots processing
+
+-----------------------------------
+
+B. Mise à jour stock
+
+stock = stock - quantityUsed
+
+-----------------------------------
+
+C. Alertes :
+
+if stock < minStock:
+  afficher "Stock faible"
+
+-----------------------------------
+
+D. Qualité :
+
+if moldy > seuil:
+  afficher "Attention moisissure"
+
+-----------------------------------
+5. MINI STOCK
+-----------------------------------
+
+Afficher en bas :
+
+- consommable
+- stock actuel
+- couleur :
+
+vert = ok
+orange = faible
+rouge = critique
+
+-----------------------------------
+6. HISTORIQUE SIMPLE
+-----------------------------------
+
+Page :
+
+/operations/history
+
+-----------------------------------
+
+Afficher :
+
+- date
+- résumé kg
+- bouton "voir détail"
+
+-----------------------------------
+7. SÉCURITÉ
+-----------------------------------
+
+- LOG_AGENT : créer rapport
+- LOG_MANAGER : voir tous
+
+-----------------------------------
+8. DESIGN PRO
+-----------------------------------
+
+- gros boutons
+- très lisible
+- utilisable sur mobile
+
+-----------------------------------
+9. BONUS (OPTION)
+-----------------------------------
+
+- duplication rapport veille
+- pré-remplissage automatique
+
+-----------------------------------
+10. LIVRABLE
+-----------------------------------
+
+- module simple et rapide
+- utilisable par agents terrain
+- fiable
+
+Commence par :
+1. modèles Prisma
+2. UI écran unique
+3. logique calcul

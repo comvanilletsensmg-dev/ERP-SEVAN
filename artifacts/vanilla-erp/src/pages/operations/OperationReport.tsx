@@ -174,9 +174,9 @@ export default function OperationReport() {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lotId: newLotId, status: newLotStatus, quantityKg: newLotKg }),
       });
+      await refetch();          // ← await data refresh BEFORE clearing form
       setNewLotId(""); setNewLotKg(0);
       setLastSaved(new Date());
-      refetch();
       toast.success("Lot ajouté au rapport");
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
   };
@@ -185,7 +185,7 @@ export default function OperationReport() {
     if (!reportId) return;
     try {
       await api(`/operations/reports/${reportId}/lot-status/${lotId}`, { method: "DELETE" });
-      refetch();
+      await refetch();
       toast.success("Lot retiré");
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
   };
@@ -201,7 +201,7 @@ export default function OperationReport() {
         body: JSON.stringify(updated),
       });
       setLastSaved(new Date());
-      refetch();
+      await refetch();
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
   };
 
@@ -410,7 +410,66 @@ export default function OperationReport() {
         </div>
       </SectionCard>
 
-      {/* E. NOTES */}
+      {/* E. RÉSUMÉ DU JOUR */}
+      {lotStatuses.length > 0 && (() => {
+        const totals = { processing: 0, phenole: 0, moldy: 0, ready: 0, preparing: 0 };
+        for (const l of lotStatuses) {
+          if (l.status in totals) totals[l.status as keyof typeof totals] += l.quantityKg ?? 0;
+        }
+        const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+        const ROWS = [
+          { key: "processing", label: "Kg traités",    icon: Activity,    color: "text-blue-700",   bg: "bg-blue-50"   },
+          { key: "phenole",    label: "Kg phénolé",    icon: Beaker,      color: "text-orange-700", bg: "bg-orange-50" },
+          { key: "moldy",      label: "Kg moisi",      icon: Skull,       color: "text-red-700",    bg: "bg-red-50"    },
+          { key: "ready",      label: "Kg prêts",      icon: CheckCircle2,color: "text-green-700",  bg: "bg-green-50"  },
+          { key: "preparing",  label: "Kg préparation",icon: Package,     color: "text-purple-700", bg: "bg-purple-50" },
+        ] as const;
+        return (
+          <SectionCard label="Résumé du jour" emoji="📈">
+            <div className="space-y-2">
+              {ROWS.map(({ key, label, icon: Icon, color, bg }) => {
+                const val = totals[key];
+                const pct = grandTotal > 0 ? (val / grandTotal * 100) : 0;
+                if (val <= 0) return null;
+                return (
+                  <div key={key} className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-4 h-4 ${color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-gray-600">{label}</p>
+                        <p className={`text-sm font-bold ${color}`}>{val.toFixed(1)} kg</p>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className={`h-1.5 rounded-full ${bg.replace("bg-", "bg-").replace("-50", "-400")}`}
+                          style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-400 shrink-0 w-8 text-right">{pct.toFixed(0)}%</span>
+                  </div>
+                );
+              })}
+              <div className="border-t border-gray-100 pt-2 mt-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-500">Total lots</p>
+                <p className="text-base font-bold text-gray-900">{grandTotal.toFixed(1)} kg</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-emerald-50 rounded-xl px-3 py-2">
+                  <p className="text-xs text-emerald-600">Reçu</p>
+                  <p className="text-lg font-bold text-emerald-700">{receivedKg.toFixed(1)} kg</p>
+                </div>
+                <div className="bg-primary/10 rounded-xl px-3 py-2">
+                  <p className="text-xs text-primary/80">Préparé</p>
+                  <p className="text-lg font-bold text-primary">{preparedKg.toFixed(1)} kg</p>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
+      {/* F. NOTES */}
       <SectionCard label="Notes & observations" emoji="📝">
         <textarea
           value={notes}

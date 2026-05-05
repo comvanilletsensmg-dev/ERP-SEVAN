@@ -65,6 +65,7 @@ const crmNav = [
 const operationsNav = [
   { label: "Dashboard Opérations", href: "/operations/dashboard", icon: Factory },
   { label: "Rapport journalier",   href: "/operations/report",    icon: ClipboardList },
+  { label: "Historique",           href: "/operations/history",   icon: BarChart3 },
   { label: "Consommables",         href: "/operations/consumables",icon: Package },
 ];
 
