@@ -10,6 +10,7 @@ import {
   journalEntriesTable,
   journalLinesTable,
   employeesTable,
+  consumablesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
@@ -52,6 +53,25 @@ export async function seedDatabase() {
       { name: "Fanja Randrianirina",  position: "Responsable Logistique", department: "Logistique",    salary: 1600000, phone: "+261 32 44 444 44" },
       { name: "Tojo Rabemananjara",   position: "Comptable",              department: "Finance",       salary: 1500000, phone: "+261 33 55 555 55" },
       { name: "Miora Rasolofomanana", position: "Assistante RH",          department: "Administration", salary: 1200000, phone: "+261 34 66 666 66" },
+    ]);
+  }
+
+  // Seed default consumables (idempotent)
+  const existingConsumables = await db.select().from(consumablesTable).limit(1);
+  if (existingConsumables.length === 0) {
+    logger.info("Seeding default consumables...");
+    await db.insert(consumablesTable).values([
+      { name: "Sachets sous vide 60x40", unit: "unité",   stock: 500,  minStock: 100 },
+      { name: "Sachets sous vide 20x10", unit: "unité",   stock: 500,  minStock: 100 },
+      { name: "Sachets sous vide 20x20", unit: "unité",   stock: 300,  minStock:  80 },
+      { name: "Sachets sous vide 30x20", unit: "unité",   stock: 200,  minStock:  50 },
+      { name: "Papier paraffiné",        unit: "m",       stock: 200,  minStock:  50 },
+      { name: "Cartons",                 unit: "unité",   stock: 200,  minStock:  30 },
+      { name: "Étiquettes",              unit: "unité",   stock: 1000, minStock: 200 },
+      { name: "Scotch",                  unit: "rouleau", stock:  20,  minStock:   5 },
+      { name: "Gants alimentaires",      unit: "boîte",   stock:  15,  minStock:   3 },
+      { name: "Alcool 90°",              unit: "litre",   stock:  10,  minStock:   2 },
+      { name: "Sacs plastique traitement", unit: "unité", stock: 200,  minStock:  50 },
     ]);
   }
 
