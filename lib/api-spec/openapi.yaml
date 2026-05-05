@@ -570,6 +570,22 @@ paths:
       operationId: getLeaves
       tags: [hr]
       summary: List all leave requests
+      parameters:
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+          description: Filter by employee
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status
+        - name: month
+          in: query
+          schema:
+            type: string
+          description: Filter by month (YYYY-MM)
       responses:
         "200":
           description: List of leaves
@@ -592,6 +608,82 @@ paths:
       responses:
         "201":
           description: Leave request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+
+  /leaves/stats:
+    get:
+      operationId: getLeaveStats
+      tags: [hr]
+      summary: Get leave dashboard stats
+      responses:
+        "200":
+          description: Leave stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveStats"
+
+  /leaves/balances:
+    get:
+      operationId: getLeaveBalances
+      tags: [hr]
+      summary: Get leave balances for all employees
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: number
+          description: Year (defaults to current year)
+      responses:
+        "200":
+          description: Leave balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaveBalance"
+
+  /leaves/balances/{employeeId}:
+    get:
+      operationId: getLeaveBalance
+      tags: [hr]
+      summary: Get leave balance for one employee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Leave balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveBalance"
+
+  /leaves/{id}:
+    delete:
+      operationId: deleteLeave
+      tags: [hr]
+      summary: Cancel/delete a leave request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
           content:
             application/json:
               schema:
@@ -1951,14 +2043,22 @@ components:
           type: string
         type:
           type: string
-          description: vacation | sick
+          description: annual | sick | unpaid
         startDate:
           type: string
         endDate:
           type: string
+        days:
+          type: number
         status:
           type: string
           description: pending | approved | rejected
+        reason:
+          type: string
+          nullable: true
+        approvedBy:
+          type: string
+          nullable: true
         createdAt:
           type: string
         employee:
@@ -1969,8 +2069,66 @@ components:
         - type
         - startDate
         - endDate
+        - days
         - status
         - createdAt
+
+    LeaveBalance:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        year:
+          type: number
+        annualDays:
+          type: number
+        usedAnnualDays:
+          type: number
+        remainingAnnual:
+          type: number
+        sickDays:
+          type: number
+        usedSickDays:
+          type: number
+        remainingSick:
+          type: number
+        updatedAt:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Employee"
+      required:
+        - id
+        - employeeId
+        - year
+        - annualDays
+        - usedAnnualDays
+        - remainingAnnual
+        - sickDays
+        - usedSickDays
+        - remainingSick
+        - updatedAt
+
+    LeaveStats:
+      type: object
+      properties:
+        pendingCount:
+          type: number
+        approvedCount:
+          type: number
+        absentToday:
+          type: number
+        totalThisMonth:
+          type: number
+        byType:
+          type: object
+      required:
+        - pendingCount
+        - approvedCount
+        - absentToday
+        - totalThisMonth
+        - byType
 
     CreateLeaveBody:
       type: object
@@ -1979,11 +2137,14 @@ components:
           type: string
         type:
           type: string
-          description: vacation | sick
+          description: annual | sick | unpaid
         startDate:
           type: string
         endDate:
           type: string
+        reason:
+          type: string
+          nullable: true
       required:
         - employeeId
         - type
@@ -1996,6 +2157,9 @@ components:
         status:
           type: string
           description: approved | rejected
+        reason:
+          type: string
+          nullable: true
       required:
         - status
 

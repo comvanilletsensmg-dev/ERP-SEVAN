@@ -252,27 +252,56 @@ export interface CreateEmployeeBody {
 export interface Leave {
   id: string;
   employeeId: string;
-  /** vacation | sick */
+  /** annual | sick | unpaid */
   type: string;
   startDate: string;
   endDate: string;
+  days: number;
   /** pending | approved | rejected */
   status: string;
+  reason?: string | null;
+  approvedBy?: string | null;
   createdAt: string;
   employee?: Employee;
 }
 
+export interface LeaveBalance {
+  id: string;
+  employeeId: string;
+  year: number;
+  annualDays: number;
+  usedAnnualDays: number;
+  remainingAnnual: number;
+  sickDays: number;
+  usedSickDays: number;
+  remainingSick: number;
+  updatedAt: string;
+  employee?: Employee;
+}
+
+export type LeaveStatsByType = { [key: string]: unknown };
+
+export interface LeaveStats {
+  pendingCount: number;
+  approvedCount: number;
+  absentToday: number;
+  totalThisMonth: number;
+  byType: LeaveStatsByType;
+}
+
 export interface CreateLeaveBody {
   employeeId: string;
-  /** vacation | sick */
+  /** annual | sick | unpaid */
   type: string;
   startDate: string;
   endDate: string;
+  reason?: string | null;
 }
 
 export interface ApproveLeaveBody {
   /** approved | rejected */
   status: string;
+  reason?: string | null;
 }
 
 export interface AttendanceRecord {
@@ -571,6 +600,32 @@ export interface TvaReport {
   fromJournal?: TvaReportFromJournal;
   fromInvoices?: TvaReportFromInvoices;
 }
+
+export type GetLeavesParams = {
+  /**
+   * Filter by employee
+   */
+  employeeId?: string;
+  /**
+   * Filter by status
+   */
+  status?: string;
+  /**
+   * Filter by month (YYYY-MM)
+   */
+  month?: string;
+};
+
+export type GetLeaveBalancesParams = {
+  /**
+   * Year (defaults to current year)
+   */
+  year?: number;
+};
+
+export type GetLeaveBalanceParams = {
+  year?: number;
+};
 
 export type GetAttendanceParams = {
   /**

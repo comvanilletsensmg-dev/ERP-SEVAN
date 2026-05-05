@@ -668,13 +668,22 @@ export const UpdateEmployeeResponse = zod.object({
 /**
  * @summary List all leave requests
  */
+export const GetLeavesQueryParams = zod.object({
+  employeeId: zod.coerce.string().optional().describe("Filter by employee"),
+  status: zod.coerce.string().optional().describe("Filter by status"),
+  month: zod.coerce.string().optional().describe("Filter by month (YYYY-MM)"),
+});
+
 export const GetLeavesResponseItem = zod.object({
   id: zod.string(),
   employeeId: zod.string(),
-  type: zod.string().describe("vacation | sick"),
+  type: zod.string().describe("annual | sick | unpaid"),
   startDate: zod.string(),
   endDate: zod.string(),
+  days: zod.number(),
   status: zod.string().describe("pending | approved | rejected"),
+  reason: zod.string().nullish(),
+  approvedBy: zod.string().nullish(),
   createdAt: zod.string(),
   employee: zod
     .object({
@@ -697,9 +706,128 @@ export const GetLeavesResponse = zod.array(GetLeavesResponseItem);
  */
 export const CreateLeaveBody = zod.object({
   employeeId: zod.string(),
-  type: zod.string().describe("vacation | sick"),
+  type: zod.string().describe("annual | sick | unpaid"),
   startDate: zod.string(),
   endDate: zod.string(),
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Get leave dashboard stats
+ */
+export const GetLeaveStatsResponse = zod.object({
+  pendingCount: zod.number(),
+  approvedCount: zod.number(),
+  absentToday: zod.number(),
+  totalThisMonth: zod.number(),
+  byType: zod.object({}).passthrough(),
+});
+
+/**
+ * @summary Get leave balances for all employees
+ */
+export const GetLeaveBalancesQueryParams = zod.object({
+  year: zod.coerce
+    .number()
+    .optional()
+    .describe("Year (defaults to current year)"),
+});
+
+export const GetLeaveBalancesResponseItem = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  year: zod.number(),
+  annualDays: zod.number(),
+  usedAnnualDays: zod.number(),
+  remainingAnnual: zod.number(),
+  sickDays: zod.number(),
+  usedSickDays: zod.number(),
+  remainingSick: zod.number(),
+  updatedAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+export const GetLeaveBalancesResponse = zod.array(GetLeaveBalancesResponseItem);
+
+/**
+ * @summary Get leave balance for one employee
+ */
+export const GetLeaveBalanceParams = zod.object({
+  employeeId: zod.coerce.string(),
+});
+
+export const GetLeaveBalanceQueryParams = zod.object({
+  year: zod.coerce.number().optional(),
+});
+
+export const GetLeaveBalanceResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  year: zod.number(),
+  annualDays: zod.number(),
+  usedAnnualDays: zod.number(),
+  remainingAnnual: zod.number(),
+  sickDays: zod.number(),
+  usedSickDays: zod.number(),
+  remainingSick: zod.number(),
+  updatedAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Cancel/delete a leave request
+ */
+export const DeleteLeaveParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteLeaveResponse = zod.object({
+  id: zod.string(),
+  employeeId: zod.string(),
+  type: zod.string().describe("annual | sick | unpaid"),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  days: zod.number(),
+  status: zod.string().describe("pending | approved | rejected"),
+  reason: zod.string().nullish(),
+  approvedBy: zod.string().nullish(),
+  createdAt: zod.string(),
+  employee: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      position: zod.string(),
+      department: zod.string().nullish(),
+      salary: zod.number().nullish(),
+      hireDate: zod.string().nullish(),
+      isActive: zod.boolean(),
+      phone: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -711,15 +839,19 @@ export const ApproveLeaveParams = zod.object({
 
 export const ApproveLeaveBody = zod.object({
   status: zod.string().describe("approved | rejected"),
+  reason: zod.string().nullish(),
 });
 
 export const ApproveLeaveResponse = zod.object({
   id: zod.string(),
   employeeId: zod.string(),
-  type: zod.string().describe("vacation | sick"),
+  type: zod.string().describe("annual | sick | unpaid"),
   startDate: zod.string(),
   endDate: zod.string(),
+  days: zod.number(),
   status: zod.string().describe("pending | approved | rejected"),
+  reason: zod.string().nullish(),
+  approvedBy: zod.string().nullish(),
   createdAt: zod.string(),
   employee: zod
     .object({

@@ -55,6 +55,9 @@ import type {
   GetAttendanceParams,
   GetBonusesParams,
   GetInvoicesParams,
+  GetLeaveBalanceParams,
+  GetLeaveBalancesParams,
+  GetLeavesParams,
   GetOnboardingTasksParams,
   GetPayrollsParams,
   HealthStatus,
@@ -65,6 +68,8 @@ import type {
   IncomeReport,
   JournalEntry,
   Leave,
+  LeaveBalance,
+  LeaveStats,
   LoginBody,
   LoginResponse,
   Lot,
@@ -2534,35 +2539,57 @@ export const useUpdateEmployee = <
 /**
  * @summary List all leave requests
  */
-export const getGetLeavesUrl = () => {
-  return `/api/leaves`;
+export const getGetLeavesUrl = (params?: GetLeavesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/leaves?${stringifiedParams}`
+    : `/api/leaves`;
 };
 
-export const getLeaves = async (options?: RequestInit): Promise<Leave[]> => {
-  return customFetch<Leave[]>(getGetLeavesUrl(), {
+export const getLeaves = async (
+  params?: GetLeavesParams,
+  options?: RequestInit,
+): Promise<Leave[]> => {
+  return customFetch<Leave[]>(getGetLeavesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetLeavesQueryKey = () => {
-  return [`/api/leaves`] as const;
+export const getGetLeavesQueryKey = (params?: GetLeavesParams) => {
+  return [`/api/leaves`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetLeavesQueryOptions = <
   TData = Awaited<ReturnType<typeof getLeaves>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof getLeaves>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: GetLeavesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaves>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetLeavesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetLeavesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaves>>> = ({
     signal,
-  }) => getLeaves({ signal, ...requestOptions });
+  }) => getLeaves(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getLeaves>>,
@@ -2583,11 +2610,18 @@ export type GetLeavesQueryError = ErrorType<unknown>;
 export function useGetLeaves<
   TData = Awaited<ReturnType<typeof getLeaves>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof getLeaves>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetLeavesQueryOptions(options);
+>(
+  params?: GetLeavesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaves>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeavesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2680,6 +2714,378 @@ export const useCreateLeave = <
   TContext
 > => {
   return useMutation(getCreateLeaveMutationOptions(options));
+};
+
+/**
+ * @summary Get leave dashboard stats
+ */
+export const getGetLeaveStatsUrl = () => {
+  return `/api/leaves/stats`;
+};
+
+export const getLeaveStats = async (
+  options?: RequestInit,
+): Promise<LeaveStats> => {
+  return customFetch<LeaveStats>(getGetLeaveStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaveStatsQueryKey = () => {
+  return [`/api/leaves/stats`] as const;
+};
+
+export const getGetLeaveStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaveStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaveStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLeaveStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaveStats>>> = ({
+    signal,
+  }) => getLeaveStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaveStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaveStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaveStats>>
+>;
+export type GetLeaveStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get leave dashboard stats
+ */
+
+export function useGetLeaveStats<
+  TData = Awaited<ReturnType<typeof getLeaveStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaveStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaveStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get leave balances for all employees
+ */
+export const getGetLeaveBalancesUrl = (params?: GetLeaveBalancesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/leaves/balances?${stringifiedParams}`
+    : `/api/leaves/balances`;
+};
+
+export const getLeaveBalances = async (
+  params?: GetLeaveBalancesParams,
+  options?: RequestInit,
+): Promise<LeaveBalance[]> => {
+  return customFetch<LeaveBalance[]>(getGetLeaveBalancesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaveBalancesQueryKey = (
+  params?: GetLeaveBalancesParams,
+) => {
+  return [`/api/leaves/balances`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetLeaveBalancesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaveBalances>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetLeaveBalancesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaveBalances>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLeaveBalancesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLeaveBalances>>
+  > = ({ signal }) => getLeaveBalances(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaveBalances>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaveBalancesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaveBalances>>
+>;
+export type GetLeaveBalancesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get leave balances for all employees
+ */
+
+export function useGetLeaveBalances<
+  TData = Awaited<ReturnType<typeof getLeaveBalances>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetLeaveBalancesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaveBalances>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaveBalancesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get leave balance for one employee
+ */
+export const getGetLeaveBalanceUrl = (
+  employeeId: string,
+  params?: GetLeaveBalanceParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/leaves/balances/${employeeId}?${stringifiedParams}`
+    : `/api/leaves/balances/${employeeId}`;
+};
+
+export const getLeaveBalance = async (
+  employeeId: string,
+  params?: GetLeaveBalanceParams,
+  options?: RequestInit,
+): Promise<LeaveBalance> => {
+  return customFetch<LeaveBalance>(getGetLeaveBalanceUrl(employeeId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaveBalanceQueryKey = (
+  employeeId: string,
+  params?: GetLeaveBalanceParams,
+) => {
+  return [
+    `/api/leaves/balances/${employeeId}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetLeaveBalanceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaveBalance>>,
+  TError = ErrorType<unknown>,
+>(
+  employeeId: string,
+  params?: GetLeaveBalanceParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaveBalance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLeaveBalanceQueryKey(employeeId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaveBalance>>> = ({
+    signal,
+  }) => getLeaveBalance(employeeId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!employeeId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaveBalance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaveBalanceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaveBalance>>
+>;
+export type GetLeaveBalanceQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get leave balance for one employee
+ */
+
+export function useGetLeaveBalance<
+  TData = Awaited<ReturnType<typeof getLeaveBalance>>,
+  TError = ErrorType<unknown>,
+>(
+  employeeId: string,
+  params?: GetLeaveBalanceParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaveBalance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaveBalanceQueryOptions(
+    employeeId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Cancel/delete a leave request
+ */
+export const getDeleteLeaveUrl = (id: string) => {
+  return `/api/leaves/${id}`;
+};
+
+export const deleteLeave = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Leave> => {
+  return customFetch<Leave>(getDeleteLeaveUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLeaveMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLeave>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLeave>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteLeave"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLeave>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteLeave(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLeaveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLeave>>
+>;
+
+export type DeleteLeaveMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Cancel/delete a leave request
+ */
+export const useDeleteLeave = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLeave>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLeave>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteLeaveMutationOptions(options));
 };
 
 /**
