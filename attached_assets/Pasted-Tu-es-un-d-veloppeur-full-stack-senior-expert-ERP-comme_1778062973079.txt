@@ -1,0 +1,208 @@
+Tu es un développeur full-stack senior expert ERP commercial & financier Madagascar.
+
+Objectif :
+Créer un module FACTURATION complet avec :
+- gestion des factures
+- paiements multiples
+- intégration des moyens de paiement Madagascar
+- affichage visuel avec logos
+- suivi des paiements
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- Upload : Multer (preuves paiement)
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  amount        Float
+  method        String   // cash, mvola, orange_money, bank
+  provider      String?  // BNI, BOA, Mvola, Orange Money
+  reference     String?
+  proofUrl      String?
+  createdAt     DateTime @default(now())
+}
+
+-----------------------------------
+
+model PaymentMethod {
+  id        String @id @default(uuid())
+  name      String
+  type      String   // mobile_money, bank, cash
+  logoUrl   String
+  active    Boolean @default(true)
+}
+
+-----------------------------------
+2. SEED MÉTHODES DE PAIEMENT MADAGASCAR
+-----------------------------------
+
+const paymentMethods = [
+
+  { name: "Liquide", type: "cash", logoUrl: "/logos/cash.png" },
+
+  { name: "Mvola", type: "mobile_money", logoUrl: "/logos/mvola.png" },
+  { name: "Orange Money", type: "mobile_money", logoUrl: "/logos/orange_money.png" },
+
+  { name: "BNI Madagascar", type: "bank", logoUrl: "/logos/bni.png" },
+  { name: "BOA Madagascar", type: "bank", logoUrl: "/logos/boa.png" },
+  { name: "BFV Société Générale", type: "bank", logoUrl: "/logos/bfv.png" },
+  { name: "Accès Banque", type: "bank", logoUrl: "/logos/acces.png" }
+
+];
+
+-----------------------------------
+3. UI – ENREGISTRER PAIEMENT
+-----------------------------------
+
+Dans page facture :
+
+Bouton :
+
+"Enregistrer paiement"
+
+-----------------------------------
+
+Modal :
+
+- montant
+- méthode (cards avec logos)
+- référence (transaction mobile money / banque)
+- upload preuve (option)
+
+-----------------------------------
+
+Affichage :
+
+grille avec logos :
+
+[ Mvola ] [ Orange Money ] [ BNI ] [ Cash ]
+
+-----------------------------------
+4. LOGIQUE MÉTIER
+-----------------------------------
+
+A. Paiement partiel :
+
+- cumuler paiements
+- calcul reste à payer
+
+-----------------------------------
+
+B. Statut facture :
+
+if totalPaid = total:
+  status = paid
+
+if totalPaid > 0:
+  status = partial
+
+-----------------------------------
+
+C. Historique :
+
+afficher tous les paiements avec :
+
+- logo
+- date
+- montant
+- référence
+
+-----------------------------------
+5. AFFICHAGE DANS FACTURE
+-----------------------------------
+
+Section :
+
+Paiements :
+
+- logo méthode
+- montant
+- date
+- référence
+
+-----------------------------------
+6. PREUVE DE PAIEMENT
+-----------------------------------
+
+Upload :
+
+- image reçu Mvola
+- reçu banque
+
+-----------------------------------
+
+Stocker :
+
+/uploads/payments
+
+-----------------------------------
+7. DASHBOARD
+-----------------------------------
+
+Afficher :
+
+- total cash
+- total mobile money
+- total banque
+
+-----------------------------------
+8. FILTRES
+-----------------------------------
+
+- par méthode paiement
+- par banque
+- par période
+
+-----------------------------------
+9. BONUS PRO
+-----------------------------------
+
+A. QR code paiement (mobile money)
+
+-----------------------------------
+
+B. Suggestion automatique :
+
+- Mvola pour petits montants
+- banque pour export
+
+-----------------------------------
+
+C. Intégration future API :
+
+- Mvola API
+- Orange Money API
+
+-----------------------------------
+10. DESIGN
+-----------------------------------
+
+- afficher logos officiels
+- UI claire
+- mobile friendly
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- COMPTABLE / COMMERCIAL uniquement
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- facturation avec paiements locaux
+- suivi clair
+- adapté Madagascar
+
+Commence par :
+1. modèles Payment
+2. UI paiement
+3. historique paiement
