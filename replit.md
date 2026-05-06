@@ -1,10 +1,59 @@
-# Overview
+# Vanilla ERP
 
-This project is a pnpm workspace monorepo using TypeScript, designed to be a comprehensive Enterprise Resource Planning (ERP) system for a vanilla export company in Madagascar. The system aims to manage the full business workflow from procurement (ACHAT) and lot management (LOT) through inventory (STOCK) and sales (VENTE) to accounting (COMPTABILITÉ).
+An Enterprise Resource Planning (ERP) system for a vanilla export company in Madagascar, managing procurement, lot management, inventory, sales, and accounting.
 
-The ERP system incorporates advanced modules such as HR, Accounting (PCG 2005 standards), advanced Logistics with AI-driven intelligence, and a robust CRM. Key capabilities include employee management, payroll calculation specific to Madagascar, financial accounting, detailed stock tracking, AI-powered price prediction and risk assessment for vanilla lots, and a comprehensive CRM for managing prospects, deals, and sales. The system is designed to streamline operations, provide data-driven insights, and ensure compliance with local regulations.
+## Run & Operate
 
-# User Preferences
+- **Start dev server:** `pnpm dev`
+- **Build all packages:** `pnpm build`
+- **Typecheck:** `pnpm typecheck`
+- **Generate API client & Zod schemas:** `pnpm orval`
+- **Push DB schema:** `drizzle-kit push:pg`
+- **Required Env Vars:** `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY` (for AI features)
+
+## Stack
+
+- **Runtime:** Node.js 24
+- **Language:** TypeScript 5.9
+- **Backend:** Express 5
+- **Frontend:** React, Vite
+- **Styling:** TailwindCSS
+- **Routing:** Wouter
+- **Database:** PostgreSQL
+- **ORM:** Drizzle ORM
+- **Validation:** Zod
+- **API Codegen:** Orval
+- **Monorepo:** pnpm workspaces
+
+## Where things live
+
+- **Database Schema:** `lib/db/src/schema/`
+- **API Contracts:** `lib/api-spec/openapi.yaml`
+- **Backend Routes:** `artifacts/api-server/src/routes/`
+- **Frontend Pages:** `artifacts/vanilla-erp/src/pages/`
+- **Shared Libraries:** `lib/` (e.g., `lib/api-client-react`, `lib/api-zod`, `lib/db`)
+- **CV Uploads:** `uploads/cv/` (served at `/api/uploads/cv/`)
+- **Payment Proof Uploads:** `uploads/payments/`
+
+## Architecture decisions
+
+- **Monorepo for Cohesion:** pnpm workspaces facilitate shared types and API contracts across backend and frontend, reducing duplication and ensuring consistency.
+- **OpenAPI as Single Source of Truth:** All API interactions are defined in `openapi.yaml`, from which client and validation code is generated, enforcing strict API contracts.
+- **Type-Safe Database Interactions:** Drizzle ORM with TypeScript ensures compile-time safety for database operations.
+- **Role-Based Access Control (RBAC):** Granular permissions are enforced across the application using 5 distinct user roles (SUPER_ADMIN, ACCOUNTANT, LOGISTICS_MANAGER, HR_MANAGER, COMMERCIAL).
+- **AI Integration for Core Business Logic:** AI models are directly integrated into logistics (price prediction, risk assessment) and CRM (lead scoring) workflows, providing data-driven insights.
+
+## Product
+
+- **HR Management:** Employee CRUD, Madagascar-specific payroll, ATS with CV parsing, and onboarding.
+- **Operations & Production:** Daily reporting, consumable tracking, and production task management.
+- **Advanced Logistics:** Procurement, lot tracking with status workflow, AI-driven risk assessment for vanilla lots, and comprehensive stock management.
+- **Financial Accounting:** PCG 2005 compliant journal, invoice management with multi-payment support, financial dashboard, and monthly closing procedures.
+- **CRM & Sales:** Kanban-based prospect and deal management, client conversion engine, and quote generation.
+- **Unified Partner Management (TIERS):** Centralized CRM clients and logistics suppliers with detailed ledgers and aging reports.
+- **Planning:** Production tasks, export orders, and employee leave planning, with auto-scheduling and alerts.
+
+## User preferences
 
 I prefer detailed explanations.
 I want iterative development.
@@ -12,70 +61,20 @@ Ask before making major changes.
 Do not make changes to the folder `Z`.
 Do not make changes to the file `Y`.
 
-# System Architecture
+## Gotchas
 
-The project is structured as a pnpm monorepo, leveraging Node.js 24 and TypeScript 5.9. The backend is built with Express 5, utilizing PostgreSQL with Drizzle ORM for database management and Zod for validation. API interactions are standardized using OpenAPI with Orval for codegen. The frontend is a React application built with Vite, TailwindCSS for styling, and Wouter for routing.
+- **Orval Codegen:** Always run `pnpm orval` after modifying `lib/api-spec/openapi.yaml` to regenerate API clients and Zod schemas.
+- **DB Schema Changes:** Use `drizzle-kit push:pg` after modifying `lib/db/src/schema/` to update the database schema.
+- **Vanilla Lot Status:** Transitions between lot statuses (`raw` → `curing` → `drying` → `ready` → `sold`) are server-validated; invalid transitions will be rejected.
+- **Monthly Closing:** The monthly closing process has blocking checklist items (e.g., balanced entries, no drafts) that must be resolved before a period can be closed.
 
-## UI/UX Decisions
-The frontend employs a consistent design with specific pages for each module (e.g., `/hr/dashboard`, `/logistics/lots-status`, `/crm/prospects`). Key UX features include:
-- Kanban boards for CRM prospects and deals with drag-and-drop functionality.
-- Dynamic forms and adaptive fiscal fields based on country for prospect management.
-- Visual indicators like badges for stock levels (green, yellow, red, grey) and conversion status.
-- Interactive charts (PieCharts, BarCharts) for dashboards (HR, CRM, Logistics AI).
-- Modals for detailed views and actions (e.g., stock adjustment, lot history).
-- Toasts (`sonner`) for user feedback on actions like conversion.
-- Specific color schemes and icons (e.g., Workflow icon, ShieldAlert icon, Brain icon) to differentiate modules and features.
+## Pointers
 
-## Technical Implementations
-- **Monorepo Structure**: pnpm workspaces for managing multiple packages.
-- **API Contract**: Defined by `lib/api-spec/openapi.yaml`, serving as the single source of truth for API.
-- **Data Layer**: PostgreSQL with Drizzle ORM for type-safe database interactions. Schemas are defined in `lib/db/src/schema/`.
-- **API Generation**: Orval generates React Query hooks (`lib/api-client-react/`) and Zod schemas (`lib/api-zod/`) from the OpenAPI spec.
-- **Build System**: esbuild for CJS bundle generation.
-- **Authentication/Authorization**: User authentication with sessions managed in PostgreSQL (`user_sessions`). Role-Based Access Control (RBAC) with 5 distinct roles: SUPER_ADMIN, ACCOUNTANT, LOGISTICS_MANAGER, HR_MANAGER, COMMERCIAL.
-- **Background Jobs**: Cron jobs for monthly payroll generation, daily lot risk recalculation, and daily AI predictions.
-- **Error Handling**: Graceful error handling in AI models (e.g., returning heuristic fallback if ML model training fails).
-- **Audit Trails**: Extensive logging for critical actions like lot status changes (`lot_histories`), conversion events (`conversion_logs`), and high-risk events (`risk_events`).
-
-## Feature Specifications
-- **HR Module**: Employee CRUD, CSV/XLSX import with fuzzy matching and deduplication, Madagascar-specific payroll calculation (CNAPS, OSTIE, IRSA), payroll batch processing, PDF payslip generation, declaration exports, and a comprehensive HR dashboard. Includes leaves, attendance, bonuses, candidates, and onboarding. **Departments system**: 8 departments seeded (IT/100, Logistique/101, Production/102, Commercial/103, RH/104, Comptabilité/105, Direction/106, Support/107). **Auto-matricule generation**: format AAAADDDNNNN (year + dept code 3-digit + 4-digit seq, e.g. 20261050001). Auto user account creation for eligible postes (Directeur Général, Directeur Adjoint, Business Developer, Commercial, Responsable Logistique, RH, Comptable). `PUT /api/employees/:id/status` endpoint for inline status changes.
-- **Operations Module** (`/operations/...`): Production tracking for vanilla processing. 3 pages: Dashboard (KPI cards by quality status + low-stock alerts + recent reports), Rapport Journalier (mobile-first daily report with 5 sections: Lots, Consommables, Entrées marchandise, Préparation, Notes — with stepper inputs, quick presets, auto-save), Consommables (stock management with add/correct modals). DB: `operation_reports` (date UNIQUE, quantities), `operation_lot_statuses` (per-report lot quality: processing|phenole|moldy|ready|preparing), `consumables` (name, unit, stock, min_stock), `consumable_usages` (deducts from stock). Roles: SUPER_ADMIN + LOGISTICS_MANAGER. API: `/api/operations/dashboard`, `/api/operations/reports/today` (upsert), `/api/operations/reports/:id/lot-status` (PUT upsert), `/api/operations/reports/:id/consumable-usage` (PUT, adjusts stock), `/api/operations/consumables` (CRUD with `addStock` convenience field). 11 default consumables seeded: Sachets sous vide 60x40, Sachets sous vide 20x10, Sachets sous vide 20x20, Sachets sous vide 30x20, Papier paraffiné, Cartons, Étiquettes, Scotch, Gants alimentaires, Alcool 90°, Sacs plastique traitement.
-- **ATS Module** (`/hr/candidates`): Full Applicant Tracking System replacing the basic candidates page. Features: 4 KPI cards (total, en cours, recrutés, taux), 3-tab interface (Pipeline kanban / Candidats list / Onboarding), full candidate CRUD with CV upload (PDF + image up to 10 MB), PDF parsing via `pdf-parse` for auto-fill (email, phone, name, skills, experience, education, score), pipeline stages (applied → screening → interview → offer → hired / rejected), one-click hire that creates employee record + 6 default onboarding tasks, restore from rejected, bulk search/filter. DB: `candidates` table extended with `first_name`, `last_name`, `email`, `skills` (JSON), `experience`, `education`, `cv_url`, `score`, `source`, `updated_at`. API routes: `GET/POST /api/recruitment/candidates`, `PATCH/DELETE /api/recruitment/candidates/:id`, `POST /api/recruitment/candidates/:id/hire`, `POST /api/recruitment/upload-cv`, `GET /api/recruitment/stats`. CV files stored in `uploads/cv/`, served at `/api/uploads/cv/`.
-- **Payment Module** (`/accounting/invoices`): Full Madagascar multi-payment system integrated into invoice management. 7 payment methods: Liquide (cash), Mvola, Orange Money (mobile money), BNI, BOA, BFV Société Générale, Accès Banque. Features: partial payment support (cumulative, auto-status: validated→partial→paid), proof-of-payment upload (image/PDF → /uploads/payments/), payment history with per-entry emoji badges, payment progress bar per invoice, PCG journal auto-entry per payment (512↔411 or 401), 4 KPI dashboard cards (Total encaissé / Espèces / Mobile Money / Banque). DB: `invoice_payments` table (invoiceId FK→accounting_invoices, amount, method, provider, reference, proofUrl). API: `GET/POST /api/invoices/:id/payments`, `POST /api/invoices/payments/proof`, `GET /api/invoices/payments/stats`. Roles: all authenticated users.
-- **Accounting Module**: Full PCG 2005 compliance with Journal entries, invoices, bank reconciliation, fixed assets management, balance sheet, income statement, and Madagascar TVA reports. **Journal amélioré** : statut workflow (draft→validated→locked), création/modification d'écritures avec validation débit=crédit, audit trail complet (`journal_audit_logs`), export Excel (xlsx) et export PDF (HTML print), filtres avancés (date range, référence, compte, statut). DB: `journal_entries.status` + `journal_lines.label` + table `journal_audit_logs`. API: `POST /api/journal`, `PATCH /api/journal/:id`, `DELETE /api/journal/:id`, `POST /api/journal/:id/validate`, `POST /api/journal/:id/lock`, `GET /api/journal/:id/audit`, `GET /api/journal/export/excel`, `GET /api/journal/export/pdf`. **Dashboard Financier** (`/accounting/finance`): KPIs (CA, résultat net, trésorerie, marge, créances, dettes), 4 graphiques Recharts (CA par mois, charges vs produits, pie répartition charges, cash flow cumulé), compte de résultat dynamique PCG, bilan simplifié actif/passif, analyse coûts par lot vanille, alertes intelligentes (trésorerie faible, marge négative, stock élevé), multi-devises MGA/USD/EUR, filtres période. API: `GET /api/finance/dashboard?dateFrom=&dateTo=&currency=`. **Clôture Mensuelle** (`/accounting/closing`): Workflow complet open→closing→closed. Checklist 6 points (écritures équilibrées, brouillons, paie, immobilisations, comptes 681/28x, rapprochement bancaire — 2 bloquants: balanced+no_drafts). Génération automatique amortissements (681→281), verrouillage écritures de la période, snapshot financier figé (JSONB), export Balance Excel + États financiers PDF (HTML print), réouverture sécurisée (SUPER_ADMIN), journal d'audit. DB: `accounting_periods` (status, snapshot_data), `closing_logs`. API: `GET/POST /api/accounting/periods`, `GET /api/accounting/periods/:id/checklist`, `POST /api/accounting/periods/:id/close`, `POST /api/accounting/periods/:id/reopen`, `GET /api/accounting/periods/:id/snapshot/excel|pdf`. Note: icône `LockKeyhole` (pas `Lock` — conflit avec window.Lock/Web Locks API).
-- **Planning Production & Export** (`/logistics/planning`): Complete connected planning module linking production tasks, vanilla lot stock, export orders, and employee leave. Features: 4 KPI cards (stock, orders, active tasks, alerts), stock-vs-orders coverage bar, 4 tabs (Calendar with colored events by type, Tasks CRUD with status workflow, Orders CRUD with ship+stock-deduct, Alerts with intelligent detection). Auto-schedule (`POST /api/planning/auto-schedule`) creates tasks for unmet orders. Link-orders (`POST /api/planning/link-orders`) assigns ready lots to pending orders. Shipping an order deducts lot stock. Calendar aggregates production tasks (blue), approved leaves (red), urgent orders (purple/red). Alerts detect: insufficient stock, urgent deadlines (≤7 days), overdue tasks. DB tables: `production_tasks`, `export_orders`, `task_assignments`.
-- **Logistics Advanced**: Supplier and purchase management, lot tracking with a defined status workflow, stock movements (IN, OUT, LOSS), and AI-driven intelligence.
-    - **AI Intelligence**: Price prediction using moving averages and linear trends, cost vs. price charts, and opportunity/drop alerts.
-    - **Lot Costs**: Automated calculation of total lot costs (purchase + process + transport) with integrated journal entries.
-    - **Product & Stock**: Product catalog with Excel import, live stock calculation with adjustment capabilities and role-based visibility (e.g., Commercial hides purchase prices).
-    - **Vanilla Lot Status (STATUTS VANILLE)**: Workflow management with `raw` → `curing` → `drying` → `ready` → `sold` transitions. Server-side validation of transitions and real-time risk assessment (humidity, weight loss, age). Automated blocking of sales for high-risk or invalid lots.
-    - **AI Advanced Vanilla (AI AVANCÉE VANILLE)**: ML-based risk classification using RandomForest, humidity/loss forecasting with SimpleLinearRegression, and integration of Madagascar rainy season boosts. Provides detailed predictions, risk event logging, and a dedicated AI dashboard with model status and alerts.
-- **CRM Commercial**: Kanban and list views for prospects, deals, and leads. Multi-step forms with adaptive fiscal fields. Excel import/export. AI-driven scoring for leads. Quote management with workflow and conditional blocking. Activity logging. Email templates and automated reminders. Client management with rich fields and access restrictions.
-    - **Conversion Engine**: Atomic Drizzle transactions for converting prospects to clients, migrating associated data, and generating audit logs. Supports manual, deal creation, and quote acceptance triggers. Includes risk-level assignment and conversion alerts/logs.
-
-## System Design Choices
-- **Event-Driven Automation**: Automated creation of lots, stock movements, and journal entries based on business events (e.g., `POST /api/purchases`).
-- **Data Integrity**: Server-side business rules enforce data consistency (e.g., `sale` quantity validation against `lot` stock).
-- **Scalability**: Monorepo structure supports independent development and deployment of modules.
-- **Maintainability**: Clear separation of concerns with `lib/`, `artifacts/`, and `routes/` directories.
-- **Security**: RBAC implementation for fine-grained control over features and data access.
-
-# External Dependencies
-
-- **Database**: PostgreSQL
-- **ORM**: Drizzle ORM
-- **API Framework**: Express 5
-- **Frontend Framework**: React
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **Routing**: Wouter
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API Codegen**: Orval
-- **Monorepo Tool**: pnpm workspaces
-- **Excel Processing**: SheetJS (`xlsx`)
-- **File Uploads**: `multer`
-- **Machine Learning**: `ml-random-forest`, `ml-regression-simple-linear`
-- **PDF Generation**: HTML auto-print (for payslips)
-- **Email**: Nodemailer (for reminders)
-- **Session Management**: `connect-pg-simple`
-- **Toast Notifications**: `sonner`
+- **Drizzle ORM Docs:** _Populate as you build_
+- **Express.js Docs:** _Populate as you build_
+- **React Docs:** _Populate as you build_
+- **TailwindCSS Docs:** _Populate as you build_
+- **Zod Docs:** _Populate as you build_
+- **Orval Docs:** _Populate as you build_
+- **pnpm Workspaces Docs:** _Populate as you build_
+- **PCG 2005 Standards:** _Populate as you build_

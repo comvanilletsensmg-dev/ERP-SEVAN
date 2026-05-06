@@ -28,6 +28,7 @@ import HrDashboard from "@/pages/hr/Dashboard";
 import HrImport from "@/pages/hr/Import";
 import AccountingInvoices from "@/pages/accounting/Invoices";
 import AccountingPartners from "@/pages/accounting/Partners";
+import TiersDetail from "@/pages/accounting/TiersDetail";
 import AccountingBank from "@/pages/accounting/Bank";
 import AccountingAssets from "@/pages/accounting/Assets";
 import AccountingReports from "@/pages/accounting/Reports";
@@ -103,6 +104,11 @@ function Router() {
       <Route path="/hr/import" component={() => <ProtectedRoute component={HrImport} />} />
       <Route path="/accounting/invoices" component={() => <ProtectedRoute component={AccountingInvoices} />} />
       <Route path="/accounting/partners" component={() => <ProtectedRoute component={AccountingPartners} />} />
+      <Route path="/accounting/tiers/:id" component={(params: any) => {
+        const id = params?.params?.id ?? params?.id ?? "";
+        const C = () => <TiersDetail id={id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
       <Route path="/accounting/bank" component={() => <ProtectedRoute component={AccountingBank} />} />
       <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />

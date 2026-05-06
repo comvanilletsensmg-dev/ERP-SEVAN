@@ -55,6 +55,7 @@ import operationsRouter from "./operations";
 import financeRouter from "./finance";
 import closingRouter from "./closing";
 import invoicePaymentsRouter from "./invoice-payments";
+import tiersRouter from "./tiers";
 
 const router: IRouter = Router();
 
@@ -115,5 +116,7 @@ router.use(operationsRouter);
 router.use(financeRouter);
 router.use(closingRouter);
 router.use(invoicePaymentsRouter);
+// tiers must come AFTER accountingPartnersRouter: /tiers/:id before /partners
+router.use(tiersRouter);
 
 export default router;
