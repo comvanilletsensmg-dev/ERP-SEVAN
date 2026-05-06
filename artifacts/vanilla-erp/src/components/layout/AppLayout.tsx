@@ -10,7 +10,7 @@ import {
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
   Target, Activity, AlertTriangle, Upload, Workflow, ShieldAlert, Brain, Settings,
-  Factory,
+  Factory, LockKeyhole,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -31,6 +31,7 @@ const logisticsNav = [
 
 const accountingNav = [
   { label: "Dashboard Financier", href: "/accounting/finance",    icon: TrendingUp },
+  { label: "Clôture Mensuelle",   href: "/accounting/closing",    icon: LockKeyhole },
   { label: "Journal",             href: "/accounting",            icon: BookOpen },
   { label: "Factures",            href: "/accounting/invoices",   icon: FileText },
   { label: "Tiers",               href: "/accounting/partners",   icon: Building2 },
@@ -76,7 +77,7 @@ const adminNav = [
   { label: "Config. Société", href: "/settings/company",   icon: Building2 },
 ];
 
-const EXACT_MATCH_PATHS = ["/dashboard", "/accounting", "/accounting/finance"];
+const EXACT_MATCH_PATHS = ["/dashboard", "/accounting", "/accounting/finance", "/accounting/closing"];
 
 function NavItem({ href, label, icon: Icon, location, badge }: {
   href: string; label: string; icon: React.ElementType; location: string; badge?: number;

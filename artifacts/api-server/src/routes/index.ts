@@ -53,6 +53,7 @@ import planningRouter from "./planning";
 import recruitmentRouter from "./recruitment";
 import operationsRouter from "./operations";
 import financeRouter from "./finance";
+import closingRouter from "./closing";
 
 const router: IRouter = Router();
 
@@ -111,5 +112,6 @@ router.use(planningRouter);
 router.use(recruitmentRouter);
 router.use(operationsRouter);
 router.use(financeRouter);
+router.use(closingRouter);
 
 export default router;
