@@ -31,6 +31,7 @@ import AccountingPartners from "@/pages/accounting/Partners";
 import AccountingBank from "@/pages/accounting/Bank";
 import AccountingAssets from "@/pages/accounting/Assets";
 import AccountingReports from "@/pages/accounting/Reports";
+import FinancialDashboard from "@/pages/accounting/FinancialDashboard";
 import UsersAdmin from "@/pages/admin/Users";
 import CompanySettings from "@/pages/settings/Company";
 import PlatformSettings from "@/pages/settings/Platform";
@@ -104,6 +105,7 @@ function Router() {
       <Route path="/accounting/bank" component={() => <ProtectedRoute component={AccountingBank} />} />
       <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
+      <Route path="/accounting/finance" component={() => <ProtectedRoute component={FinancialDashboard} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
       <Route path="/settings/company" component={() => <ProtectedRoute component={CompanySettings} />} />
       <Route path="/settings/platform" component={() => <ProtectedRoute component={PlatformSettings} />} />

@@ -52,6 +52,7 @@ import platformSettingsRouter from "./platform-settings";
 import planningRouter from "./planning";
 import recruitmentRouter from "./recruitment";
 import operationsRouter from "./operations";
+import financeRouter from "./finance";
 
 const router: IRouter = Router();
 
@@ -109,5 +110,6 @@ router.use(platformSettingsRouter);
 router.use(planningRouter);
 router.use(recruitmentRouter);
 router.use(operationsRouter);
+router.use(financeRouter);
 
 export default router;

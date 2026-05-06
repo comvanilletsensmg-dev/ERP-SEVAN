@@ -1,0 +1,196 @@
+Tu es un développeur full-stack senior expert ERP comptable (PCG 2005 Madagascar).
+
+Objectif :
+Créer un système de CLÔTURE MENSUELLE AUTOMATIQUE avec :
+
+- vérification préalable (checklist)
+- génération écritures de clôture
+- verrouillage période
+- états financiers figés (PDF + Excel)
+- possibilité de réouverture contrôlée
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- PDF : Puppeteer
+- Excel : xlsx
+
+-----------------------------------
+1. MODÈLES PRISMA
+-----------------------------------
+
+model AccountingPeriod {
+  id          String   @id @default(uuid())
+  year        Int
+  month       Int
+  status      String   // open, closing, closed
+  closedAt    DateTime?
+  closedBy    String?
+}
+
+-----------------------------------
+
+model ClosingLog {
+  id          String @id @default(uuid())
+  periodId    String
+  action      String   // check, close, reopen
+  details     Json
+  createdAt   DateTime @default(now())
+}
+
+-----------------------------------
+2. CHECKLIST AVANT CLÔTURE (CRITIQUE)
+-----------------------------------
+
+Créer service :
+
+checkClosing(period)
+
+-----------------------------------
+
+Vérifier :
+
+- toutes les factures validées
+- toutes les écritures équilibrées
+- rapprochement bancaire OK
+- paie générée
+- stock valorisé
+
+-----------------------------------
+
+Retour :
+
+{
+  valid: true/false,
+  errors: []
+}
+
+-----------------------------------
+3. GÉNÉRATION ÉCRITURES AUTOMATIQUES
+-----------------------------------
+
+A. Amortissements
+
+- débit 681
+- crédit 28x
+
+-----------------------------------
+
+B. Charges à payer (option)
+
+-----------------------------------
+
+C. Stock (si variation)
+
+-----------------------------------
+
+D. Résultat (option simplifiée)
+
+-----------------------------------
+4. CLÔTURE
+-----------------------------------
+
+POST /api/accounting/close
+
+-----------------------------------
+
+LOGIQUE :
+
+- vérifier checklist
+- créer écritures auto
+- changer statut → closed
+- bloquer modification écritures
+
+-----------------------------------
+5. VERROUILLAGE
+-----------------------------------
+
+SI période closed :
+
+- aucune modification autorisée
+
+-----------------------------------
+6. RÉOUVERTURE (SÉCURISÉ)
+-----------------------------------
+
+POST /api/accounting/reopen
+
+-----------------------------------
+
+- admin uniquement
+- journaliser action
+
+-----------------------------------
+7. SNAPSHOT FINANCIER
+-----------------------------------
+
+Générer :
+
+- bilan PDF
+- compte de résultat PDF
+- balance Excel
+
+-----------------------------------
+
+Stocker :
+
+ClosingSnapshot
+
+-----------------------------------
+8. UI
+-----------------------------------
+
+Page :
+
+/accounting/closing
+
+-----------------------------------
+
+Afficher :
+
+- statut période
+- checklist
+- bouton clôturer
+
+-----------------------------------
+
+Couleurs :
+
+- rouge = erreurs
+- vert = prêt
+
+-----------------------------------
+9. ALERTES
+-----------------------------------
+
+- clôture non faite
+- anomalies détectées
+
+-----------------------------------
+10. AUTOMATISATION
+-----------------------------------
+
+CRON :
+
+- proposer clôture fin de mois
+
+-----------------------------------
+11. SÉCURITÉ
+-----------------------------------
+
+- COMPTABLE : préparer
+- ADMIN : clôturer
+
+-----------------------------------
+12. LIVRABLE
+-----------------------------------
+
+- clôture fiable
+- audit-ready
+- conforme PCG
+
+Commence par :
+1. modèle AccountingPeriod
+2. checklist
+3. bouton clôture

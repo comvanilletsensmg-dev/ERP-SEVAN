@@ -30,12 +30,13 @@ const logisticsNav = [
 ];
 
 const accountingNav = [
-  { label: "Journal",          href: "/accounting",              icon: BookOpen },
-  { label: "Factures",         href: "/accounting/invoices",     icon: FileText },
-  { label: "Tiers",            href: "/accounting/partners",     icon: Building2 },
-  { label: "Rapprochement",    href: "/accounting/bank",         icon: Landmark },
-  { label: "Immobilisations",  href: "/accounting/assets",       icon: Layers },
-  { label: "Rapports",         href: "/accounting/reports",      icon: BarChart3 },
+  { label: "Dashboard Financier", href: "/accounting/finance",    icon: TrendingUp },
+  { label: "Journal",             href: "/accounting",            icon: BookOpen },
+  { label: "Factures",            href: "/accounting/invoices",   icon: FileText },
+  { label: "Tiers",               href: "/accounting/partners",   icon: Building2 },
+  { label: "Rapprochement",       href: "/accounting/bank",       icon: Landmark },
+  { label: "Immobilisations",     href: "/accounting/assets",     icon: Layers },
+  { label: "Rapports",            href: "/accounting/reports",    icon: BarChart3 },
 ];
 
 const hrNav = [
@@ -75,7 +76,7 @@ const adminNav = [
   { label: "Config. Société", href: "/settings/company",   icon: Building2 },
 ];
 
-const EXACT_MATCH_PATHS = ["/dashboard", "/accounting"];
+const EXACT_MATCH_PATHS = ["/dashboard", "/accounting", "/accounting/finance"];
 
 function NavItem({ href, label, icon: Icon, location, badge }: {
   href: string; label: string; icon: React.ElementType; location: string; badge?: number;

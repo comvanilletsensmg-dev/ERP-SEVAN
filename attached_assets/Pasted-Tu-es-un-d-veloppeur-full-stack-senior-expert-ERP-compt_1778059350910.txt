@@ -1,0 +1,225 @@
+Tu es un développeur full-stack senior expert ERP comptable (PCG 2005 Madagascar) + data viz.
+
+Objectif :
+Créer un DASHBOARD FINANCIER ultra premium, temps réel, fiable, lisible, connecté au plan comptable PCG 2005,
+avec :
+- KPIs financiers
+- compte de résultat dynamique
+- bilan simplifié
+- trésorerie (cash flow)
+- analyse par compte PCG
+- analyse par lot (vanille)
+- multi-devises (MGA, USD, EUR)
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- Charts : Recharts
+- Date : dayjs
+
+-----------------------------------
+1. MODÈLES (UTILISÉS)
+-----------------------------------
+
+Account (PCG)
+JournalEntry
+JournalLine (debit/credit, accountId)
+Invoice / Payment
+Lot (pour analyse coût)
+BankTransaction
+
+-----------------------------------
+2. AGRÉGATIONS FINANCIÈRES (CORE)
+-----------------------------------
+
+Créer service :
+
+/services/finance.ts
+
+-----------------------------------
+
+A. Chiffre d’affaires (701)
+
+revenue = SUM(credit WHERE account.code LIKE '70%')
+
+-----------------------------------
+
+B. Achats (601 / 602)
+
+expenses = SUM(debit WHERE account.code LIKE '60%')
+
+-----------------------------------
+
+C. Résultat net
+
+net = revenue - expenses - autres charges
+
+-----------------------------------
+
+D. Trésorerie
+
+cash = (512 + 53)
+
+-----------------------------------
+
+E. Créances / Dettes
+
+clients = solde 411
+fournisseurs = solde 401
+
+-----------------------------------
+3. KPI EN HAUT (CARTES)
+-----------------------------------
+
+- Chiffre d’affaires (MGA + USD)
+- Résultat net
+- Trésorerie
+- Marge (%)
+- Créances clients
+- Dettes fournisseurs
+
+-----------------------------------
+4. GRAPHIQUES (RECHARTS)
+-----------------------------------
+
+A. Évolution CA (ligne)
+
+- par mois
+
+-----------------------------------
+
+B. Charges vs Produits (barres)
+
+-----------------------------------
+
+C. Répartition dépenses (pie)
+
+- comptes 60%
+
+-----------------------------------
+
+D. Cash Flow (ligne)
+
+-----------------------------------
+5. COMPTE DE RÉSULTAT DYNAMIQUE
+-----------------------------------
+
+Afficher :
+
+- Produits (70)
+- Charges (60, 61, 62, 63, 64)
+- Résultat
+
+-----------------------------------
+
+Filtrable :
+
+- période
+- devise
+
+-----------------------------------
+6. BILAN SIMPLIFIÉ (PCG)
+-----------------------------------
+
+ACTIF :
+
+- 3xx Stock
+- 41 Clients
+- 512 Banque
+
+PASSIF :
+
+- 10 Capital
+- 40 Fournisseurs
+
+-----------------------------------
+7. ANALYSE PAR LOT (TRÈS IMPORTANT)
+-----------------------------------
+
+Lien avec production :
+
+- coût lot = achats + transformation
+- revenu lot = ventes
+
+-----------------------------------
+
+Afficher :
+
+- marge par lot
+- top lots rentables
+
+-----------------------------------
+8. MULTI-DEVISES
+-----------------------------------
+
+- MGA (principal)
+- USD / EUR
+
+-----------------------------------
+
+Créer :
+
+convertCurrency(amount, currency)
+
+-----------------------------------
+9. FILTRES GLOBAUX
+-----------------------------------
+
+- période (mois, année)
+- devise
+- lot
+- compte PCG
+
+-----------------------------------
+10. UI PREMIUM (STYLE SAAS)
+-----------------------------------
+
+- cards arrondies
+- ombres légères
+- grille 2 ou 3 colonnes
+- couleurs financières :
+
+  vert = profit
+  rouge = perte
+
+-----------------------------------
+11. ALERTES INTELLIGENTES
+-----------------------------------
+
+- trésorerie faible
+- marge négative
+- stock élevé non vendu
+
+-----------------------------------
+12. PERFORMANCE
+-----------------------------------
+
+- requêtes optimisées Prisma
+- cache agrégations
+
+-----------------------------------
+13. EXPORT
+-----------------------------------
+
+- PDF dashboard
+- Excel KPIs
+
+-----------------------------------
+14. SÉCURITÉ
+-----------------------------------
+
+- COMPTABLE + ADMIN uniquement
+
+-----------------------------------
+15. LIVRABLE
+-----------------------------------
+
+- dashboard temps réel
+- conforme PCG 2005
+- utilisable par DG
+
+Commence par :
+1. service finance.ts
+2. KPIs
+3. graphiques
