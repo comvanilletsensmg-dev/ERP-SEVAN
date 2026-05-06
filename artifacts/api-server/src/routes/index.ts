@@ -56,6 +56,7 @@ import financeRouter from "./finance";
 import closingRouter from "./closing";
 import invoicePaymentsRouter from "./invoice-payments";
 import tiersRouter from "./tiers";
+import bankReconciliationRouter from "./bank-reconciliation";
 
 const router: IRouter = Router();
 
@@ -118,5 +119,7 @@ router.use(closingRouter);
 router.use(invoicePaymentsRouter);
 // tiers must come AFTER accountingPartnersRouter: /tiers/:id before /partners
 router.use(tiersRouter);
+// bank-reconciliation: new endpoints alongside existing accounting-bank
+router.use(bankReconciliationRouter);
 
 export default router;

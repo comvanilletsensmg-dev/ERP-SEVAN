@@ -10,7 +10,15 @@ export const bankTransactionsTable = pgTable("bank_transactions", {
   currency: text("currency").notNull().default("MGA"),
   reference: text("reference"),
   matched: boolean("matched").notNull().default(false),
-  matchedRef: text("matched_ref"), // invoice id or payment id matched to
+  matchedRef: text("matched_ref"),
+  // Enhanced reconciliation
+  status: text("status").notNull().default("unmatched"), // unmatched | suggested | matched
+  invoiceId: text("invoice_id"),
+  partnerId: text("partner_id"),
+  journalEntryId: text("journal_entry_id"),
+  matchScore: real("match_score"),
+  gapAmount: real("gap_amount"),
+  gapJournalEntryId: text("gap_journal_entry_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
