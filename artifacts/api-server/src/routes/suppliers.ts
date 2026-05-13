@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, desc } from "drizzle-orm";
 import { db, suppliersTable, employeesTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
+import { requireRole } from "../middlewares/roles";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -227,7 +228,7 @@ router.post("/suppliers/:id/notes", requireAuth, async (req: any, res): Promise<
 });
 
 // ─── DELETE /suppliers/:id ────────────────────────────────────────────────────
-router.delete("/suppliers/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/suppliers/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MANAGER"), async (req, res): Promise<void> => {
   const { id } = req.params;
   const [deleted] = await db.delete(suppliersTable).where(eq(suppliersTable.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }

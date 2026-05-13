@@ -61,9 +61,10 @@ export default function Purchases() {
     query: { queryKey: getGetPurchasesQueryKey() },
   });
 
-  const { data: suppliers } = useGetSuppliers({
+  const { data: suppliersData } = useGetSuppliers({
     query: { queryKey: getGetSuppliersQueryKey() },
   });
+  const suppliers = Array.isArray(suppliersData) ? suppliersData : (suppliersData as any)?.suppliers ?? [];
 
   const createPurchase = useCreatePurchase({
     mutation: {

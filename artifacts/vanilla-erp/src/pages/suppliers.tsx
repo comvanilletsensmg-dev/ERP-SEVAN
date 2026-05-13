@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   Package, Wrench, Users, TrendingUp, AlertTriangle,
-  Plus, Search, Filter, Download, Eye, Edit2,
-  CheckCircle2, XCircle, Clock, Star,
+  Plus, Search, Download, Eye, Edit2, Trash2,
+  CheckCircle2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);
@@ -46,10 +47,27 @@ function downloadCSV(rows: any[], filename: string) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SuppliersPage() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const canDelete = user?.role === "SUPER_ADMIN" || user?.role === "LOGISTICS_MANAGER";
+
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterRegion, setFilterRegion] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/api/suppliers/${id}`, { method: "DELETE", credentials: "include" }).then(r => {
+        if (!r.ok) throw new Error("Erreur lors de la suppression");
+        return r.json();
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers-list"] });
+      setConfirmDelete(null);
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["suppliers-list"],
@@ -75,6 +93,34 @@ export default function SuppliersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600"/>
+              </div>
+              <h2 className="text-base font-bold text-gray-900">Supprimer le fournisseur</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-1">Vous êtes sur le point de supprimer définitivement :</p>
+            <p className="text-sm font-semibold text-gray-900 mb-4">« {confirmDelete.name} »</p>
+            <p className="text-xs text-red-500 mb-5">Cette action est irréversible. Toutes les données associées seront perdues.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                Annuler
+              </button>
+              <button onClick={() => deleteMutation.mutate(confirmDelete.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+                {deleteMutation.isPending ? "Suppression…" : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-5">
@@ -203,13 +249,19 @@ export default function SuppliersPage() {
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1">
                       <button onClick={() => navigate(`/suppliers/${s.id}`)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700" title="Voir la fiche">
                         <Eye className="w-3.5 h-3.5"/>
                       </button>
                       <button onClick={() => navigate(`/suppliers/${s.id}/edit`)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700" title="Modifier">
                         <Edit2 className="w-3.5 h-3.5"/>
                       </button>
+                      {canDelete && (
+                        <button onClick={() => setConfirmDelete({ id: s.id, name: s.name })}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors" title="Supprimer">
+                          <Trash2 className="w-3.5 h-3.5"/>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
