@@ -1,0 +1,414 @@
+Objectif :
+Transformer le module FACTURES de l’ERP en système comptable ultra professionnel connecté à :
+- achats logistique
+- fournisseurs
+- OCR intelligent
+- comptabilité
+- stock
+- paiements
+
+Stack obligatoire :
+- Frontend : React + Tailwind + Shadcn UI
+- Backend : Node.js + Express
+- ORM : Prisma
+- Database : PostgreSQL
+- OCR : Tesseract.js + pdf-parse
+- Upload : Multer
+- PDF : Puppeteer
+
+IMPORTANT :
+Le système doit fonctionner comme un vrai ERP professionnel :
+- génération automatique factures achats
+- OCR intelligent
+- liaison comptable automatique
+- gestion pièces jointes
+- permissions avancées
+
+---------------------------------------------------
+1. GÉNÉRATION AUTOMATIQUE FACTURES ACHATS
+---------------------------------------------------
+
+Créer automatisation :
+
+Lorsqu’un achat vanille est validé dans :
+
+/achats
+
+Le système doit automatiquement créer :
+
+- une facture fournisseur
+- une écriture comptable
+- une dette fournisseur
+
+-----------------------------------
+
+Créer liaison :
+
+Achat
+↔ Facture fournisseur
+↔ Fournisseur
+↔ Lot
+↔ Comptabilité
+
+---------------------------------------------------
+2. FACTURES AUTO POUR ACHATS VANILLE
+---------------------------------------------------
+
+Lors création achat vanille :
+
+Créer automatiquement :
+
+- numéro facture
+- fournisseur
+- quantité
+- prix/kg
+- montant total
+- TVA si applicable
+
+-----------------------------------
+
+Créer écriture comptable :
+
+602
+44566
+401
+
+---------------------------------------------------
+3. OCR FACTURES FOURNISSEURS
+---------------------------------------------------
+
+Créer système upload :
+
+Formats :
+
+- PDF
+- JPG
+- JPEG
+- PNG
+
+-----------------------------------
+
+Créer page :
+
+/accounting/invoices/upload
+
+---------------------------------------------------
+4. ANALYSE OCR AUTOMATIQUE
+---------------------------------------------------
+
+Après upload :
+
+Le système doit lire automatiquement :
+
+- nom fournisseur
+- numéro facture
+- date facture
+- montant HT
+- TVA
+- montant TTC
+- devise
+
+-----------------------------------
+
+Utiliser :
+
+- Tesseract.js
+- pdf-parse
+
+---------------------------------------------------
+5. CRÉATION AUTOMATIQUE FOURNISSEUR
+---------------------------------------------------
+
+Si fournisseur détecté n’existe pas :
+
+Créer automatiquement fournisseur.
+
+-----------------------------------
+
+Créer dans :
+
+/suppliers
+
+-----------------------------------
+
+Type fournisseur :
+
+GOODS ou SERVICES selon facture détectée.
+
+---------------------------------------------------
+6. ASSOCIATION FACTURE ↔ FOURNISSEUR
+---------------------------------------------------
+
+Associer automatiquement :
+
+Facture
+↔ Fournisseur
+
+-----------------------------------
+
+Afficher :
+
+- historique achats
+- dettes
+- paiements
+
+---------------------------------------------------
+7. PIÈCES JOINTES FACTURE
+---------------------------------------------------
+
+Conserver TOUJOURS fichier original uploadé.
+
+-----------------------------------
+
+Stocker :
+
+- PDF
+- image scan
+- photo facture
+
+-----------------------------------
+
+Afficher dans facture :
+
+Onglet :
+
+Pièces jointes
+
+-----------------------------------
+
+Permettre :
+
+- visualiser
+- télécharger
+- supprimer (admin uniquement)
+
+---------------------------------------------------
+8. FORMULAIRE FACTURE PROFESSIONNEL
+---------------------------------------------------
+
+Créer formulaire moderne avec :
+
+- fournisseur
+- achat lié
+- lot lié
+- montant HT
+- TVA
+- TTC
+- devise
+- échéance
+- statut
+
+-----------------------------------
+
+Statuts :
+
+- brouillon
+- validée
+- payée
+- annulée
+
+---------------------------------------------------
+9. PERMISSIONS SUPPRESSION FACTURES
+---------------------------------------------------
+
+IMPORTANT :
+
+Autoriser suppression uniquement :
+
+- SUPER ADMIN
+- ADMIN
+
+-----------------------------------
+
+INTERDIRE suppression :
+
+- comptable
+- logistique
+- commercial
+- RH
+
+---------------------------------------------------
+10. CONDITIONS AVANT SUPPRESSION
+---------------------------------------------------
+
+Interdire suppression si :
+
+- facture déjà payée
+- clôture mensuelle effectuée
+- export comptable validé
+
+-----------------------------------
+
+Afficher popup sécurité :
+
+“Supprimer définitivement cette facture ?”
+
+-----------------------------------
+
+Demander :
+
+- raison suppression
+
+---------------------------------------------------
+11. JOURNAL D’AUDIT
+---------------------------------------------------
+
+Journaliser :
+
+- utilisateur
+- date
+- IP
+- raison suppression
+- ancienne facture
+
+---------------------------------------------------
+12. LIAISON COMPTABILITÉ
+---------------------------------------------------
+
+Créer automatiquement :
+
+Achats :
+602 / 401
+
+TVA :
+44566
+
+Paiements :
+401 → 512/53
+
+---------------------------------------------------
+13. LIAISON LOTS
+---------------------------------------------------
+
+Afficher dans facture :
+
+- lot concerné
+- poids
+- fournisseur lot
+- qualité lot
+
+---------------------------------------------------
+14. LIAISON ACHATS
+---------------------------------------------------
+
+Afficher :
+
+- achat source
+- quantité
+- prix/kg
+- réception stock
+
+---------------------------------------------------
+15. OCR VALIDATION HUMAINE
+---------------------------------------------------
+
+Après OCR :
+
+Afficher écran validation :
+
+- champs détectés
+- corrections manuelles possibles
+
+-----------------------------------
+
+Bouton :
+
+“Créer facture”
+
+---------------------------------------------------
+16. IA DÉTECTION DOUBLONS
+---------------------------------------------------
+
+Détecter automatiquement :
+
+- même numéro facture
+- même montant
+- même fournisseur
+
+-----------------------------------
+
+Afficher :
+
+⚠️ facture potentiellement doublon
+
+---------------------------------------------------
+17. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- Excel
+- PDF
+- journal achats
+- TVA déductible
+
+---------------------------------------------------
+18. FILTRES AVANCÉS
+---------------------------------------------------
+
+Filtrer :
+
+- fournisseur
+- date
+- montant
+- statut
+- devise
+- lot
+- achat
+
+---------------------------------------------------
+19. DASHBOARD FACTURES
+---------------------------------------------------
+
+Créer KPI :
+
+- factures mois
+- total achats
+- TVA déductible
+- dettes fournisseurs
+- factures attente validation
+
+---------------------------------------------------
+20. UI/UX
+---------------------------------------------------
+
+Design :
+
+- style ERP premium
+- tables modernes
+- upload drag & drop
+- preview PDF
+- responsive
+
+---------------------------------------------------
+21. SÉCURITÉ
+---------------------------------------------------
+
+Sécuriser :
+
+- upload fichiers
+- OCR
+- permissions
+- suppression
+
+---------------------------------------------------
+22. LIVRABLE FINAL
+---------------------------------------------------
+
+Le module doit être :
+
+- digne d’un ERP professionnel
+- automatisé
+- connecté à la logistique
+- connecté à la comptabilité
+- connecté aux fournisseurs
+- OCR intelligent intégré
+
+Commence par :
+
+1. Prisma Invoice
+2. upload OCR
+3. génération auto facture achats
+4. liaison fournisseurs
+5. permissions suppression
+6. stockage pièces jointes
