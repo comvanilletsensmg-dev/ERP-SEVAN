@@ -1,0 +1,151 @@
+Tu es un développeur full-stack senior expert ERP achats/logistique/comptabilité.
+
+Objectif :
+Créer un module ACHATS ultra professionnel connecté à :
+- fournisseurs
+- stock
+- lots
+- comptabilité
+- paiements
+- qualité
+
+---------------------------------------------------
+1. DASHBOARD ACHATS
+---------------------------------------------------
+
+Créer KPI :
+
+- total achats
+- coût moyen/kg
+- kg achetés
+- dettes fournisseurs
+
+---------------------------------------------------
+2. TYPES ACHATS
+---------------------------------------------------
+
+A. Matières premières
+B. Services
+
+---------------------------------------------------
+3. FORMULAIRE DYNAMIQUE
+---------------------------------------------------
+
+Si achat matière :
+
+- poids
+- humidité
+- qualité
+- lot
+
+-----------------------------------
+
+Si achat service :
+
+- prestation
+- contrat
+- coût service
+
+---------------------------------------------------
+4. INFORMATIONS ACHAT
+---------------------------------------------------
+
+- référence auto
+- fournisseur
+- date
+- devise
+
+---------------------------------------------------
+5. QUALITÉ VANILLE
+---------------------------------------------------
+
+- humidité
+- taille
+- odeur
+- moisissure
+
+---------------------------------------------------
+6. LOTS
+---------------------------------------------------
+
+Créer lot automatique.
+
+---------------------------------------------------
+7. STOCK
+---------------------------------------------------
+
+Créer mouvement stock automatique.
+
+---------------------------------------------------
+8. COMPTABILITÉ
+---------------------------------------------------
+
+Créer écritures auto :
+
+601/602
+44566
+401
+
+---------------------------------------------------
+9. PAIEMENTS
+---------------------------------------------------
+
+Méthodes :
+
+- espèces
+- Mvola
+- Orange Money
+- virement
+- chèque
+
+---------------------------------------------------
+10. FACTURES FOURNISSEUR
+---------------------------------------------------
+
+- upload PDF
+- OCR
+
+---------------------------------------------------
+11. VALIDATION
+---------------------------------------------------
+
+Workflow :
+
+Agent → Responsable → Comptabilité
+
+---------------------------------------------------
+12. ANALYTICS
+---------------------------------------------------
+
+- coût moyen
+- évolution prix
+- top fournisseurs
+
+---------------------------------------------------
+13. ALERTES
+---------------------------------------------------
+
+- prix anormal
+- qualité faible
+
+---------------------------------------------------
+14. IA PRÉVISION PRIX
+---------------------------------------------------
+
+Prévisions :
+
+- saisonnalité
+- évolution prix
+
+---------------------------------------------------
+15. LIVRABLE
+---------------------------------------------------
+
+- module achats ERP premium
+- connecté à toute la plateforme
+
+Commence par :
+1. Prisma Purchase
+2. formulaire achats dynamique
+3. liaison stock/compta
+4. dashboard achats
