@@ -5,6 +5,7 @@ import { checkOverdueInvoices } from "./routes/crm-reminders";
 import { recalcAllLotRisks } from "./lib/lot-risk-cron";
 import { runAiPredictions } from "./lib/ai/predict-cron";
 import { runMonthlyPayroll } from "./lib/payroll-cron";
+import { seedRolePermissions } from "./routes/users";
 
 const rawPort = process.env["PORT"];
 
@@ -22,6 +23,10 @@ if (Number.isNaN(port) || port <= 0) {
 
 seedDatabase().catch((err) => {
   logger.error({ err }, "Failed to seed database");
+});
+
+seedRolePermissions().catch((err) => {
+  logger.error({ err }, "Failed to seed role permissions");
 });
 
 // Daily cron: check overdue invoices and create reminders

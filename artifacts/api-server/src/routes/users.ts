@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, loginHistoryTable, userPermissionsTable, employeesTable } from "@workspace/db";
+import { db, usersTable, loginHistoryTable, userPermissionsTable, rolePermissionsTable, employeesTable } from "@workspace/db";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole, ROLES } from "../middlewares/roles";
@@ -8,23 +8,57 @@ const router: IRouter = Router();
 
 const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.DG];
 
-const ERP_MODULES = [
+export const ERP_MODULES = [
   "achats", "fournisseurs", "lots", "stock",
   "paiements", "comptabilite", "rh", "crm", "operations", "logistique",
 ];
 
-const ROLE_DEFAULT_PERMISSIONS: Record<string, Record<string, boolean[]>> = {
-  SUPER_ADMIN:       { "*": [true, true, true, true, true] },
-  ADMIN:             { "*": [true, true, true, true, true] },
-  DG:                { "*": [true, false, false, false, true] },
-  DGA:               { "*": [true, false, false, false, true] },
-  ACCOUNTANT:        { comptabilite: [true, true, true, false, true], paiements: [true, true, true, false, true] },
-  HR_MANAGER:        { rh: [true, true, true, true, true] },
-  LOGISTICS_MANAGER: { lots: [true, true, true, false, true], achats: [true, true, true, false, true], fournisseurs: [true, true, true, false, true], stock: [true, true, true, false, true], logistique: [true, true, true, false, true] },
-  COMMERCIAL:        { crm: [true, true, true, false, true] },
-  BUSINESS_DEVELOPER:{ crm: [true, true, false, false, true] },
-  DSI:               { "*": [true, false, false, false, false] },
+const ALL_ROLES = [
+  "SUPER_ADMIN", "ADMIN", "DG", "DGA",
+  "HR_MANAGER", "ACCOUNTANT", "LOGISTICS_MANAGER",
+  "COMMERCIAL", "BUSINESS_DEVELOPER", "DSI",
+];
+
+// Hardcoded bootstrap defaults (used only on first seed)
+const BOOTSTRAP_DEFAULTS: Record<string, Record<string, boolean[]>> = {
+  SUPER_ADMIN:        { "*": [true, true, true, true, true] },
+  ADMIN:              { "*": [true, true, true, true, true] },
+  DG:                 { "*": [true, false, false, false, true] },
+  DGA:                { "*": [true, false, false, false, true] },
+  ACCOUNTANT:         { comptabilite: [true, true, true, false, true], paiements: [true, true, true, false, true] },
+  HR_MANAGER:         { rh: [true, true, true, true, true] },
+  LOGISTICS_MANAGER:  { lots: [true, true, true, false, true], achats: [true, true, true, false, true], fournisseurs: [true, true, true, false, true], stock: [true, true, true, false, true], logistique: [true, true, true, false, true] },
+  COMMERCIAL:         { crm: [true, true, true, false, true] },
+  BUSINESS_DEVELOPER: { crm: [true, true, false, false, true] },
+  DSI:                { "*": [true, false, false, false, false] },
 };
+
+// ─── Seed role_permissions on startup ────────────────────────────────────────
+export async function seedRolePermissions() {
+  const existing = await db.select().from(rolePermissionsTable).limit(1);
+  if (existing.length > 0) return;
+
+  const rows: { role: string; module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }[] = [];
+  for (const role of ALL_ROLES) {
+    const def = BOOTSTRAP_DEFAULTS[role] ?? {};
+    const isWildcard = !!def["*"];
+    for (const module of ERP_MODULES) {
+      const d = isWildcard ? def["*"]! : (def[module] ?? [false, false, false, false, false]);
+      rows.push({ role, module, canView: d[0]??false, canCreate: d[1]??false, canEdit: d[2]??false, canDelete: d[3]??false, canExport: d[4]??false });
+    }
+  }
+  if (rows.length > 0) await db.insert(rolePermissionsTable).values(rows).onConflictDoNothing();
+}
+
+// ─── Helper: get role defaults from DB ───────────────────────────────────────
+async function getRoleDefaults(role: string): Promise<Record<string, boolean[]>> {
+  const perms = await db.select().from(rolePermissionsTable).where(eq(rolePermissionsTable.role, role));
+  const result: Record<string, boolean[]> = {};
+  for (const p of perms) {
+    result[p.module] = [p.canView, p.canCreate, p.canEdit, p.canDelete, p.canExport];
+  }
+  return result;
+}
 
 function safe(u: any) {
   return {
@@ -86,6 +120,87 @@ router.get("/users/kpis", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANA
   });
 });
 
+// ─── GET /role-permissions ────────────────────────────────────────────────────
+router.get("/role-permissions", requireAuth, requireRole(...ADMIN_ROLES), async (_req, res): Promise<void> => {
+  const rows = await db.select().from(rolePermissionsTable).orderBy(rolePermissionsTable.role, rolePermissionsTable.module);
+
+  // Group by role
+  const grouped: Record<string, Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }>> = {};
+  for (const r of rows) {
+    if (!grouped[r.role]) grouped[r.role] = [];
+    grouped[r.role]!.push({ module: r.module, canView: r.canView, canCreate: r.canCreate, canEdit: r.canEdit, canDelete: r.canDelete, canExport: r.canExport });
+  }
+
+  // Ensure all roles and modules are present (fill missing with false)
+  for (const role of ALL_ROLES) {
+    if (!grouped[role]) grouped[role] = [];
+    const existing = new Set(grouped[role]!.map(p => p.module));
+    for (const module of ERP_MODULES) {
+      if (!existing.has(module)) {
+        grouped[role]!.push({ module, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false });
+      }
+    }
+    grouped[role]!.sort((a, b) => ERP_MODULES.indexOf(a.module) - ERP_MODULES.indexOf(b.module));
+  }
+
+  res.json(grouped);
+});
+
+// ─── PUT /role-permissions/:role ──────────────────────────────────────────────
+router.put("/role-permissions/:role", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
+  const { role } = req.params;
+  if (!ALL_ROLES.includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
+
+  const permissions: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }> = req.body.permissions ?? [];
+  if (!Array.isArray(permissions) || permissions.length === 0) {
+    res.status(400).json({ error: "permissions[] est requis" }); return;
+  }
+
+  for (const p of permissions) {
+    if (!ERP_MODULES.includes(p.module)) continue;
+    await db.execute(sql`
+      INSERT INTO role_permissions (id, role, module, can_view, can_create, can_edit, can_delete, can_export, updated_at)
+      VALUES (gen_random_uuid()::text, ${role}, ${p.module}, ${p.canView}, ${p.canCreate}, ${p.canEdit}, ${p.canDelete}, ${p.canExport}, NOW())
+      ON CONFLICT ON CONSTRAINT role_permissions_role_module_idx DO UPDATE SET
+        can_view = EXCLUDED.can_view, can_create = EXCLUDED.can_create,
+        can_edit = EXCLUDED.can_edit, can_delete = EXCLUDED.can_delete,
+        can_export = EXCLUDED.can_export, updated_at = NOW()
+    `);
+  }
+
+  req.log.info({ role, by: req.currentUser?.email }, "Role permissions updated");
+  res.json({ success: true, role });
+});
+
+// ─── POST /role-permissions/:role/apply-to-users ──────────────────────────────
+router.post("/role-permissions/:role/apply-to-users", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
+  const { role } = req.params;
+  if (!ALL_ROLES.includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
+
+  const rolePerms = await db.select().from(rolePermissionsTable).where(eq(rolePermissionsTable.role, role));
+  if (rolePerms.length === 0) { res.status(404).json({ error: "Aucune permission configurée pour ce rôle" }); return; }
+
+  const usersWithRole = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, role));
+
+  let applied = 0;
+  for (const user of usersWithRole) {
+    for (const p of rolePerms) {
+      await db.execute(sql`
+        INSERT INTO user_permissions (id, user_id, module, can_view, can_create, can_edit, can_delete, can_export)
+        VALUES (gen_random_uuid()::text, ${user.id}, ${p.module}, ${p.canView}, ${p.canCreate}, ${p.canEdit}, ${p.canDelete}, ${p.canExport})
+        ON CONFLICT ON CONSTRAINT user_permissions_user_module_idx DO UPDATE SET
+          can_view = EXCLUDED.can_view, can_create = EXCLUDED.can_create,
+          can_edit = EXCLUDED.can_edit, can_delete = EXCLUDED.can_delete,
+          can_export = EXCLUDED.can_export
+      `);
+    }
+    applied++;
+  }
+
+  req.log.info({ role, usersUpdated: applied, by: req.currentUser?.email }, "Role permissions applied to users");
+  res.json({ success: true, role, usersUpdated: applied });
+});
+
 // ─── GET /users/:id/login-history ─────────────────────────────────────────────
 router.get("/users/:id/login-history", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
   const history = await db
@@ -123,7 +238,7 @@ router.put("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES), a
     await db.execute(sql`
       INSERT INTO user_permissions (id, user_id, module, can_view, can_create, can_edit, can_delete, can_export)
       VALUES (gen_random_uuid()::text, ${id}, ${p.module}, ${p.canView}, ${p.canCreate}, ${p.canEdit}, ${p.canDelete}, ${p.canExport})
-      ON CONFLICT (user_id, module) DO UPDATE SET
+      ON CONFLICT ON CONSTRAINT user_permissions_user_module_idx DO UPDATE SET
         can_view = EXCLUDED.can_view, can_create = EXCLUDED.can_create,
         can_edit = EXCLUDED.can_edit, can_delete = EXCLUDED.can_delete,
         can_export = EXCLUDED.can_export
@@ -136,16 +251,13 @@ router.put("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES), a
 // ─── PUT /users/:id/status ────────────────────────────────────────────────────
 router.put("/users/:id/status", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
   const { id } = req.params;
-  const { action } = req.body; // activate | deactivate | lock | unlock
+  const { action } = req.body;
 
   if (!["activate", "deactivate", "lock", "unlock"].includes(action)) {
-    res.status(400).json({ error: "Action invalide" });
-    return;
+    res.status(400).json({ error: "Action invalide" }); return;
   }
-
   if (req.currentUser?.id === id && action === "deactivate") {
-    res.status(400).json({ error: "Impossible de désactiver votre propre compte" });
-    return;
+    res.status(400).json({ error: "Impossible de désactiver votre propre compte" }); return;
   }
 
   const updates: any = {};
@@ -165,13 +277,11 @@ router.put("/users/:id/status", requireAuth, requireRole(...ADMIN_ROLES, ROLES.H
 router.post("/users", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
   const { email, password, name, role, department, employeeId } = req.body;
   if (!email || !password || !role) {
-    res.status(400).json({ error: "email, password et role sont requis" });
-    return;
+    res.status(400).json({ error: "email, password et role sont requis" }); return;
   }
   const validRoles = Object.values(ROLES);
   if (!validRoles.includes(role)) {
-    res.status(400).json({ error: `Rôle invalide. Valeurs acceptées: ${validRoles.join(", ")}` });
-    return;
+    res.status(400).json({ error: `Rôle invalide. Valeurs acceptées: ${validRoles.join(", ")}` }); return;
   }
 
   let resolvedDepartment = department ?? null;
@@ -185,27 +295,21 @@ router.post("/users", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER)
       email, password, name: name || null, role, department: resolvedDepartment, employeeId: employeeId || null,
     }).returning();
 
-    // Seed default permissions for this role
-    const defaults = ROLE_DEFAULT_PERMISSIONS[role] ?? {};
-    const isWildcard = !!defaults["*"];
+    // Seed permissions from role_permissions table (DB-driven, not hardcoded)
+    const roleDefaults = await getRoleDefaults(role);
     const permsToInsert = ERP_MODULES.map(module => {
-      const def = isWildcard ? defaults["*"] : (defaults[module] ?? [false, false, false, false, false]);
-      return {
-        userId: user.id, module,
-        canView: def[0] ?? false, canCreate: def[1] ?? false,
-        canEdit: def[2] ?? false, canDelete: def[3] ?? false, canExport: def[4] ?? false,
-      };
+      const def = roleDefaults[module] ?? [false, false, false, false, false];
+      return { userId: user.id, module, canView: def[0]??false, canCreate: def[1]??false, canEdit: def[2]??false, canDelete: def[3]??false, canExport: def[4]??false };
     });
     if (permsToInsert.length > 0) {
-      await db.insert(userPermissionsTable).values(permsToInsert);
+      await db.insert(userPermissionsTable).values(permsToInsert).onConflictDoNothing();
     }
 
     req.log.info({ userId: user.id, email, role }, "User created");
     res.status(201).json(safe(user));
   } catch (e: any) {
     if (e.message?.includes("unique") || e.message?.includes("duplicate")) {
-      res.status(409).json({ error: "Cet email est déjà utilisé" });
-      return;
+      res.status(409).json({ error: "Cet email est déjà utilisé" }); return;
     }
     throw e;
   }
@@ -217,8 +321,7 @@ router.put("/users/:id", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAG
   const { email, name, role, password, department, employeeId } = req.body;
 
   if (role && !Object.values(ROLES).includes(role)) {
-    res.status(400).json({ error: "Rôle invalide" });
-    return;
+    res.status(400).json({ error: "Rôle invalide" }); return;
   }
 
   const updates: any = {};
@@ -247,37 +350,30 @@ router.delete("/users/:id", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MA
   const { reason } = req.body ?? {};
 
   if (req.currentUser?.id === id) {
-    res.status(400).json({ error: "Impossible de supprimer votre propre compte" });
-    return;
+    res.status(400).json({ error: "Impossible de supprimer votre propre compte" }); return;
   }
-
   if (!reason?.trim()) {
-    res.status(400).json({ error: "Une raison de suppression est obligatoire" });
-    return;
+    res.status(400).json({ error: "Une raison de suppression est obligatoire" }); return;
   }
 
   const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!target) { res.status(404).json({ error: "Utilisateur non trouvé" }); return; }
 
-  // Block if last SUPER_ADMIN
   if (target.role === "SUPER_ADMIN") {
     const adminCount = (await db.execute(sql`SELECT COUNT(*) AS n FROM users WHERE role = 'SUPER_ADMIN' AND is_active = true`)).rows[0] as any;
     if (Number(adminCount.n) <= 1) {
-      res.status(409).json({ error: "Impossible de supprimer le dernier Super Administrateur actif" });
-      return;
+      res.status(409).json({ error: "Impossible de supprimer le dernier Super Administrateur actif" }); return;
     }
   }
 
   try {
     await db.delete(usersTable).where(eq(usersTable.id, id));
   } catch (err: any) {
-    res.status(500).json({ error: `Suppression échouée : ${err?.message ?? "erreur base de données"}` });
-    return;
+    res.status(500).json({ error: `Suppression échouée : ${err?.message ?? "erreur base de données"}` }); return;
   }
 
   req.log.info({ deletedUserId: id, deletedEmail: target.email, reason, by: req.currentUser?.email }, "User deleted");
   res.json({ success: true, deletedEmail: target.email });
 });
 
-export { ERP_MODULES };
 export default router;

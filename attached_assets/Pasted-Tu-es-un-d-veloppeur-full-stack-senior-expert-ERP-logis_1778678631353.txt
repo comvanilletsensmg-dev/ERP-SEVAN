@@ -1,0 +1,209 @@
+Tu es un développeur full-stack senior expert ERP logistique, stock, achats et immobilisations.
+
+Objectif :
+Créer un module GESTION DES CONSOMMABLES ultra professionnel connecté à :
+- opérations
+- achats
+- fournisseurs
+- immobilisations
+- comptabilité
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. MODULE CONSOMMABLES
+---------------------------------------------------
+
+Créer menu :
+
+Consommables
+
+---------------------------------------------------
+2. DASHBOARD CONSOMMABLES
+---------------------------------------------------
+
+Créer KPI :
+
+- stock disponible
+- consommables critiques
+- consommation mensuelle
+- coût consommables
+
+---------------------------------------------------
+3. CATÉGORIES
+---------------------------------------------------
+
+Créer catégories :
+
+- OPÉRATION
+- BUREAU
+- INFORMATIQUE
+- IMMOBILISATION
+- EMBALLAGE
+- ENTRETIEN
+
+---------------------------------------------------
+4. STOCK CONSOMMABLES
+---------------------------------------------------
+
+Pour chaque article :
+
+- référence
+- catégorie
+- quantité
+- unité
+- seuil minimum
+- emplacement
+
+---------------------------------------------------
+5. LIAISON OPÉRATIONS
+---------------------------------------------------
+
+Permettre :
+
+Lot
+→ utilisation consommables
+
+-----------------------------------
+
+Exemple :
+
+- cartons
+- sachets sous-vide
+- papier paraffiné
+
+-----------------------------------
+
+Déduire automatiquement stock.
+
+---------------------------------------------------
+6. LIAISON ACHATS
+---------------------------------------------------
+
+Achat consommable
+→ entrée stock automatique
+
+---------------------------------------------------
+7. LIAISON FOURNISSEURS
+---------------------------------------------------
+
+Lier :
+
+- fournisseurs emballage
+- fournisseurs bureau
+- fournisseurs informatique
+
+-----------------------------------
+
+Exclure :
+
+- fournisseurs vanille
+
+---------------------------------------------------
+8. LIAISON IMMOBILISATIONS
+---------------------------------------------------
+
+Si valeur > seuil :
+
+Créer immobilisation automatique.
+
+---------------------------------------------------
+9. SORTIES STOCK
+---------------------------------------------------
+
+Types :
+
+- production
+- bureau
+- informatique
+- perte
+- casse
+
+---------------------------------------------------
+10. ALERTES STOCK
+---------------------------------------------------
+
+Afficher :
+
+- rupture imminente
+- seuil critique
+
+---------------------------------------------------
+11. INVENTAIRES
+---------------------------------------------------
+
+Créer :
+
+- inventaire réel
+- écarts stock
+- régularisations
+
+---------------------------------------------------
+12. DEMANDES INTERNES
+---------------------------------------------------
+
+Créer workflow :
+
+Employé
+→ Responsable
+→ Logistique
+
+---------------------------------------------------
+13. ANALYTICS
+---------------------------------------------------
+
+Afficher :
+
+- coût consommables
+- consommation/mois
+- coût/lot
+
+---------------------------------------------------
+14. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- Excel
+- PDF
+- inventaires
+
+---------------------------------------------------
+15. IA PRÉVISIONS
+---------------------------------------------------
+
+Détecter :
+
+- ruptures futures
+- consommation saisonnière
+
+---------------------------------------------------
+16. PERMISSIONS
+---------------------------------------------------
+
+Responsable logistique :
+gestion stock
+
+DSI :
+consommables IT
+
+RH :
+consommables bureau
+
+---------------------------------------------------
+17. LIVRABLE
+---------------------------------------------------
+
+- gestion consommables ERP premium
+- connecté achats/fournisseurs/immobilisations
+- gestion stock intelligente
+
+Commence par :
+1. Prisma Consumable
+2. dashboard consommables
+3. liaison opérations
+4. gestion inventaires
+5. alertes stock
