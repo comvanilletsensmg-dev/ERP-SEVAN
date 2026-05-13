@@ -248,8 +248,20 @@ router.delete("/lots/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MA
     return;
   }
 
-  // Cascade: stock_movements, lot_histories, lot_metrics, lot_costs, risk_events, predictions are ON DELETE CASCADE
-  await db.delete(lotsTable).where(eq(lotsTable.id, id));
+  // Nullify lot_id on tables that use NO ACTION FK (bonuses, sale_items, stock_movements)
+  // so the CASCADE tables can delete cleanly afterward
+  try {
+    await db.execute(sql`UPDATE bonuses        SET lot_id = NULL WHERE lot_id = ${id}`);
+    await db.execute(sql`UPDATE sale_items     SET lot_id = NULL WHERE lot_id = ${id}`);
+    await db.execute(sql`UPDATE stock_movements SET lot_id = NULL WHERE lot_id = ${id}`);
+
+    // Now delete — CASCADE handles lot_histories, lot_metrics, lot_costs, risk_events, predictions
+    await db.delete(lotsTable).where(eq(lotsTable.id, id));
+  } catch (err: any) {
+    req.log.error({ err, lotId: id }, "Erreur lors de la suppression du lot");
+    res.status(500).json({ error: `Suppression échouée : ${err?.message ?? "erreur base de données"}` });
+    return;
+  }
 
   req.log.info({ lotId: id, lotCode: lot.code, status: lot.status, userId: req.session?.userId }, "Lot supprimé");
 

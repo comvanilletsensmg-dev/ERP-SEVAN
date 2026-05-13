@@ -78,8 +78,13 @@ export default function Lots() {
   const kpis: any    = data?.kpis ?? {};
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => fetch(`/api/lots/${id}`, { method: "DELETE", credentials: "include" })
-      .then(async r => { if (!r.ok) throw new Error((await r.json()).error); return r.json(); }),
+    mutationFn: async (id: string) => {
+      const r = await fetch(`/api/lots/${id}`, { method: "DELETE", credentials: "include" });
+      let data: any;
+      try { data = await r.json(); } catch { throw new Error("Erreur serveur inattendue"); }
+      if (!r.ok) throw new Error(data?.error ?? "Erreur lors de la suppression");
+      return data;
+    },
     onSuccess: (d: any) => { toast.success(`Lot ${d.lotCode} supprimé`); qc.invalidateQueries({ queryKey: ["lots-list"] }); setDeleteTarget(null); },
     onError:   (e: any) => toast.error(e.message),
   });

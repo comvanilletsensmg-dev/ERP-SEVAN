@@ -116,8 +116,13 @@ export default function LotDetail({ id }: { id: string }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => fetch(`/api/lots/${id}`, { method: "DELETE", credentials: "include" })
-      .then(async r => { if (!r.ok) throw new Error((await r.json()).error); return r.json(); }),
+    mutationFn: async () => {
+      const r = await fetch(`/api/lots/${id}`, { method: "DELETE", credentials: "include" });
+      let data: any;
+      try { data = await r.json(); } catch { throw new Error("Erreur serveur inattendue"); }
+      if (!r.ok) throw new Error(data?.error ?? "Erreur lors de la suppression");
+      return data;
+    },
     onSuccess: () => { toast.success(`Lot ${lot?.code} supprimé`); navigate("/lots"); },
     onError: (e: any) => toast.error(e.message),
   });
