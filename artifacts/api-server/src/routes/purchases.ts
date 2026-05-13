@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, purchasesTable, suppliersTable, lotsTable, stockMovementsTable, journalEntriesTable, journalLinesTable, accountsTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
+import { requireRole } from "../middlewares/roles";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
@@ -201,6 +202,31 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
       supplier: supplier ? { ...supplier, createdAt: supplier.createdAt.toISOString() } : undefined },
     lot: { ...lot, createdAt: lot.createdAt.toISOString() },
   });
+});
+
+// ─── DELETE /purchases/:id  (SUPER_ADMIN uniquement) ─────────────────────────
+router.delete("/purchases/:id", requireAuth, requireRole("SUPER_ADMIN"), async (req, res): Promise<void> => {
+  const { id } = req.params;
+
+  const [purchase] = await db.select().from(purchasesTable).where(eq(purchasesTable.id, id));
+  if (!purchase) {
+    res.status(404).json({ error: "Achat introuvable" });
+    return;
+  }
+
+  // Supprimer le mouvement de stock lié au lot
+  if (purchase.lotId) {
+    await db.delete(stockMovementsTable).where(eq(stockMovementsTable.lotId, purchase.lotId));
+    // Dissocier le lot de l'achat puis supprimer le lot
+    await db.update(lotsTable).set({ purchaseId: null } as any).where(eq(lotsTable.id, purchase.lotId));
+    await db.delete(lotsTable).where(eq(lotsTable.id, purchase.lotId));
+  }
+
+  await db.delete(purchasesTable).where(eq(purchasesTable.id, id));
+
+  req.log.info({ purchaseId: id, lotId: purchase.lotId }, "Achat supprimé par SUPER_ADMIN");
+
+  res.json({ success: true, deletedId: id });
 });
 
 export default router;

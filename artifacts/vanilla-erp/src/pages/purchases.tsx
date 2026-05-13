@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   ShoppingCart, TrendingUp, Weight, Users, AlertTriangle,
-  Plus, Search, Download, Filter, ChevronDown, Loader2,
-  Droplets, Star, Package, CreditCard, X,
+  Plus, Search, Download, Loader2,
+  Droplets, Package, X, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt   = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);
@@ -273,11 +274,27 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Purchases() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [search, setSearch] = useState("");
   const [filterSupplier, setFilterSupplier] = useState("all");
   const [filterPayment, setFilterPayment] = useState("all");
   const [showAlerts, setShowAlerts] = useState(true);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => fetch(`/api/purchases/${id}`, { method: "DELETE", credentials: "include" })
+      .then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
+    onSuccess: () => {
+      toast.success("Achat supprimé — lot et stock associés retirés");
+      qc.invalidateQueries({ queryKey: ["purchases-list"] });
+      qc.invalidateQueries({ queryKey: ["purchases-analytics"] });
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => toast.error("Erreur : " + err.message),
+  });
 
   // Queries
   const { data: purchases = [], isLoading } = useQuery({
@@ -327,6 +344,39 @@ export default function Purchases() {
           onClose={() => setIsFormOpen(false)}
           onSuccess={() => { qc.invalidateQueries({ queryKey: ["purchases-list"] }); qc.invalidateQueries({ queryKey: ["purchases-analytics"] }); }}
         />
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600"/>
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900">Supprimer cet achat ?</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Action irréversible</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+              <p className="font-semibold mb-1">{deleteTarget.label}</p>
+              <p className="text-xs">Le lot associé et le mouvement de stock seront également supprimés.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                Annuler
+              </button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Trash2 className="w-4 h-4"/>}
+                {deleteMutation.isPending ? "Suppression…" : "Supprimer définitivement"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -478,8 +528,8 @@ export default function Purchases() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {["Date","Fournisseur","Poids","Prix / kg","Humidité","Lot","Paiement","Total (Ar)"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                {["Date","Fournisseur","Poids","Prix / kg","Humidité","Lot","Paiement","Total (Ar)", ...(isSuperAdmin ? [""] : [])].map((h, i) => (
+                  <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -517,6 +567,19 @@ export default function Purchases() {
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-600">{pm}</td>
                     <td className="px-4 py-3 font-mono font-bold text-gray-900">{fmt(p.total_amount || p.totalAmount)} Ar</td>
+                    {isSuperAdmin && (
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setDeleteTarget({
+                            id: p.id,
+                            label: `${supplierName} — ${p.weight} kg — ${fmtDate(p.created_at || p.createdAt)}`,
+                          })}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Supprimer cet achat">
+                          <Trash2 className="w-3.5 h-3.5"/>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
