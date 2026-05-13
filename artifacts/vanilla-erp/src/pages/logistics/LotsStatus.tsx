@@ -88,7 +88,25 @@ function RiskBadge({ level, score }: { level: string; score: number }) {
 async function fetchLots(): Promise<Lot[]> {
   const r = await fetch("/api/lots", { credentials: "include" });
   if (!r.ok) throw new Error("Failed to fetch lots");
-  return r.json();
+  const data = await r.json();
+  const raw: any[] = Array.isArray(data) ? data : (data.lots ?? []);
+  return raw.map(l => ({
+    id:            l.id,
+    code:          l.code,
+    status:        l.status,
+    humidity:      Number(l.humidity ?? 0),
+    weightInitial: Number(l.weight_initial ?? l.weightInitial ?? 0),
+    weightCurrent: Number(l.weight_current ?? l.weightCurrent ?? 0),
+    riskScore:     Number(l.risk_score    ?? l.riskScore    ?? 0),
+    riskLevel:     l.risk_level   ?? l.riskLevel   ?? "LOW",
+    isBlocked:     l.is_blocked   ?? l.isBlocked   ?? false,
+    blockedReason: l.blocked_reason ?? l.blockedReason ?? null,
+    region:        l.region        ?? null,
+    warehouse:     l.warehouse     ?? null,
+    grade:         l.grade         ?? null,
+    createdAt:     l.created_at    ?? l.createdAt   ?? "",
+    lastRiskCheck: l.last_risk_check ?? l.lastRiskCheck ?? null,
+  }));
 }
 async function fetchHistory(lotId: string): Promise<HistoryRow[]> {
   const r = await fetch(`/api/lots/${lotId}/history`, { credentials: "include" });
@@ -138,23 +156,21 @@ export default function LotsStatusPage() {
     },
   });
 
-  const filteredLots = useMemo(() => {
-    if (!lots) return [];
-    if (filter === "ALL") return lots;
-    if (filter === "BLOCKED") return lots.filter(l => l.isBlocked);
-    if (filter === "HIGH_RISK") return lots.filter(l => l.riskLevel === "HIGH");
-    return lots.filter(l => normalizeStatus(l.status) === filter);
-  }, [lots, filter]);
+  const lotsArray: Lot[] = Array.isArray(lots) ? lots : [];
 
-  const stats = useMemo(() => {
-    if (!lots) return { total: 0, ready: 0, blocked: 0, high: 0 };
-    return {
-      total: lots.length,
-      ready: lots.filter(l => ["READY","AVAILABLE"].includes(normalizeStatus(l.status))).length,
-      blocked: lots.filter(l => l.isBlocked).length,
-      high: lots.filter(l => l.riskLevel === "HIGH").length,
-    };
-  }, [lots]);
+  const filteredLots = useMemo(() => {
+    if (filter === "ALL") return lotsArray;
+    if (filter === "BLOCKED") return lotsArray.filter(l => l.isBlocked);
+    if (filter === "HIGH_RISK") return lotsArray.filter(l => l.riskLevel === "HIGH");
+    return lotsArray.filter(l => normalizeStatus(l.status) === filter);
+  }, [lotsArray, filter]);
+
+  const stats = useMemo(() => ({
+    total:   lotsArray.length,
+    ready:   lotsArray.filter(l => ["READY","AVAILABLE"].includes(normalizeStatus(l.status))).length,
+    blocked: lotsArray.filter(l => l.isBlocked).length,
+    high:    lotsArray.filter(l => l.riskLevel === "HIGH").length,
+  }), [lotsArray]);
 
   const openEdit = (lot: Lot) => {
     setEditLot(lot);
@@ -247,11 +263,11 @@ export default function LotsStatusPage() {
                 <TableCell className="font-mono text-sm">{lot.code}</TableCell>
                 <TableCell><StatusBadge status={lot.status} /></TableCell>
                 <TableCell className="text-right">
-                  <span className={lot.humidity > 35 ? "text-red-600 font-semibold" : ""}>
-                    {lot.humidity.toFixed(1)}%
+                  <span className={(lot.humidity ?? 0) > 35 ? "text-red-600 font-semibold" : ""}>
+                    {(lot.humidity ?? 0).toFixed(1)}%
                   </span>
                 </TableCell>
-                <TableCell className="text-right">{lot.weightCurrent.toFixed(2)}</TableCell>
+                <TableCell className="text-right">{(lot.weightCurrent ?? 0).toFixed(2)}</TableCell>
                 <TableCell><RiskBadge level={lot.riskLevel} score={lot.riskScore} /></TableCell>
                 <TableCell>
                   {lot.isBlocked ? (

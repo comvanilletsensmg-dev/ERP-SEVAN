@@ -1,0 +1,181 @@
+Objectif :
+Créer un module PAIEMENTS ultra professionnel connecté à :
+- achats
+- fournisseurs
+- lots
+- comptabilité
+- banques
+- mobile money
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. DASHBOARD PAIEMENTS
+---------------------------------------------------
+
+Créer KPI :
+
+- total encaissé
+- total payé
+- dettes fournisseurs
+- créances clients
+- paiements attente
+
+---------------------------------------------------
+2. TYPES PAIEMENTS
+---------------------------------------------------
+
+A. Encaissements clients
+B. Paiements fournisseurs
+C. Avances fournisseurs
+
+---------------------------------------------------
+3. LIAISON ACHATS
+---------------------------------------------------
+
+Paiement
+↔ Achat
+↔ Fournisseur
+
+Afficher :
+
+- facture achat
+- reste à payer
+
+---------------------------------------------------
+4. LIAISON LOTS
+---------------------------------------------------
+
+Afficher :
+
+- lot lié
+- coût lot
+- fournisseur lot
+
+---------------------------------------------------
+5. MULTI COMPTES
+---------------------------------------------------
+
+Banques :
+
+- BNI
+- BOA
+- BFV
+- MCB
+
+-----------------------------------
+
+Mobile money :
+
+- Mvola
+- Orange Money
+- Airtel Money
+
+---------------------------------------------------
+6. PREUVES PAIEMENT
+---------------------------------------------------
+
+Upload :
+
+- reçu
+- capture mobile money
+- SWIFT
+- facture
+
+---------------------------------------------------
+7. ÉCHÉANCIERS
+---------------------------------------------------
+
+Afficher :
+
+- échéance
+- retard
+- reste à payer
+
+---------------------------------------------------
+8. COMPTABILITÉ
+---------------------------------------------------
+
+Créer écritures auto :
+
+Encaissement :
+512/53 → 411
+
+Paiement fournisseur :
+401 → 512/53
+
+---------------------------------------------------
+9. WORKFLOW VALIDATION
+---------------------------------------------------
+
+Agent → Comptable → DG
+
+---------------------------------------------------
+10. ANALYTICS
+---------------------------------------------------
+
+- cashflow
+- paiements fournisseurs
+- délais paiement
+
+---------------------------------------------------
+11. IA FINANCIÈRE
+---------------------------------------------------
+
+Détection :
+
+- doublons
+- anomalies
+- retards
+
+---------------------------------------------------
+12. SUPPRESSION LOTS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER ADMIN
+- RESPONSABLE LOGISTIQUE
+
+-----------------------------------
+
+Interdire suppression si :
+
+- lot exporté
+- lot clôturé
+- paiement validé
+
+-----------------------------------
+
+Journaliser :
+
+- utilisateur
+- date
+- raison suppression
+
+---------------------------------------------------
+13. EXPORTS
+---------------------------------------------------
+
+- Excel
+- PDF
+- journal banque
+- grand livre
+
+---------------------------------------------------
+14. LIVRABLE
+---------------------------------------------------
+
+- gestion paiements ERP premium
+- connecté achats/fournisseurs/lots
+- comptabilité automatique
+
+Commence par :
+1. Prisma Payment
+2. dashboard paiements
+3. liaison achats/lots
+4. mobile money Madagascar
+5. workflow validation
