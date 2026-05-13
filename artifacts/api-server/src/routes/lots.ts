@@ -208,7 +208,7 @@ router.put("/lots/:id", requireAuth, async (req, res): Promise<void> => {
 const historySchema = z.object({ note: z.string().min(1), status: z.string().optional() });
 
 router.post("/lots/:id/history", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const parsed = historySchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Note requise" }); return; }
 
@@ -227,7 +227,7 @@ router.post("/lots/:id/history", requireAuth, async (req, res): Promise<void> =>
 
 // ─── DELETE /lots/:id  (SUPER_ADMIN + LOGISTICS_MANAGER) ─────────────────────
 router.delete("/lots/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MANAGER"), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   const [lot] = await db.select().from(lotsTable).where(eq(lotsTable.id, id));
   if (!lot) { res.status(404).json({ error: "Lot introuvable" }); return; }

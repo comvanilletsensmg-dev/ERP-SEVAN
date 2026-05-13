@@ -19,8 +19,8 @@ const LotRowSchema = z.object({
   code: z.string().min(1, "Code lot obligatoire"),
   supplier: z.string().min(1, "Nom du fournisseur obligatoire"),
   region: z.string().optional().default(""),
-  weightInitial: z.number({ error: "Poids doit être un nombre" }).positive("Poids doit être > 0"),
-  humidity: z.number({ error: "Humidité doit être un nombre" }).min(0, "Humidité ≥ 0").max(100, "Humidité ≤ 100"),
+  weightInitial: z.number({ invalid_type_error: "Poids doit être un nombre" }).positive("Poids doit être > 0"),
+  humidity: z.number({ invalid_type_error: "Humidité doit être un nombre" }).min(0, "Humidité ≥ 0").max(100, "Humidité ≤ 100"),
   grade: z.enum(["Grade A", "Grade B", "Grade C", "Premium", "A", "B", "C"]).optional(),
   warehouse: z.string().optional().default(""),
 });
@@ -352,7 +352,7 @@ router.get("/import-lots/batches", requireAuth, requireRole(...ROLES), async (_r
 
 router.get("/import-lots/batches/:id/errors", requireAuth, requireRole(...ROLES), async (req, res): Promise<void> => {
   const errors = await db.select().from(importErrorsTable)
-    .where(eq(importErrorsTable.batchId, req.params.id));
+    .where(eq(importErrorsTable.batchId, String(req.params.id)));
   res.json(errors.map(e => ({
     ...e,
     createdAt: e.createdAt instanceof Date ? e.createdAt.toISOString() : e.createdAt,

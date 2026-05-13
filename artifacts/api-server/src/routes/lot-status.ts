@@ -191,7 +191,7 @@ router.get("/lots/:id/history", requireAuth, async (req, res): Promise<void> => 
   const rows = await db
     .select()
     .from(lotHistoriesTable)
-    .where(eq(lotHistoriesTable.lotId, req.params.id))
+    .where(eq(lotHistoriesTable.lotId, String(req.params.id)))
     .orderBy(desc(lotHistoriesTable.createdAt));
 
   res.json(

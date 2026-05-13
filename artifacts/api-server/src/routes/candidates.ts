@@ -41,7 +41,7 @@ router.put("/candidates/:id", requireAuth, async (req, res): Promise<void> => {
   const [candidate] = await db
     .update(candidatesTable)
     .set(updateData)
-    .where(eq(candidatesTable.id, req.params.id))
+    .where(eq(candidatesTable.id, String(req.params.id)))
     .returning();
 
   if (!candidate) {

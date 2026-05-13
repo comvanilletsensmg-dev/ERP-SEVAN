@@ -117,7 +117,7 @@ router.get("/employees/:id", requireAuth, async (req, res): Promise<void> => {
     .select({ employee: employeesTable, deptName: departmentsTable.name })
     .from(employeesTable)
     .leftJoin(departmentsTable, eq(employeesTable.departmentId, departmentsTable.id))
-    .where(eq(employeesTable.id, req.params.id));
+    .where(eq(employeesTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Employé introuvable" }); return; }
   res.json(formatEmployee({ ...row.employee, department: row.deptName ?? row.employee.department ?? null }));
 });
@@ -202,7 +202,7 @@ router.put("/employees/:id", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.H
   const [existing] = await db
     .select()
     .from(employeesTable)
-    .where(eq(employeesTable.id, req.params.id));
+    .where(eq(employeesTable.id, String(req.params.id)));
   if (!existing) { res.status(404).json({ error: "Employé introuvable" }); return; }
 
   const data = parseBody(body);
@@ -239,7 +239,7 @@ router.put("/employees/:id", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.H
   const [employee] = await db
     .update(employeesTable)
     .set(data)
-    .where(eq(employeesTable.id, req.params.id))
+    .where(eq(employeesTable.id, String(req.params.id)))
     .returning();
 
   if (!employee) { res.status(404).json({ error: "Employé introuvable" }); return; }
@@ -256,7 +256,7 @@ router.put("/employees/:id/status", requireAuth, requireRole(ROLES.SUPER_ADMIN, 
   const [employee] = await db
     .update(employeesTable)
     .set({ statut, isActive: statut === "actif" })
-    .where(eq(employeesTable.id, req.params.id))
+    .where(eq(employeesTable.id, String(req.params.id)))
     .returning();
   if (!employee) { res.status(404).json({ error: "Employé introuvable" }); return; }
   res.json(formatEmployee(employee));

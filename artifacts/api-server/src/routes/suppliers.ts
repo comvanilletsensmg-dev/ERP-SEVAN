@@ -10,6 +10,7 @@ const router: IRouter = Router();
 // ─── Validation schema ────────────────────────────────────────────────────────
 const supplierBodySchema = z.object({
   name: z.string().min(1),
+  supplierCode: z.string().optional(),
   region: z.string().optional().default(""),
   phone: z.string().optional().nullable(),
   score: z.number().min(0).max(100).optional().default(80),
@@ -114,7 +115,7 @@ router.get("/suppliers", requireAuth, async (_req, res): Promise<void> => {
 
 // ─── GET /suppliers/:id ───────────────────────────────────────────────────────
 router.get("/suppliers/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, id));
   if (!supplier) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
 
@@ -188,7 +189,7 @@ router.post("/suppliers", requireAuth, async (req, res): Promise<void> => {
 
 // ─── PUT /suppliers/:id ───────────────────────────────────────────────────────
 router.put("/suppliers/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const parsed = supplierBodySchema.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
 
@@ -203,7 +204,7 @@ router.put("/suppliers/:id", requireAuth, async (req, res): Promise<void> => {
 
 // ─── POST /suppliers/:id/notes ────────────────────────────────────────────────
 router.post("/suppliers/:id/notes", requireAuth, async (req: any, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { content, type = "general" } = req.body;
   if (!content?.trim()) { res.status(400).json({ error: "Contenu requis" }); return; }
 
@@ -229,7 +230,7 @@ router.post("/suppliers/:id/notes", requireAuth, async (req: any, res): Promise<
 
 // ─── DELETE /suppliers/:id ────────────────────────────────────────────────────
 router.delete("/suppliers/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MANAGER"), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   // Verify supplier exists first
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, id));

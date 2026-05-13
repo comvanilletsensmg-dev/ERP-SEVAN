@@ -33,7 +33,7 @@ router.get("/crm/quotes", requireAuth, requireRole(...CRM_ROLES), async (_req, r
 });
 
 router.get("/crm/quotes/:id", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.id, req.params.id));
+  const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.id, String(req.params.id)));
   if (!quote) { res.status(404).json({ error: "Devis introuvable" }); return; }
   const items = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, quote.id));
   res.json(safe({ ...quote, items }));
@@ -111,14 +111,14 @@ router.post("/crm/quotes", requireAuth, requireRole(...CRM_WRITE), async (req, r
 
 router.patch("/crm/quotes/:id/send", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
   const [updated] = await db.update(quotesTable).set({ status: "sent", updatedAt: new Date() })
-    .where(eq(quotesTable.id, req.params.id)).returning();
+    .where(eq(quotesTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Devis introuvable" }); return; }
   res.json(safe(updated));
 });
 
 router.patch("/crm/quotes/:id/accept", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
   const [updated] = await db.update(quotesTable).set({ status: "accepted", updatedAt: new Date() })
-    .where(eq(quotesTable.id, req.params.id)).returning();
+    .where(eq(quotesTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Devis introuvable" }); return; }
 
   // ── Auto-conversion on quote acceptance (RULE 5 — score bypass) ──────────
@@ -147,14 +147,14 @@ router.patch("/crm/quotes/:id/accept", requireAuth, requireRole(...CRM_WRITE), a
 
 router.patch("/crm/quotes/:id/reject", requireAuth, requireRole(...CRM_WRITE), async (req, res): Promise<void> => {
   const [updated] = await db.update(quotesTable).set({ status: "rejected", updatedAt: new Date() })
-    .where(eq(quotesTable.id, req.params.id)).returning();
+    .where(eq(quotesTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Devis introuvable" }); return; }
   res.json(safe(updated));
 });
 
 router.delete("/crm/quotes/:id", requireAuth, requireRole("SUPER_ADMIN", "COMMERCIAL"), async (req, res): Promise<void> => {
-  await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, req.params.id));
-  const deleted = await db.delete(quotesTable).where(eq(quotesTable.id, req.params.id)).returning();
+  await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, String(req.params.id)));
+  const deleted = await db.delete(quotesTable).where(eq(quotesTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Devis introuvable" }); return; }
   res.json({ success: true });
 });

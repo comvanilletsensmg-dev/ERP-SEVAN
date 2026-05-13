@@ -75,24 +75,32 @@ async function createPurchaseJournalEntry(opts: {
   vatAmount: number;
   amountTtc: number;
   description: string;
+  supplierName?: string;
+  supplierCode?: string;
 }) {
-  const { purchaseId, reference, debitCode, amountHt, vatAmount, amountTtc, description } = opts;
+  const { reference, debitCode, amountHt, vatAmount, amountTtc, description, supplierName, supplierCode } = opts;
 
   const debitAcc = await findOrCreateAccount(debitCode);
   const frnAcc   = await findOrCreateAccount("401");
   const tvaAcc   = await findOrCreateAccount("44566");
   if (!debitAcc || !frnAcc) return null;
 
+  const supplierLabel = supplierName
+    ? `${supplierCode ? supplierCode + ' - ' : ''}${supplierName}`
+    : `Fournisseur`;
+
   const [entry] = await db.insert(journalEntriesTable).values({
-    date: new Date(), reference, description, status: "validated",
+    date: new Date(), reference,
+    description: `${description} — ${supplierLabel}`,
+    status: "validated",
   }).returning();
 
   const lines: any[] = [
-    { entryId: entry.id, accountId: debitAcc.id, debit: amountHt, credit: 0, label: description },
-    { entryId: entry.id, accountId: frnAcc.id,   debit: 0, credit: amountTtc, label: `Fournisseur - ${reference}` },
+    { entryId: entry.id, accountId: debitAcc.id, debit: amountHt,  credit: 0,         label: description },
+    { entryId: entry.id, accountId: frnAcc.id,   debit: 0,          credit: amountTtc, label: `401 ${supplierLabel} — ${reference}` },
   ];
   if (tvaAcc && vatAmount > 0) {
-    lines.splice(1, 0, { entryId: entry.id, accountId: tvaAcc.id, debit: vatAmount, credit: 0, label: "TVA déductible" });
+    lines.splice(1, 0, { entryId: entry.id, accountId: tvaAcc.id, debit: vatAmount, credit: 0, label: "TVA déductible sur achat" });
   }
   await db.insert(journalLinesTable).values(lines);
   return entry;
@@ -212,9 +220,20 @@ const createSchema = z.object({
   currency:      z.string().default("MGA"),
   notes:         z.string().optional(),
   warehouse:     z.string().optional(),
-  // Supplier (id OR new supplier name)
-  supplierId:    z.string().optional(),
-  supplierName:  z.string().optional(),
+  // Supplier (id OR new supplier details)
+  supplierId:          z.string().optional(),
+  supplierName:        z.string().optional(),
+  supplierEmail:       z.string().optional(),
+  supplierPhone:       z.string().optional(),
+  supplierCity:        z.string().optional(),
+  supplierRegion:      z.string().optional(),
+  supplierNif:         z.string().optional(),
+  supplierStat:        z.string().optional(),
+  supplierRccm:        z.string().optional(),
+  supplierPaymentMethod: z.string().optional(),
+  supplierPaymentTerms:  z.string().optional(),
+  supplierIsVatSubject:  z.boolean().optional(),
+  supplierAddress:     z.string().optional(),
   // Amounts
   amountHt:      z.number().optional(),
   vatRate:       z.number().min(0).max(100).default(0),
@@ -256,16 +275,35 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
         CONSOMMABLE: "SERVICE", BUREAU: "SERVICE", INFORMATIQUE: "SERVICE",
         IMMOBILISATION: "SERVICE", SERVICE: "SERVICE", VANILLE: "GOODS",
       };
+      // Auto-generate supplier code FOUR-YYYY-NNN
+      const year = new Date().getFullYear();
+      const [cntRow] = (await db.execute(sql`
+        SELECT COUNT(*)::int AS n FROM suppliers WHERE supplier_code LIKE ${'FOUR-' + year + '-%'}
+      `)).rows as any[];
+      const codeN = (Number(cntRow?.n ?? 0) + 1).toString().padStart(3, "0");
+      const supplierCode = `FOUR-${year}-${codeN}`;
+
       const [newSupplier] = await db.insert(suppliersTable).values({
         name: d.supplierName.trim(),
-        region: "",
-        supplierType: typeMap[d.type] ?? "SERVICE",
-        category: d.type.toLowerCase(),
-        status: "active",
-        country: "Madagascar",
+        region:        d.supplierRegion  ?? "",
+        supplierCode,
+        supplierType:  typeMap[d.type]   ?? "SERVICE",
+        category:      d.type.toLowerCase(),
+        status:        "active",
+        country:       "Madagascar",
+        email:         d.supplierEmail   ?? null,
+        phone:         d.supplierPhone   ?? null,
+        city:          d.supplierCity    ?? null,
+        address:       d.supplierAddress ?? null,
+        nif:           d.supplierNif     ?? null,
+        stat:          d.supplierStat    ?? null,
+        rccm:          d.supplierRccm    ?? null,
+        paymentMethod: d.supplierPaymentMethod ?? "Virement bancaire",
+        paymentTerms:  d.supplierPaymentTerms  ?? "30",
+        isVatSubject:  d.supplierIsVatSubject   ?? false,
       }).returning();
       supplierId = newSupplier.id;
-      req.log.info({ supplierId: newSupplier.id, name: d.supplierName }, "Supplier auto-created from purchase");
+      req.log.info({ supplierId: newSupplier.id, name: d.supplierName, code: supplierCode }, "Supplier auto-created from purchase");
     }
   }
   if (!supplierId) { res.status(400).json({ error: "Fournisseur requis (id ou nom)" }); return; }
@@ -386,10 +424,18 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
     ? (ASSET_PCG[d.assetCategory ?? "equipment"] ?? "2183")
     : (DEBIT_ACCOUNT[d.type] ?? "606");
 
+  // Fetch supplier name/code for journal label
+  const [sup] = supplierId
+    ? await db.select({ name: suppliersTable.name, supplierCode: suppliersTable.supplierCode })
+        .from(suppliersTable).where(eq(suppliersTable.id, supplierId))
+    : [undefined];
+
   const entry = await createPurchaseJournalEntry({
     purchaseId: purchase.id, reference,
     debitCode, amountHt, vatAmount, amountTtc,
     description: d.description ?? `Achat ${d.type.toLowerCase()} - ${reference}`,
+    supplierName: sup?.name,
+    supplierCode: sup?.supplierCode ?? undefined,
   });
   if (entry) {
     await db.update(purchasesTable).set({ journalEntryId: entry.id }).where(eq(purchasesTable.id, purchase.id));

@@ -161,7 +161,7 @@ router.get("/recruitment/candidates", loadUser, async (req, res): Promise<void> 
 
 // ── GET /api/recruitment/candidates/:id ───────────────────────────────────────
 router.get("/recruitment/candidates/:id", loadUser, async (req, res): Promise<void> => {
-  const [row] = await db.select().from(candidatesTable).where(eq(candidatesTable.id, req.params.id));
+  const [row] = await db.select().from(candidatesTable).where(eq(candidatesTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Candidat introuvable" }); return; }
   res.json(fmt(row));
 });
@@ -215,7 +215,7 @@ router.patch("/recruitment/candidates/:id", loadUser, async (req, res): Promise<
   if (d.notes      !== undefined) updates.notes      = d.notes;
 
   const [row] = await db.update(candidatesTable).set(updates)
-    .where(eq(candidatesTable.id, req.params.id)).returning();
+    .where(eq(candidatesTable.id, String(req.params.id))).returning();
   if (!row) { res.status(404).json({ error: "Candidat introuvable" }); return; }
   req.log.info({ id: row.id, status: row.status }, "Candidate updated");
   res.json(fmt(row));
@@ -223,7 +223,7 @@ router.patch("/recruitment/candidates/:id", loadUser, async (req, res): Promise<
 
 // ── DELETE /api/recruitment/candidates/:id ───────────────────────────────────
 router.delete("/recruitment/candidates/:id", loadUser, async (req, res): Promise<void> => {
-  const [row] = await db.delete(candidatesTable).where(eq(candidatesTable.id, req.params.id)).returning();
+  const [row] = await db.delete(candidatesTable).where(eq(candidatesTable.id, String(req.params.id))).returning();
   if (!row) { res.status(404).json({ error: "Candidat introuvable" }); return; }
   // Delete CV file if present
   if (row.cvUrl) {
@@ -248,9 +248,10 @@ router.post("/recruitment/upload-cv", loadUser, upload.single("cv"), async (req,
   try {
     if (ext === ".pdf") {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = (await import("pdf-parse")).default;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParse = ((await import("pdf-parse")) as any).default ?? (await import("pdf-parse"));
       const data = await pdfParse(fs.readFileSync(req.file.path));
-      parsed = await parseCvText(data.text);
+      parsed = await parseCvText(data.text) as typeof parsed;
     } else {
       // Image: return URL only, no OCR (would need tesseract)
       req.log.info("CV image uploaded — OCR non disponible pour les images");
@@ -265,7 +266,7 @@ router.post("/recruitment/upload-cv", loadUser, upload.single("cv"), async (req,
 // ── POST /api/recruitment/candidates/:id/hire ────────────────────────────────
 router.post("/recruitment/candidates/:id/hire", loadUser, async (req, res): Promise<void> => {
   const [candidate] = await db.select().from(candidatesTable)
-    .where(eq(candidatesTable.id, req.params.id));
+    .where(eq(candidatesTable.id, String(req.params.id)));
   if (!candidate) { res.status(404).json({ error: "Candidat introuvable" }); return; }
   if (candidate.status === "hired") { res.status(400).json({ error: "Candidat déjà recruté" }); return; }
 

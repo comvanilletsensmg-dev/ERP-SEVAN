@@ -110,7 +110,7 @@ router.post("/crm/clients", requireAuth, requireRole(...WRITE), async (req, res)
 // ─── GET /crm/clients/:id ─────────────────────────────────────────────────────
 router.get("/crm/clients/:id", requireAuth, requireRole(...ROLES), async (req, res): Promise<void> => {
   try {
-    const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, req.params.id));
+    const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, String(req.params.id)));
     if (!client) { res.status(404).json({ error: "Client introuvable" }); return; }
     const contacts = await db.select().from(clientContactsTable)
       .where(eq(clientContactsTable.clientId, client.id))
@@ -145,7 +145,7 @@ router.put("/crm/clients/:id", requireAuth, requireRole(...WRITE), async (req, r
       isActive: b.isActive !== undefined ? Boolean(b.isActive) : undefined,
       assignedTo: b.assignedTo ?? null,
       updatedAt: new Date(),
-    }).where(eq(clientsTable.id, req.params.id)).returning();
+    }).where(eq(clientsTable.id, String(req.params.id))).returning();
     if (!updated) { res.status(404).json({ error: "Client introuvable" }); return; }
     res.json(safe(updated));
   } catch (e) {
@@ -158,7 +158,7 @@ router.put("/crm/clients/:id", requireAuth, requireRole(...WRITE), async (req, r
 router.delete("/crm/clients/:id", requireAuth, requireRole("SUPER_ADMIN"), async (req, res): Promise<void> => {
   try {
     const [updated] = await db.update(clientsTable).set({ isActive: false, updatedAt: new Date() })
-      .where(eq(clientsTable.id, req.params.id)).returning();
+      .where(eq(clientsTable.id, String(req.params.id))).returning();
     if (!updated) { res.status(404).json({ error: "Client introuvable" }); return; }
     res.json({ success: true });
   } catch (e) {
@@ -169,7 +169,7 @@ router.delete("/crm/clients/:id", requireAuth, requireRole("SUPER_ADMIN"), async
 // ─── GET /crm/clients/:id/stats ───────────────────────────────────────────────
 router.get("/crm/clients/:id/stats", requireAuth, requireRole(...ROLES), async (req, res): Promise<void> => {
   try {
-    const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, req.params.id));
+    const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, String(req.params.id)));
     if (!client) { res.status(404).json({ error: "Client introuvable" }); return; }
     res.json({
       totalOrders: client.totalOrders,
@@ -191,10 +191,10 @@ router.post("/crm/clients/:id/contacts", requireAuth, requireRole(...WRITE), asy
     const b = req.body;
     if (!b.firstName || !b.lastName) { res.status(400).json({ error: "Prénom et nom requis" }); return; }
     if (b.isPrimary) {
-      await db.update(clientContactsTable).set({ isPrimary: false }).where(eq(clientContactsTable.clientId, req.params.id));
+      await db.update(clientContactsTable).set({ isPrimary: false }).where(eq(clientContactsTable.clientId, String(req.params.id)));
     }
     const [contact] = await db.insert(clientContactsTable).values({
-      clientId: req.params.id,
+      clientId: String(req.params.id),
       firstName: b.firstName, lastName: b.lastName,
       role: b.role ?? null, email: b.email ?? null,
       phone: b.phone ?? null, mobile: b.mobile ?? null,
@@ -210,13 +210,13 @@ router.put("/crm/clients/:id/contacts/:cid", requireAuth, requireRole(...WRITE),
   try {
     const b = req.body;
     if (b.isPrimary) {
-      await db.update(clientContactsTable).set({ isPrimary: false }).where(eq(clientContactsTable.clientId, req.params.id));
+      await db.update(clientContactsTable).set({ isPrimary: false }).where(eq(clientContactsTable.clientId, String(req.params.id)));
     }
     const [updated] = await db.update(clientContactsTable).set({
       firstName: b.firstName, lastName: b.lastName, role: b.role ?? null,
       email: b.email ?? null, phone: b.phone ?? null, mobile: b.mobile ?? null,
       isPrimary: Boolean(b.isPrimary), isActive: b.isActive !== undefined ? Boolean(b.isActive) : undefined,
-    }).where(eq(clientContactsTable.id, req.params.cid)).returning();
+    }).where(eq(clientContactsTable.id, String(req.params.cid))).returning();
     if (!updated) { res.status(404).json({ error: "Contact introuvable" }); return; }
     res.json(updated);
   } catch (e) {
@@ -227,7 +227,7 @@ router.put("/crm/clients/:id/contacts/:cid", requireAuth, requireRole(...WRITE),
 router.delete("/crm/clients/:id/contacts/:cid", requireAuth, requireRole(...WRITE), async (req, res): Promise<void> => {
   try {
     await db.update(clientContactsTable).set({ isActive: false })
-      .where(eq(clientContactsTable.id, req.params.cid));
+      .where(eq(clientContactsTable.id, String(req.params.cid)));
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: "Erreur suppression contact" });
@@ -239,7 +239,7 @@ router.put("/crm/prospects/:id/convert", requireAuth, requireRole("SUPER_ADMIN",
   try {
     const userId = (req as any).session?.userId;
     const skipValidation = req.body?.force === true;
-    const result = await convertProspectToClient(req.params.id, {
+    const result = await convertProspectToClient(String(req.params.id), {
       source: "manual",
       triggeredBy: userId,
       skipValidation,

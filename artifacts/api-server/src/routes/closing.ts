@@ -205,7 +205,7 @@ router.get("/accounting/periods/:id/checklist", requireAuth, loadUser, async (re
   const [period] = await db
     .select()
     .from(accountingPeriodsTable)
-    .where(eq(accountingPeriodsTable.id, req.params.id));
+    .where(eq(accountingPeriodsTable.id, String(req.params.id)));
   if (!period) { res.status(404).json({ error: "Période introuvable" }); return; }
 
   const result = await runChecklist(period.year, period.month);
@@ -225,7 +225,7 @@ router.post(
     const [period] = await db
       .select()
       .from(accountingPeriodsTable)
-      .where(eq(accountingPeriodsTable.id, req.params.id));
+      .where(eq(accountingPeriodsTable.id, String(req.params.id)));
     if (!period) { res.status(404).json({ error: "Période introuvable" }); return; }
     if (period.status === "closed") {
       res.status(400).json({ error: "Période déjà clôturée" });
@@ -377,7 +377,7 @@ router.post(
     const [period] = await db
       .select()
       .from(accountingPeriodsTable)
-      .where(eq(accountingPeriodsTable.id, req.params.id));
+      .where(eq(accountingPeriodsTable.id, String(req.params.id)));
     if (!period) { res.status(404).json({ error: "Période introuvable" }); return; }
     if (period.status !== "closed") {
       res.status(400).json({ error: "La période n'est pas clôturée" });
@@ -403,7 +403,7 @@ router.get("/accounting/periods/:id/logs", requireAuth, async (req, res): Promis
   const logs = await db
     .select()
     .from(closingLogsTable)
-    .where(eq(closingLogsTable.periodId, req.params.id))
+    .where(eq(closingLogsTable.periodId, String(req.params.id)))
     .orderBy(desc(closingLogsTable.createdAt));
   res.json(logs);
 });
@@ -413,7 +413,7 @@ router.get("/accounting/periods/:id/snapshot/excel", requireAuth, async (req, re
   const [period] = await db
     .select()
     .from(accountingPeriodsTable)
-    .where(eq(accountingPeriodsTable.id, req.params.id));
+    .where(eq(accountingPeriodsTable.id, String(req.params.id)));
   if (!period) { res.status(404).json({ error: "Période introuvable" }); return; }
 
   const snap = period.snapshotData as { accounts?: { code: string; name: string; totalDebit: number; totalCredit: number; balance: number }[] } | null;
@@ -443,7 +443,7 @@ router.get("/accounting/periods/:id/snapshot/pdf", requireAuth, async (req, res)
   const [period] = await db
     .select()
     .from(accountingPeriodsTable)
-    .where(eq(accountingPeriodsTable.id, req.params.id));
+    .where(eq(accountingPeriodsTable.id, String(req.params.id)));
   if (!period) { res.status(404).json({ error: "Période introuvable" }); return; }
 
   const snap = period.snapshotData as {

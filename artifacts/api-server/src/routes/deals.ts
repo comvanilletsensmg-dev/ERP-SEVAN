@@ -23,7 +23,7 @@ router.get("/crm/deals", requireAuth, requireRole(...CRM_ROLES), async (_req, re
 });
 
 router.get("/crm/deals/:id", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id));
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, String(req.params.id)));
   if (!deal) { res.status(404).json({ error: "Deal introuvable" }); return; }
   res.json(safe(deal));
 });
@@ -86,7 +86,7 @@ router.put("/crm/deals/:id", requireAuth, requireRole(...CRM_WRITE), async (req,
     expectedClose: expectedClose ? new Date(expectedClose) : null,
     notes: notes ?? null, assignedTo: assignedTo ?? null,
     updatedAt: new Date(),
-  }).where(eq(dealsTable.id, req.params.id)).returning();
+  }).where(eq(dealsTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Deal introuvable" }); return; }
   res.json(safe(updated));
 });
@@ -97,13 +97,13 @@ router.patch("/crm/deals/:id/stage", requireAuth, requireRole(...CRM_WRITE), asy
   const STAGE_PROB: Record<string, number> = { prospect: 10, contact: 25, negotiation: 50, proposal: 70, won: 100, lost: 0 };
   const [updated] = await db.update(dealsTable).set({
     stage, probability: STAGE_PROB[stage] ?? undefined, updatedAt: new Date(),
-  }).where(eq(dealsTable.id, req.params.id)).returning();
+  }).where(eq(dealsTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Deal introuvable" }); return; }
   res.json(safe(updated));
 });
 
 router.delete("/crm/deals/:id", requireAuth, requireRole("SUPER_ADMIN"), async (req, res): Promise<void> => {
-  const deleted = await db.delete(dealsTable).where(eq(dealsTable.id, req.params.id)).returning();
+  const deleted = await db.delete(dealsTable).where(eq(dealsTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Deal introuvable" }); return; }
   res.json({ success: true });
 });

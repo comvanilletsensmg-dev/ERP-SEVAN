@@ -33,7 +33,7 @@ router.post("/clients", requireAuth, requireRole(...CLIENT_WRITE), async (req, r
 });
 
 router.get("/clients/:id", requireAuth, requireRole(...CLIENT_ROLES), async (req, res): Promise<void> => {
-  const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, req.params.id));
+  const [client] = await db.select().from(clientsTable).where(eq(clientsTable.id, String(req.params.id)));
   if (!client) { res.status(404).json({ error: "Client introuvable" }); return; }
   res.json(safe(client));
 });
@@ -46,13 +46,13 @@ router.put("/clients/:id", requireAuth, requireRole(...CLIENT_WRITE), async (req
     paymentTerms: paymentTerms !== undefined ? Number(paymentTerms) : undefined,
     isActive: isActive !== undefined ? Boolean(isActive) : undefined,
     notes: notes ?? null, updatedAt: new Date(),
-  }).where(eq(clientsTable.id, req.params.id)).returning();
+  }).where(eq(clientsTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Client introuvable" }); return; }
   res.json(safe(updated));
 });
 
 router.delete("/clients/:id", requireAuth, requireRole(...CLIENT_WRITE), async (req, res): Promise<void> => {
-  const deleted = await db.delete(clientsTable).where(eq(clientsTable.id, req.params.id)).returning();
+  const deleted = await db.delete(clientsTable).where(eq(clientsTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Client introuvable" }); return; }
   res.json({ success: true });
 });

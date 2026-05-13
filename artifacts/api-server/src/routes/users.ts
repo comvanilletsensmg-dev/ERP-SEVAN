@@ -148,7 +148,7 @@ router.get("/role-permissions", requireAuth, requireRole(...ADMIN_ROLES), async 
 
 // ─── PUT /role-permissions/:role ──────────────────────────────────────────────
 router.put("/role-permissions/:role", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
-  const { role } = req.params;
+  const { role } = req.params as Record<string, string>;
   if (!ALL_ROLES.includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
 
   const permissions: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }> = req.body.permissions ?? [];
@@ -174,7 +174,7 @@ router.put("/role-permissions/:role", requireAuth, requireRole(...ADMIN_ROLES), 
 
 // ─── POST /role-permissions/:role/apply-to-users ──────────────────────────────
 router.post("/role-permissions/:role/apply-to-users", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
-  const { role } = req.params;
+  const { role } = req.params as Record<string, string>;
   if (!ALL_ROLES.includes(role)) { res.status(400).json({ error: "Rôle invalide" }); return; }
 
   const rolePerms = await db.select().from(rolePermissionsTable).where(eq(rolePermissionsTable.role, role));
@@ -206,7 +206,7 @@ router.get("/users/:id/login-history", requireAuth, requireRole(...ADMIN_ROLES, 
   const history = await db
     .select()
     .from(loginHistoryTable)
-    .where(eq(loginHistoryTable.userId, req.params.id))
+    .where(eq(loginHistoryTable.userId, String(req.params.id)))
     .orderBy(desc(loginHistoryTable.createdAt))
     .limit(20);
 
@@ -221,7 +221,7 @@ router.get("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES, RO
   const perms = await db
     .select()
     .from(userPermissionsTable)
-    .where(eq(userPermissionsTable.userId, req.params.id));
+    .where(eq(userPermissionsTable.userId, String(req.params.id)));
 
   res.json(perms.map(p => ({
     module: p.module, canView: p.canView, canCreate: p.canCreate,
@@ -231,7 +231,7 @@ router.get("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES, RO
 
 // ─── PUT /users/:id/permissions ───────────────────────────────────────────────
 router.put("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const permissions: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }> = req.body.permissions ?? [];
 
   for (const p of permissions) {
@@ -250,7 +250,7 @@ router.put("/users/:id/permissions", requireAuth, requireRole(...ADMIN_ROLES), a
 
 // ─── PUT /users/:id/status ────────────────────────────────────────────────────
 router.put("/users/:id/status", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { action } = req.body;
 
   if (!["activate", "deactivate", "lock", "unlock"].includes(action)) {
@@ -317,7 +317,7 @@ router.post("/users", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER)
 
 // ─── PUT /users/:id ───────────────────────────────────────────────────────────
 router.put("/users/:id", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { email, name, role, password, department, employeeId } = req.body;
 
   if (role && !Object.values(ROLES).includes(role)) {
@@ -346,7 +346,7 @@ router.put("/users/:id", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAG
 
 // ─── DELETE /users/:id ────────────────────────────────────────────────────────
 router.delete("/users/:id", requireAuth, requireRole(...ADMIN_ROLES, ROLES.HR_MANAGER), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { reason } = req.body ?? {};
 
   if (req.currentUser?.id === id) {

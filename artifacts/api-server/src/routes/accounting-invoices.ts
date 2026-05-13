@@ -184,7 +184,7 @@ router.post("/invoices", requireAuth, async (req, res): Promise<void> => {
 
 // ─── PUT /invoices/:id/validate ───────────────────────────────────────────────
 router.put("/invoices/:id/validate", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [invoice] = await db.select().from(accountingInvoicesTable).where(eq(accountingInvoicesTable.id, id));
   if (!invoice) { res.status(404).json({ error: "Invoice not found" }); return; }
   if (invoice.status !== "draft") { res.status(400).json({ error: "Only draft invoices can be validated" }); return; }
@@ -202,7 +202,7 @@ router.put("/invoices/:id/validate", requireAuth, async (req, res): Promise<void
 
 // ─── PUT /invoices/:id/pay ────────────────────────────────────────────────────
 router.put("/invoices/:id/pay", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [invoice] = await db.select().from(accountingInvoicesTable).where(eq(accountingInvoicesTable.id, id));
   if (!invoice) { res.status(404).json({ error: "Invoice not found" }); return; }
   if (invoice.status !== "validated") { res.status(400).json({ error: "Invoice must be validated before marking paid" }); return; }
@@ -250,7 +250,8 @@ router.post("/invoices/upload", requireAuth, upload.single("file"), async (req, 
   // PDF text extraction
   if (req.file.mimetype === "application/pdf") {
     try {
-      const pdfParse = (await import("pdf-parse")).default;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParse = ((await import("pdf-parse")) as any).default ?? (await import("pdf-parse"));
       const buffer   = fs.readFileSync(req.file.path);
       const data     = await pdfParse(buffer);
       ocrText        = data.text ?? "";
@@ -312,8 +313,8 @@ router.post("/invoices/upload", requireAuth, upload.single("file"), async (req, 
 });
 
 // Serve uploaded invoice files
-router.get("/uploads/invoices/:filename", (_req, res): void => {
-  const filename = _req.params.filename;
+router.get("/uploads/invoices/:filename", (req, res): void => {
+  const filename = String(req.params.filename);
   const filepath = path.join(uploadsDir, filename);
   if (!fs.existsSync(filepath)) { res.status(404).json({ error: "File not found" }); return; }
   res.sendFile(filepath);
@@ -324,7 +325,7 @@ router.delete("/invoices/:id",
   requireAuth,
   requireRole("SUPER_ADMIN"),
   async (req, res): Promise<void> => {
-    const { id }    = req.params;
+    const { id } = req.params as Record<string, string>;
     const user      = (req as any).currentUser;
     const reason    = (req.body?.reason ?? "").trim();
 

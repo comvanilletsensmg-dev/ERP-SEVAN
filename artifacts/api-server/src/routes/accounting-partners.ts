@@ -19,7 +19,7 @@ router.post("/partners", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/partners/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { name, type, email, phone, vatNumber, address, notes } = req.body;
   const [updated] = await db.update(partnersTable).set({ name, type, email, phone, vatNumber, address, notes }).where(eq(partnersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Partner not found" }); return; }

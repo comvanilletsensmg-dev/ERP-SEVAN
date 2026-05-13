@@ -51,7 +51,7 @@ router.get("/payroll/:id", requireAuth, async (req, res): Promise<void> => {
     .select()
     .from(payrollTable)
     .leftJoin(employeesTable, eq(payrollTable.employeeId, employeesTable.id))
-    .where(eq(payrollTable.id, req.params.id));
+    .where(eq(payrollTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Fiche de paie introuvable" }); return; }
   res.json(formatPayroll(row.payroll, row.employees));
 });
@@ -59,7 +59,7 @@ router.get("/payroll/:id", requireAuth, async (req, res): Promise<void> => {
 router.get("/payroll/:id/pdf", requireAuth, async (req, res): Promise<void> => {
   const [row] = await db.select().from(payrollTable)
     .leftJoin(employeesTable, eq(payrollTable.employeeId, employeesTable.id))
-    .where(eq(payrollTable.id, req.params.id));
+    .where(eq(payrollTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Fiche de paie introuvable" }); return; }
 
   const p = row.payroll;
@@ -487,7 +487,7 @@ router.post("/payroll", requireAuth, hrAccess, async (req, res): Promise<void> =
 router.delete("/payroll/:id", requireAuth, hrAccess, async (req, res): Promise<void> => {
   const [deleted] = await db
     .delete(payrollTable)
-    .where(eq(payrollTable.id, req.params.id))
+    .where(eq(payrollTable.id, String(req.params.id)))
     .returning();
   if (!deleted) { res.status(404).json({ error: "Fiche de paie introuvable" }); return; }
   logger.info({ id: deleted.id, employeeId: deleted.employeeId, month: deleted.month }, "Payroll record deleted");

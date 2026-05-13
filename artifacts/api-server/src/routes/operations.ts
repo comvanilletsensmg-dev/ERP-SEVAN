@@ -202,7 +202,7 @@ router.get("/operations/reports/today", loadUser, async (req, res): Promise<void
 // ── GET /operations/reports/:id ───────────────────────────────────────────────
 router.get("/operations/reports/:id", loadUser, async (req, res): Promise<void> => {
   const [report] = await db.select().from(operationReportsTable)
-    .where(eq(operationReportsTable.id, req.params.id));
+    .where(eq(operationReportsTable.id, String(req.params.id)));
   if (!report) { res.status(404).json({ error: "Rapport introuvable" }); return; }
 
   const lotStatuses = await db.select({
@@ -263,7 +263,7 @@ router.patch("/operations/reports/:id", loadUser, async (req, res): Promise<void
   if (p.data.quantityPreparedKg !== undefined) updates.quantityPreparedKg = p.data.quantityPreparedKg;
   if (p.data.notes !== undefined) updates.notes = p.data.notes;
   const [row] = await db.update(operationReportsTable).set(updates)
-    .where(eq(operationReportsTable.id, req.params.id)).returning();
+    .where(eq(operationReportsTable.id, String(req.params.id))).returning();
   if (!row) { res.status(404).json({ error: "Rapport introuvable" }); return; }
   res.json(fmtReport(row));
 });
@@ -281,22 +281,22 @@ router.put("/operations/reports/:id/lot-status", loadUser, async (req, res): Pro
 
   // Check report exists
   const [report] = await db.select().from(operationReportsTable)
-    .where(eq(operationReportsTable.id, req.params.id));
+    .where(eq(operationReportsTable.id, String(req.params.id)));
   if (!report) { res.status(404).json({ error: "Rapport introuvable" }); return; }
 
   // Upsert lot status
   const existing = await db.select().from(operationLotStatusesTable)
-    .where(and(eq(operationLotStatusesTable.reportId, req.params.id), eq(operationLotStatusesTable.lotId, lotId)));
+    .where(and(eq(operationLotStatusesTable.reportId, String(req.params.id)), eq(operationLotStatusesTable.lotId, lotId)));
 
   let row;
   if (existing.length > 0) {
     [row] = await db.update(operationLotStatusesTable)
       .set({ status, quantityKg })
-      .where(and(eq(operationLotStatusesTable.reportId, req.params.id), eq(operationLotStatusesTable.lotId, lotId)))
+      .where(and(eq(operationLotStatusesTable.reportId, String(req.params.id)), eq(operationLotStatusesTable.lotId, lotId)))
       .returning();
   } else {
     [row] = await db.insert(operationLotStatusesTable).values({
-      id: crypto.randomUUID(), reportId: req.params.id, lotId, status, quantityKg,
+      id: crypto.randomUUID(), reportId: String(req.params.id), lotId, status, quantityKg,
     }).returning();
   }
   res.json(row);
@@ -306,8 +306,8 @@ router.put("/operations/reports/:id/lot-status", loadUser, async (req, res): Pro
 router.delete("/operations/reports/:id/lot-status/:lotId", loadUser, async (req, res): Promise<void> => {
   await db.delete(operationLotStatusesTable)
     .where(and(
-      eq(operationLotStatusesTable.reportId, req.params.id),
-      eq(operationLotStatusesTable.lotId, req.params.lotId),
+      eq(operationLotStatusesTable.reportId, String(req.params.id)),
+      eq(operationLotStatusesTable.lotId, String(req.params.lotId)),
     ));
   res.json({ ok: true });
 });
@@ -323,23 +323,23 @@ router.put("/operations/reports/:id/consumable-usage", loadUser, async (req, res
   const { consumableId, quantityUsed } = p.data;
 
   const [report] = await db.select().from(operationReportsTable)
-    .where(eq(operationReportsTable.id, req.params.id));
+    .where(eq(operationReportsTable.id, String(req.params.id)));
   if (!report) { res.status(404).json({ error: "Rapport introuvable" }); return; }
 
   // Get previous usage to compute stock diff
   const [prevUsage] = await db.select().from(consumableUsagesTable)
-    .where(and(eq(consumableUsagesTable.reportId, req.params.id), eq(consumableUsagesTable.consumableId, consumableId)));
+    .where(and(eq(consumableUsagesTable.reportId, String(req.params.id)), eq(consumableUsagesTable.consumableId, consumableId)));
   const prevQty = prevUsage?.quantityUsed ?? 0;
   const diff = quantityUsed - prevQty;
 
   let row;
   if (prevUsage) {
     [row] = await db.update(consumableUsagesTable).set({ quantityUsed })
-      .where(and(eq(consumableUsagesTable.reportId, req.params.id), eq(consumableUsagesTable.consumableId, consumableId)))
+      .where(and(eq(consumableUsagesTable.reportId, String(req.params.id)), eq(consumableUsagesTable.consumableId, consumableId)))
       .returning();
   } else {
     [row] = await db.insert(consumableUsagesTable).values({
-      id: crypto.randomUUID(), reportId: req.params.id, consumableId, quantityUsed,
+      id: crypto.randomUUID(), reportId: String(req.params.id), consumableId, quantityUsed,
     }).returning();
   }
 
@@ -388,7 +388,7 @@ router.patch("/operations/consumables/:id", loadUser, async (req, res): Promise<
   const p = ConsumableUpdateBody.safeParse(req.body);
   if (!p.success) { res.status(400).json({ error: p.error.message }); return; }
   const d = p.data;
-  const [current] = await db.select().from(consumablesTable).where(eq(consumablesTable.id, req.params.id));
+  const [current] = await db.select().from(consumablesTable).where(eq(consumablesTable.id, String(req.params.id)));
   if (!current) { res.status(404).json({ error: "Consommable introuvable" }); return; }
 
   const updates: Partial<typeof consumablesTable.$inferInsert> = {};
@@ -399,13 +399,13 @@ router.patch("/operations/consumables/:id", loadUser, async (req, res): Promise<
   else if (d.stock !== undefined) updates.stock = d.stock;
 
   const [row] = await db.update(consumablesTable).set(updates)
-    .where(eq(consumablesTable.id, req.params.id)).returning();
+    .where(eq(consumablesTable.id, String(req.params.id))).returning();
   res.json({ ...row, createdAt: row.createdAt.toISOString() });
 });
 
 // ── DELETE /operations/consumables/:id ────────────────────────────────────────
 router.delete("/operations/consumables/:id", loadUser, async (req, res): Promise<void> => {
-  const [row] = await db.delete(consumablesTable).where(eq(consumablesTable.id, req.params.id)).returning();
+  const [row] = await db.delete(consumablesTable).where(eq(consumablesTable.id, String(req.params.id))).returning();
   if (!row) { res.status(404).json({ error: "Consommable introuvable" }); return; }
   res.json({ ok: true });
 });

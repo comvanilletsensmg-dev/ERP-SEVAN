@@ -57,7 +57,7 @@ router.put("/onboarding/:id", requireAuth, async (req, res): Promise<void> => {
   const [task] = await db
     .update(onboardingTasksTable)
     .set({ status: parsed.data.status })
-    .where(eq(onboardingTasksTable.id, req.params.id))
+    .where(eq(onboardingTasksTable.id, String(req.params.id)))
     .returning();
 
   if (!task) {

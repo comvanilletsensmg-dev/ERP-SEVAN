@@ -40,7 +40,7 @@ router.post("/bank/import", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/bank/:id/match", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { matchedRef } = req.body;
   const [updated] = await db.update(bankTransactionsTable)
     .set({ matched: true, matchedRef })
@@ -51,7 +51,7 @@ router.put("/bank/:id/match", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/bank/:id/unmatch", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [updated] = await db.update(bankTransactionsTable)
     .set({ matched: false, matchedRef: null })
     .where(eq(bankTransactionsTable.id, id))

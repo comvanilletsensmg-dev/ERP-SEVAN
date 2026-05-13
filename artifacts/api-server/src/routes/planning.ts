@@ -321,7 +321,7 @@ router.post("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
 
 // ── PUT /planning/tasks/:id ───────────────────────────────────────────────────
 router.put("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -356,7 +356,7 @@ router.put("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> =
 
 // ── DELETE /planning/tasks/:id ────────────────────────────────────────────────
 router.delete("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
-  await db.delete(productionTasksTable).where(eq(productionTasksTable.id, req.params.id));
+  await db.delete(productionTasksTable).where(eq(productionTasksTable.id, String(req.params.id)));
   res.status(204).send();
 });
 
@@ -419,7 +419,7 @@ router.post("/planning/orders", requireAuth, async (req, res): Promise<void> => 
 
 // ── PUT /planning/orders/:id ──────────────────────────────────────────────────
 router.put("/planning/orders/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -461,13 +461,13 @@ router.put("/planning/orders/:id", requireAuth, async (req, res): Promise<void> 
 
 // ── DELETE /planning/orders/:id ───────────────────────────────────────────────
 router.delete("/planning/orders/:id", requireAuth, async (req, res): Promise<void> => {
-  await db.delete(exportOrdersTable).where(eq(exportOrdersTable.id, req.params.id));
+  await db.delete(exportOrdersTable).where(eq(exportOrdersTable.id, String(req.params.id)));
   res.status(204).send();
 });
 
 // ── POST /planning/orders/:id/ship ────────────────────────────────────────────
 router.post("/planning/orders/:id/ship", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [order] = await db.select().from(exportOrdersTable).where(eq(exportOrdersTable.id, id));
   if (!order) { res.status(404).json({ error: "Not found" }); return; }
   if (order.status === "shipped") { res.status(409).json({ error: "Already shipped" }); return; }

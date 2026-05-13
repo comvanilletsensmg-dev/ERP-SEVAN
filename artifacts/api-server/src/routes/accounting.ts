@@ -168,7 +168,7 @@ const UpdateEntryBody = z.object({
 });
 
 router.patch("/journal/:id", loadUser, async (req, res): Promise<void> => {
-  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, req.params.id));
+  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, String(req.params.id)));
   if (!entry) { res.status(404).json({ error: "Écriture introuvable" }); return; }
   if (entry.status === "locked") { res.status(403).json({ error: "Écriture verrouillée — modification impossible" }); return; }
 
@@ -210,7 +210,7 @@ router.patch("/journal/:id", loadUser, async (req, res): Promise<void> => {
 
 // ── DELETE /journal/:id ───────────────────────────────────────────────────────
 router.delete("/journal/:id", loadUser, async (req, res): Promise<void> => {
-  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, req.params.id));
+  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, String(req.params.id)));
   if (!entry) { res.status(404).json({ error: "Écriture introuvable" }); return; }
   if (entry.status !== "draft") { res.status(403).json({ error: "Seules les écritures en brouillon peuvent être supprimées" }); return; }
   await db.delete(journalEntriesTable).where(eq(journalEntriesTable.id, entry.id));
@@ -220,7 +220,7 @@ router.delete("/journal/:id", loadUser, async (req, res): Promise<void> => {
 
 // ── POST /journal/:id/validate ────────────────────────────────────────────────
 router.post("/journal/:id/validate", loadUser, async (req, res): Promise<void> => {
-  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, req.params.id));
+  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, String(req.params.id)));
   if (!entry) { res.status(404).json({ error: "Écriture introuvable" }); return; }
   if (entry.status !== "draft") { res.status(400).json({ error: `Statut actuel : ${entry.status} — validation impossible` }); return; }
 
@@ -239,7 +239,7 @@ router.post("/journal/:id/validate", loadUser, async (req, res): Promise<void> =
 
 // ── POST /journal/:id/lock ────────────────────────────────────────────────────
 router.post("/journal/:id/lock", loadUser, async (req, res): Promise<void> => {
-  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, req.params.id));
+  const [entry] = await db.select().from(journalEntriesTable).where(eq(journalEntriesTable.id, String(req.params.id)));
   if (!entry) { res.status(404).json({ error: "Écriture introuvable" }); return; }
   if (entry.status !== "validated") { res.status(400).json({ error: `Statut actuel : ${entry.status} — verrouillage impossible` }); return; }
 
@@ -252,7 +252,7 @@ router.post("/journal/:id/lock", loadUser, async (req, res): Promise<void> => {
 // ── GET /journal/:id/audit ────────────────────────────────────────────────────
 router.get("/journal/:id/audit", requireAuth, async (req, res): Promise<void> => {
   const logs = await db.select().from(journalAuditLogsTable)
-    .where(eq(journalAuditLogsTable.entryId, req.params.id))
+    .where(eq(journalAuditLogsTable.entryId, String(req.params.id)))
     .orderBy(desc(journalAuditLogsTable.createdAt));
   res.json(logs.map(l => ({ ...l, createdAt: l.createdAt.toISOString() })));
 });

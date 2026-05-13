@@ -28,7 +28,7 @@ router.post("/crm/reminders", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.patch("/crm/reminders/:id/send", requireAuth, async (req, res): Promise<void> => {
-  const [reminder] = await db.select().from(remindersTable).where(eq(remindersTable.id, req.params.id));
+  const [reminder] = await db.select().from(remindersTable).where(eq(remindersTable.id, String(req.params.id)));
   if (!reminder) { res.status(404).json({ error: "Relance introuvable" }); return; }
 
   // Find reminder template
@@ -46,7 +46,7 @@ router.patch("/crm/reminders/:id/send", requireAuth, async (req, res): Promise<v
 });
 
 router.patch("/crm/reminders/:id/cancel", requireAuth, async (req, res): Promise<void> => {
-  const [updated] = await db.update(remindersTable).set({ status: "cancelled" }).where(eq(remindersTable.id, req.params.id)).returning();
+  const [updated] = await db.update(remindersTable).set({ status: "cancelled" }).where(eq(remindersTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Relance introuvable" }); return; }
   res.json(safe(updated));
 });

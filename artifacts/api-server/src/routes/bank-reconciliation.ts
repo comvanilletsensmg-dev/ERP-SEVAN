@@ -148,7 +148,7 @@ router.post("/bank/auto-match", requireAuth, async (req, res): Promise<void> => 
 
 // ─── PUT /api/bank/:id/reconcile ──────────────────────────────────────────────
 router.put("/bank/:id/reconcile", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { invoiceId, partnerId, journalEntryId, matchScore } = req.body;
 
   let matchedRef = "";
@@ -178,7 +178,7 @@ router.put("/bank/:id/reconcile", requireAuth, async (req, res): Promise<void> =
 
 // ─── PUT /api/bank/:id/unreconcile ────────────────────────────────────────────
 router.put("/bank/:id/unreconcile", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   await db.execute(sql`
     UPDATE bank_transactions SET
       status = 'unmatched',
@@ -197,7 +197,7 @@ router.put("/bank/:id/unreconcile", requireAuth, async (req, res): Promise<void>
 // ─── POST /api/bank/:id/gap ───────────────────────────────────────────────────
 // Creates a gap journal entry (658 or 758) and marks the transaction matched
 router.post("/bank/:id/gap", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { gapAmount, invoiceId, partnerId, description } = req.body;
 
   if (!gapAmount || gapAmount === 0) {

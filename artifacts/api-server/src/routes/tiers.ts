@@ -171,7 +171,7 @@ router.get("/tiers/export/excel", requireAuth, async (_req, res): Promise<void> 
 
 // ─── GET /api/tiers/:id ───────────────────────────────────────────────────────
 router.get("/tiers/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const today = new Date();
 
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, id));

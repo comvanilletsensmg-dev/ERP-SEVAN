@@ -34,7 +34,7 @@ router.post("/crm/interactions", requireAuth, requireRole(...CRM_WRITE), async (
 });
 
 router.delete("/crm/interactions/:id", requireAuth, requireRole("SUPER_ADMIN"), async (req, res): Promise<void> => {
-  const deleted = await db.delete(interactionsTable).where(eq(interactionsTable.id, req.params.id)).returning();
+  const deleted = await db.delete(interactionsTable).where(eq(interactionsTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Interaction introuvable" }); return; }
   res.json({ success: true });
 });

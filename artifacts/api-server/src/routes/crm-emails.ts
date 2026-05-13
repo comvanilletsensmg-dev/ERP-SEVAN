@@ -23,13 +23,13 @@ router.post("/crm/templates", requireAuth, async (req, res): Promise<void> => {
 
 router.patch("/crm/templates/:id", requireAuth, async (req, res): Promise<void> => {
   const { name, subject, body, category } = req.body;
-  const [tmpl] = await db.update(emailTemplatesTable).set({ name, subject, body, category, updatedAt: new Date() }).where(eq(emailTemplatesTable.id, req.params.id)).returning();
+  const [tmpl] = await db.update(emailTemplatesTable).set({ name, subject, body, category, updatedAt: new Date() }).where(eq(emailTemplatesTable.id, String(req.params.id))).returning();
   if (!tmpl) { res.status(404).json({ error: "Template introuvable" }); return; }
   res.json(safe(tmpl));
 });
 
 router.delete("/crm/templates/:id", requireAuth, async (req, res): Promise<void> => {
-  const deleted = await db.delete(emailTemplatesTable).where(eq(emailTemplatesTable.id, req.params.id)).returning();
+  const deleted = await db.delete(emailTemplatesTable).where(eq(emailTemplatesTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Template introuvable" }); return; }
   res.json({ success: true });
 });

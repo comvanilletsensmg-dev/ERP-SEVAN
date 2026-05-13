@@ -206,6 +206,12 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
   const [type, setType]   = useState("VANILLE");
   const [form, setForm]   = useState<any>({
     supplierId: "", supplierName: "",
+    // New supplier details
+    supplierEmail: "", supplierPhone: "", supplierCity: "",
+    supplierRegion: "", supplierNif: "", supplierStat: "",
+    supplierRccm: "", supplierAddress: "",
+    supplierPaymentMethod: "Virement bancaire", supplierPaymentTerms: "30",
+    supplierIsVatSubject: false,
     description: "", category: "", currency: "MGA",
     purchaseDate: new Date().toISOString().slice(0, 10),
     amountHt: "", vatRate: "0", vatAmount: "", amountTtc: "",
@@ -216,6 +222,7 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     serialNumber: "", location: "",
   });
   const [useNewSupplier, setUseNewSupplier] = useState(false);
+  const [showSupplierDetails, setShowSupplierDetails] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const set = (k: string, v: string) => {
@@ -290,8 +297,24 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
       warehouse: form.warehouse || undefined, paymentMethod: form.paymentMethod,
       vatRate: parseFloat(form.vatRate) || 0,
     };
-    if (useNewSupplier) body.supplierName = form.supplierName.trim();
-    else body.supplierId = form.supplierId;
+    if (useNewSupplier) {
+      body.supplierName = form.supplierName.trim();
+      if (type !== "VANILLE") {
+        if (form.supplierEmail)         body.supplierEmail         = form.supplierEmail;
+        if (form.supplierPhone)         body.supplierPhone         = form.supplierPhone;
+        if (form.supplierCity)          body.supplierCity          = form.supplierCity;
+        if (form.supplierRegion)        body.supplierRegion        = form.supplierRegion;
+        if (form.supplierNif)           body.supplierNif           = form.supplierNif;
+        if (form.supplierStat)          body.supplierStat          = form.supplierStat;
+        if (form.supplierRccm)          body.supplierRccm          = form.supplierRccm;
+        if (form.supplierAddress)       body.supplierAddress       = form.supplierAddress;
+        if (form.supplierPaymentMethod) body.supplierPaymentMethod = form.supplierPaymentMethod;
+        if (form.supplierPaymentTerms)  body.supplierPaymentTerms  = form.supplierPaymentTerms;
+        body.supplierIsVatSubject = form.supplierIsVatSubject;
+      }
+    } else {
+      body.supplierId = form.supplierId;
+    }
 
     if (type === "VANILLE") {
       body.weight    = parseFloat(form.weight);
@@ -393,8 +416,98 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
                     ))}
                   </select>
                 ) : (
-                  <input value={form.supplierName} onChange={e => set("supplierName", e.target.value)}
-                    className={inputCls} placeholder="Nom du nouveau fournisseur"/>
+                  <div className="space-y-2">
+                    <input value={form.supplierName} onChange={e => set("supplierName", e.target.value)}
+                      className={inputCls} placeholder="Nom du nouveau fournisseur *"/>
+                    {/* Extra supplier details — non-VANILLE only */}
+                    {type !== "VANILLE" && (
+                      <div>
+                        <button type="button" onClick={() => setShowSupplierDetails(!showSupplierDetails)}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1 mt-1">
+                          {showSupplierDetails ? "▲ Masquer les détails" : "▼ Ajouter les détails du fournisseur"}
+                        </button>
+                        {showSupplierDetails && (
+                          <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Informations fournisseur</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Email</label>
+                                <input type="email" value={form.supplierEmail} onChange={e => set("supplierEmail", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="contact@fournisseur.mg"/>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Téléphone</label>
+                                <input value={form.supplierPhone} onChange={e => set("supplierPhone", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="+261 34 000 0000"/>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Ville</label>
+                                <input value={form.supplierCity} onChange={e => set("supplierCity", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="Antananarivo"/>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Région</label>
+                                <input value={form.supplierRegion} onChange={e => set("supplierRegion", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="Analamanga"/>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 block mb-1">Adresse</label>
+                              <input value={form.supplierAddress} onChange={e => set("supplierAddress", e.target.value)}
+                                className={inputCls + " text-xs"} placeholder="Lot XX, Rue Ravoninahitriniarivo…"/>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Identifiants fiscaux</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">NIF</label>
+                                <input value={form.supplierNif} onChange={e => set("supplierNif", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="NIF-XXXXX"/>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">STAT</label>
+                                <input value={form.supplierStat} onChange={e => set("supplierStat", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="STAT-XXXXX"/>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">RCCM</label>
+                                <input value={form.supplierRccm} onChange={e => set("supplierRccm", e.target.value)}
+                                  className={inputCls + " text-xs"} placeholder="RCCM-XX"/>
+                              </div>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Conditions paiement</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Mode de règlement</label>
+                                <select value={form.supplierPaymentMethod} onChange={e => set("supplierPaymentMethod", e.target.value)} className={inputCls + " text-xs"}>
+                                  <option value="Virement bancaire">Virement bancaire</option>
+                                  <option value="Espèces">Espèces</option>
+                                  <option value="Chèque">Chèque</option>
+                                  <option value="Mobile Money">Mobile Money</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-600 block mb-1">Délai paiement (jours)</label>
+                                <select value={form.supplierPaymentTerms} onChange={e => set("supplierPaymentTerms", e.target.value)} className={inputCls + " text-xs"}>
+                                  <option value="0">Immédiat</option>
+                                  <option value="15">15 jours</option>
+                                  <option value="30">30 jours</option>
+                                  <option value="45">45 jours</option>
+                                  <option value="60">60 jours</option>
+                                  <option value="90">90 jours</option>
+                                </select>
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+                              <input type="checkbox" checked={form.supplierIsVatSubject}
+                                onChange={e => setForm((f: any) => ({ ...f, supplierIsVatSubject: e.target.checked }))}
+                                className="w-4 h-4 rounded text-emerald-600 border-gray-300"/>
+                              Fournisseur assujetti à la TVA
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {(errors.supplierId || errors.supplierName) && <p className="text-red-500 text-xs mt-0.5">{errors.supplierId || errors.supplierName}</p>}
               </div>

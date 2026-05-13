@@ -22,7 +22,7 @@ const router: IRouter = Router();
 const aiAccess = requireRole(ROLES.SUPER_ADMIN, ROLES.LOGISTICS_MANAGER);
 
 router.get("/ai/predict/:lotId", requireAuth, aiAccess, async (req, res): Promise<void> => {
-  const { lotId } = req.params;
+  const { lotId } = req.params as Record<string, string>;
   if (!lotId) { res.status(400).json({ error: "lotId requis" }); return; }
   const result = await predictLot(lotId);
   if (!result) { res.status(404).json({ error: "Lot introuvable" }); return; }

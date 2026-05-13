@@ -9,13 +9,13 @@ const safe = (c: any) => ({ ...c, createdAt: c.createdAt instanceof Date ? c.cre
 
 // Get costs for a lot
 router.get("/lots/:id/costs", requireAuth, async (req, res): Promise<void> => {
-  const costs = await db.select().from(lotCostsTable).where(eq(lotCostsTable.lotId, req.params.id)).orderBy(desc(lotCostsTable.updatedAt));
+  const costs = await db.select().from(lotCostsTable).where(eq(lotCostsTable.lotId, String(req.params.id))).orderBy(desc(lotCostsTable.updatedAt));
   res.json(costs.map(safe));
 });
 
 // Calculate or update costs for a lot
 router.post("/lots/:id/costs", requireAuth, async (req, res): Promise<void> => {
-  const { id: lotId } = req.params;
+  const { id: lotId } = req.params as Record<string, string>;
 
   const [lot] = await db.select().from(lotsTable).where(eq(lotsTable.id, lotId));
   if (!lot) { res.status(404).json({ error: "Lot introuvable" }); return; }

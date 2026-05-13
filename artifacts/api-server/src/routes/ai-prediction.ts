@@ -29,7 +29,7 @@ router.post("/ai/price-history", requireAuth, async (req, res): Promise<void> =>
 });
 
 router.delete("/ai/price-history/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const deleted = await db.delete(priceHistoryTable).where(
     (await import("drizzle-orm")).eq(priceHistoryTable.id, id)
   ).returning();

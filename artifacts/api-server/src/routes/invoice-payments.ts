@@ -126,13 +126,13 @@ router.get("/invoices/:id/payments", requireAuth, async (req, res): Promise<void
   const [invoice] = await db
     .select()
     .from(accountingInvoicesTable)
-    .where(eq(accountingInvoicesTable.id, req.params.id));
+    .where(eq(accountingInvoicesTable.id, String(req.params.id)));
   if (!invoice) { res.status(404).json({ error: "Facture introuvable" }); return; }
 
   const payments = await db
     .select()
     .from(invoicePaymentsTable)
-    .where(eq(invoicePaymentsTable.invoiceId, req.params.id))
+    .where(eq(invoicePaymentsTable.invoiceId, String(req.params.id)))
     .orderBy(invoicePaymentsTable.createdAt);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
@@ -151,7 +151,7 @@ router.post(
     const [invoice] = await db
       .select()
       .from(accountingInvoicesTable)
-      .where(eq(accountingInvoicesTable.id, req.params.id));
+      .where(eq(accountingInvoicesTable.id, String(req.params.id)));
     if (!invoice) { res.status(404).json({ error: "Facture introuvable" }); return; }
     if (invoice.status === "draft") {
       res.status(400).json({ error: "Valider la facture avant d'enregistrer un paiement" });

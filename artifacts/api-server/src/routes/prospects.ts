@@ -154,7 +154,7 @@ router.get("/crm/prospects", requireAuth, requireRole(...CRM_ROLES), async (req,
 
 // ─── DETAIL ───────────────────────────────────────────────────────────────────
 router.get("/crm/prospects/:id", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, req.params.id));
+  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, String(req.params.id)));
   if (!p) { res.status(404).json({ error: "Prospect introuvable" }); return; }
   res.json(safe(p));
 });
@@ -222,7 +222,7 @@ router.put("/crm/prospects/:id", requireAuth, requireRole(...CRM_ROLES), async (
     paymentTerms: req.body.paymentTerms ?? null,
     certifications: req.body.certifications !== undefined ? JSON.stringify(req.body.certifications) : undefined,
     updatedAt: new Date(),
-  }).where(eq(prospectsTable.id, req.params.id)).returning();
+  }).where(eq(prospectsTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Prospect introuvable" }); return; }
   res.json(safe(updated));
 });
@@ -232,14 +232,14 @@ router.patch("/crm/prospects/:id/status", requireAuth, requireRole(...CRM_ROLES)
   const { status } = req.body;
   if (!status) { res.status(400).json({ error: "status requis" }); return; }
   const [updated] = await db.update(prospectsTable).set({ status, updatedAt: new Date() })
-    .where(eq(prospectsTable.id, req.params.id)).returning();
+    .where(eq(prospectsTable.id, String(req.params.id))).returning();
   if (!updated) { res.status(404).json({ error: "Prospect introuvable" }); return; }
   res.json(safe(updated));
 });
 
 // ─── CONVERT TO CLIENT ────────────────────────────────────────────────────────
 router.patch("/crm/prospects/:id/convert", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, req.params.id));
+  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, String(req.params.id)));
   if (!p) { res.status(404).json({ error: "Prospect introuvable" }); return; }
 
   const [client] = await db.insert(clientsTable).values({
@@ -257,7 +257,7 @@ router.patch("/crm/prospects/:id/convert", requireAuth, requireRole(...CRM_ROLES
 
 // ─── RESCORE ──────────────────────────────────────────────────────────────────
 router.post("/crm/prospects/:id/score", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, req.params.id));
+  const [p] = await db.select().from(prospectsTable).where(eq(prospectsTable.id, String(req.params.id)));
   if (!p) { res.status(404).json({ error: "Prospect introuvable" }); return; }
   const score = scoreProspect({
     country: p.country, source: p.source, activityType: p.activityType,
@@ -272,7 +272,7 @@ router.post("/crm/prospects/:id/score", requireAuth, requireRole(...CRM_ROLES), 
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 router.delete("/crm/prospects/:id", requireAuth, requireRole(...CRM_ROLES), async (req, res): Promise<void> => {
-  const deleted = await db.delete(prospectsTable).where(eq(prospectsTable.id, req.params.id)).returning();
+  const deleted = await db.delete(prospectsTable).where(eq(prospectsTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Prospect introuvable" }); return; }
   res.json({ success: true });
 });

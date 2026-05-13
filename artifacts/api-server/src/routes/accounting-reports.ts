@@ -141,7 +141,7 @@ router.get("/reports/balance", requireAuth, async (req, res): Promise<void> => {
 
 // ─── 3. Grand livre ────────────────────────────────────────────────────────────
 router.get("/reports/ledger/:accountCode", requireAuth, async (req, res): Promise<void> => {
-  const { accountCode } = req.params;
+  const { accountCode } = req.params as Record<string, string>;
   const { from, to } = req.query as Record<string, string>;
   const { fromDate, toDate } = getPeriodDates(from, to);
 

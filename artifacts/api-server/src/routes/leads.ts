@@ -29,7 +29,7 @@ router.get("/leads", requireAuth, async (_req, res): Promise<void> => {
 });
 
 router.get("/leads/:id", requireAuth, async (req, res): Promise<void> => {
-  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, req.params.id));
+  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, String(req.params.id)));
   if (!lead) { res.status(404).json({ error: "Lead introuvable" }); return; }
   const [enriched] = await db.select().from(enrichedLeadsTable).where(eq(enrichedLeadsTable.leadId, lead.id));
   res.json({ ...safe(lead), enriched: enriched ? safe(enriched) : null });
@@ -71,7 +71,7 @@ router.patch("/leads/:id", requireAuth, async (req, res): Promise<void> => {
     name, email, company, country, industry,
     companySize: companySize ? Number(companySize) : undefined,
     website, stage, source, notes, updatedAt: new Date(),
-  }).where(eq(leadsTable.id, req.params.id)).returning();
+  }).where(eq(leadsTable.id, String(req.params.id))).returning();
   if (!lead) { res.status(404).json({ error: "Lead introuvable" }); return; }
 
   // Re-score
@@ -87,7 +87,7 @@ router.patch("/leads/:id", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.delete("/leads/:id", requireAuth, async (req, res): Promise<void> => {
-  const deleted = await db.delete(leadsTable).where(eq(leadsTable.id, req.params.id)).returning();
+  const deleted = await db.delete(leadsTable).where(eq(leadsTable.id, String(req.params.id))).returning();
   if (!deleted.length) { res.status(404).json({ error: "Lead introuvable" }); return; }
   res.json({ success: true });
 });
@@ -95,7 +95,7 @@ router.delete("/leads/:id", requireAuth, async (req, res): Promise<void> => {
 // ─── Scoring & Enrichment ─────────────────────────────────────────────────────
 
 router.post("/leads/:id/score", requireAuth, async (req, res): Promise<void> => {
-  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, req.params.id));
+  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, String(req.params.id)));
   if (!lead) { res.status(404).json({ error: "Lead introuvable" }); return; }
 
   const { score, details } = scoreLead(lead);
@@ -132,7 +132,7 @@ router.post("/leads/enrich", requireAuth, async (req, res): Promise<void> => {
 // ─── Email send to lead ───────────────────────────────────────────────────────
 
 router.post("/leads/:id/email", requireAuth, async (req, res): Promise<void> => {
-  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, req.params.id));
+  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, String(req.params.id)));
   if (!lead) { res.status(404).json({ error: "Lead introuvable" }); return; }
   if (!lead.email) { res.status(400).json({ error: "Ce lead n'a pas d'email" }); return; }
 

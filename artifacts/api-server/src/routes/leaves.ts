@@ -167,7 +167,7 @@ router.get("/leaves/balances", requireAuth, async (req, res): Promise<void> => {
 // ── GET /leaves/balances/:employeeId ─────────────────────────────────────────
 router.get("/leaves/balances/:employeeId", requireAuth, async (req, res): Promise<void> => {
   const year = parseInt((req.query.year as string) ?? String(new Date().getFullYear()));
-  const { employeeId } = req.params;
+  const { employeeId } = req.params as Record<string, string>;
 
   const [emp] = await db.select().from(employeesTable).where(eq(employeesTable.id, employeeId));
   if (!emp) { res.status(404).json({ error: "Employé introuvable" }); return; }
@@ -231,7 +231,7 @@ router.post("/leaves", requireAuth, async (req, res): Promise<void> => {
 
 // ── DELETE /leaves/:id ────────────────────────────────────────────────────────
 router.delete("/leaves/:id", requireAuth, async (req, res): Promise<void> => {
-  const [leave] = await db.select().from(leavesTable).where(eq(leavesTable.id, req.params.id));
+  const [leave] = await db.select().from(leavesTable).where(eq(leavesTable.id, String(req.params.id)));
   if (!leave) { res.status(404).json({ error: "Congé introuvable" }); return; }
 
   // If was approved, restore balance
@@ -244,7 +244,7 @@ router.delete("/leaves/:id", requireAuth, async (req, res): Promise<void> => {
       .where(and(eq(leaveBalancesTable.employeeId, leave.employeeId), eq(leaveBalancesTable.year, year)));
   }
 
-  const [deleted] = await db.delete(leavesTable).where(eq(leavesTable.id, req.params.id)).returning();
+  const [deleted] = await db.delete(leavesTable).where(eq(leavesTable.id, String(req.params.id))).returning();
   const [emp] = await db.select().from(employeesTable).where(eq(employeesTable.id, leave.employeeId));
   res.json(fmtLeave(deleted, emp));
 });
@@ -258,13 +258,13 @@ router.put("/leaves/:id/approve", requireAuth, async (req, res): Promise<void> =
     return;
   }
 
-  const [existing] = await db.select().from(leavesTable).where(eq(leavesTable.id, req.params.id));
+  const [existing] = await db.select().from(leavesTable).where(eq(leavesTable.id, String(req.params.id)));
   if (!existing) { res.status(404).json({ error: "Congé introuvable" }); return; }
 
   const [leave] = await db
     .update(leavesTable)
     .set({ status: parsed.data.status, approvedBy: (req as any).session?.userId ?? null })
-    .where(eq(leavesTable.id, req.params.id))
+    .where(eq(leavesTable.id, String(req.params.id)))
     .returning();
 
   // Update balance when approving/rejecting annual or sick leave

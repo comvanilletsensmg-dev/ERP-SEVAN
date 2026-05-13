@@ -75,13 +75,13 @@ router.get("/hr-requests/:id", loadUser, async (req, res): Promise<void> => {
     .select()
     .from(hrRequestsTable)
     .leftJoin(employeesTable, eq(hrRequestsTable.employeeId, employeesTable.id))
-    .where(eq(hrRequestsTable.id, req.params.id));
+    .where(eq(hrRequestsTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Demande introuvable" }); return; }
 
   const logs = await db
     .select()
     .from(hrRequestLogsTable)
-    .where(eq(hrRequestLogsTable.requestId, req.params.id))
+    .where(eq(hrRequestLogsTable.requestId, String(req.params.id)))
     .orderBy(desc(hrRequestLogsTable.createdAt));
 
   res.json(fmtReq(row.hr_requests, row.employees, logs));
@@ -102,11 +102,13 @@ router.post("/hr-requests", loadUser, async (req, res): Promise<void> => {
     const end   = new Date(d.endDate);
     if (end <= start) { res.status(422).json({ error: "La date de fin doit être après la date de début" }); return; }
     const days = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+    const year = new Date().getFullYear();
     const [bal] = await db.select().from(leaveBalancesTable).where(
-      and(eq(leaveBalancesTable.employeeId, d.employeeId), eq(leaveBalancesTable.type, "annual"))
+      and(eq(leaveBalancesTable.employeeId, d.employeeId), eq(leaveBalancesTable.year, year))
     );
-    if (bal && Number(bal.balance) < days) {
-      res.status(422).json({ error: `Solde insuffisant : ${Number(bal.balance).toFixed(1)} j disponible(s), ${days} demandé(s)` });
+    const remaining = bal ? (bal.annualDays - bal.usedAnnualDays) : 0;
+    if (bal && remaining < days) {
+      res.status(422).json({ error: `Solde insuffisant : ${remaining.toFixed(1)} j disponible(s), ${days} demandé(s)` });
       return;
     }
   }
@@ -142,7 +144,7 @@ router.post("/hr-requests/:id/approve", loadUser, async (req, res): Promise<void
   const { comment } = WorkflowBody.parse(req.body);
   const user = req.currentUser!;
 
-  const [row] = await db.select().from(hrRequestsTable).where(eq(hrRequestsTable.id, req.params.id));
+  const [row] = await db.select().from(hrRequestsTable).where(eq(hrRequestsTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Demande introuvable" }); return; }
 
   let newStatus: string;
@@ -181,7 +183,7 @@ router.post("/hr-requests/:id/reject", loadUser, async (req, res): Promise<void>
   const { comment } = WorkflowBody.parse(req.body);
   const user = req.currentUser!;
 
-  const [row] = await db.select().from(hrRequestsTable).where(eq(hrRequestsTable.id, req.params.id));
+  const [row] = await db.select().from(hrRequestsTable).where(eq(hrRequestsTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Demande introuvable" }); return; }
   if (["hr_approved", "rejected"].includes(row.status)) {
     res.status(400).json({ error: "Cette demande ne peut plus être rejetée" }); return;
@@ -206,7 +208,7 @@ router.get("/hr-requests/:id/pdf", loadUser, async (req, res): Promise<void> => 
     .select()
     .from(hrRequestsTable)
     .leftJoin(employeesTable, eq(hrRequestsTable.employeeId, employeesTable.id))
-    .where(eq(hrRequestsTable.id, req.params.id));
+    .where(eq(hrRequestsTable.id, String(req.params.id)));
   if (!row) { res.status(404).json({ error: "Demande introuvable" }); return; }
 
   const r = row.hr_requests;
@@ -217,7 +219,7 @@ router.get("/hr-requests/:id/pdf", loadUser, async (req, res): Promise<void> => 
     .orderBy(desc(hrRequestLogsTable.createdAt));
 
   const [settings] = await db.select().from(companySettingsTable).limit(1);
-  const companyName = settings?.name ?? "Vanilla Madagascar";
+  const companyName = settings?.companyName ?? "Vanilla Madagascar";
   const companyAddr = settings?.address ?? "Madagascar";
 
   const TYPE_FR: Record<string, string> = {

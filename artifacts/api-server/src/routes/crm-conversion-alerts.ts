@@ -64,7 +64,7 @@ router.get("/crm/conversion-alerts/count", requireAuth, requireRole("SUPER_ADMIN
 // POST /api/crm/conversion-alerts/:id/convert — force-convert (admin override)
 router.post("/crm/conversion-alerts/:id/convert", requireAuth, requireRole("SUPER_ADMIN", "COMMERCIAL"), async (req, res): Promise<void> => {
   try {
-    const [alert] = await db.select().from(conversionAlertsTable).where(eq(conversionAlertsTable.id, req.params.id));
+    const [alert] = await db.select().from(conversionAlertsTable).where(eq(conversionAlertsTable.id, String(req.params.id)));
     if (!alert) { res.status(404).json({ error: "Alerte introuvable" }); return; }
     if (alert.status !== "pending" && alert.status !== "escalated") {
       res.status(409).json({ error: `Alerte déjà résolue (${alert.status})` }); return;
@@ -96,7 +96,7 @@ router.patch("/crm/conversion-alerts/:id/dismiss", requireAuth, requireRole("SUP
       status: "dismissed",
       resolvedBy: (req as any).session?.userId ?? "admin",
       resolvedAt: new Date(),
-    }).where(and(eq(conversionAlertsTable.id, req.params.id), eq(conversionAlertsTable.status, "pending")))
+    }).where(and(eq(conversionAlertsTable.id, String(req.params.id)), eq(conversionAlertsTable.status, "pending")))
       .returning();
     if (!updated) { res.status(404).json({ error: "Alerte introuvable ou déjà résolue" }); return; }
     res.json({ success: true });
@@ -110,7 +110,7 @@ router.patch("/crm/conversion-alerts/:id/escalate", requireAuth, requireRole("SU
   try {
     const [updated] = await db.update(conversionAlertsTable)
       .set({ status: "escalated" })
-      .where(eq(conversionAlertsTable.id, req.params.id))
+      .where(eq(conversionAlertsTable.id, String(req.params.id)))
       .returning();
     if (!updated) { res.status(404).json({ error: "Alerte introuvable" }); return; }
     res.json({ success: true });

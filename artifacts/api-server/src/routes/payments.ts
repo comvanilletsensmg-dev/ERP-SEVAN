@@ -212,7 +212,7 @@ router.post("/payments/purchase", requireAuth, async (req, res): Promise<void> =
 
 // ─── DELETE /payments/:id  (client payment) ───────────────────────────────────
 router.delete("/payments/:id", requireAuth, requireRole("SUPER_ADMIN", "ACCOUNTANT"), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, id));
   if (!payment) { res.status(404).json({ error: "Paiement introuvable" }); return; }
@@ -235,7 +235,7 @@ router.delete("/payments/:id", requireAuth, requireRole("SUPER_ADMIN", "ACCOUNTA
 
 // ─── DELETE /payments/purchase/:id  (supplier payment / bank_transaction) ─────
 router.delete("/payments/purchase/:id", requireAuth, requireRole("SUPER_ADMIN", "ACCOUNTANT"), async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
 
   const txRow = (await db.execute(sql`
     SELECT id, journal_entry_id FROM bank_transactions WHERE id = ${id} AND reference LIKE 'PAY-FRN-%' LIMIT 1

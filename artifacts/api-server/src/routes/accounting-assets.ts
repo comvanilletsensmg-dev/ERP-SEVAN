@@ -156,7 +156,7 @@ router.post("/assets", requireAuth, async (req, res): Promise<void> => {
 
 // ─── GET /api/assets/:id ──────────────────────────────────────────────────────
 router.get("/assets/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [asset] = await db.select().from(fixedAssetsTable).where(eq(fixedAssetsTable.id, id));
   if (!asset) { res.status(404).json({ error: "Actif non trouvé" }); return; }
 
@@ -208,7 +208,7 @@ router.get("/assets/:id", requireAuth, async (req, res): Promise<void> => {
 
 // ─── PUT /api/assets/:id ──────────────────────────────────────────────────────
 router.put("/assets/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const {
     name, category, location, serialNumber, notes,
     responsibleId, nextMaintenanceDate, status,
@@ -231,7 +231,7 @@ router.put("/assets/:id", requireAuth, async (req, res): Promise<void> => {
 
 // ─── GET /api/assets/:id/depreciation-table ───────────────────────────────────
 router.get("/assets/:id/depreciation-table", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [asset] = await db.select().from(fixedAssetsTable).where(eq(fixedAssetsTable.id, id));
   if (!asset) { res.status(404).json({ error: "Actif non trouvé" }); return; }
   res.json(buildDepreciationTable(asset));
@@ -239,7 +239,7 @@ router.get("/assets/:id/depreciation-table", requireAuth, async (req, res): Prom
 
 // ─── POST /api/assets/:id/depreciate (existing — kept + enhanced) ─────────────
 router.post("/assets/:id/depreciate", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const [asset] = await db.select().from(fixedAssetsTable).where(eq(fixedAssetsTable.id, id));
   if (!asset) { res.status(404).json({ error: "Asset not found" }); return; }
   if (asset.status !== "active") { res.status(400).json({ error: "Asset is not active" }); return; }
@@ -277,7 +277,7 @@ router.post("/assets/:id/depreciate", requireAuth, async (req, res): Promise<voi
 
 // ─── GET /api/assets/:id/maintenance ─────────────────────────────────────────
 router.get("/assets/:id/maintenance", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const rows = await db.select().from(assetMaintenanceTable)
     .where(eq(assetMaintenanceTable.assetId, id))
     .orderBy(desc(assetMaintenanceTable.date));
@@ -286,7 +286,7 @@ router.get("/assets/:id/maintenance", requireAuth, async (req, res): Promise<voi
 
 // ─── POST /api/assets/:id/maintenance ────────────────────────────────────────
 router.post("/assets/:id/maintenance", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { date, description, cost, type, technician, nextMaintenanceDate } = req.body;
   if (!date || !description) {
     res.status(400).json({ error: "date and description required" });
@@ -312,7 +312,7 @@ router.post("/assets/:id/maintenance", requireAuth, async (req, res): Promise<vo
 
 // ─── PUT /api/assets/:id/dispose ─────────────────────────────────────────────
 router.put("/assets/:id/dispose", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const { id } = req.params as Record<string, string>;
   const { disposalDate, disposalValue, notes } = req.body;
 
   const [asset] = await db.select().from(fixedAssetsTable).where(eq(fixedAssetsTable.id, id));
@@ -371,7 +371,7 @@ router.put("/assets/:id/dispose", requireAuth, async (req, res): Promise<void> =
 
 // ─── POST /api/assets/from-purchase/:purchaseId ──────────────────────────────
 router.post("/assets/from-purchase/:purchaseId", requireAuth, async (req, res): Promise<void> => {
-  const { purchaseId } = req.params;
+  const { purchaseId } = req.params as Record<string, string>;
   const { name, category, durationMonths, residualValue } = req.body;
 
   const r = await db.execute(sql`

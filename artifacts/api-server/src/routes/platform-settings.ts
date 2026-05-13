@@ -54,7 +54,7 @@ router.get("/platform-settings", requireAuth, async (_req, res): Promise<void> =
 
 // GET single setting
 router.get("/platform-settings/:key", requireAuth, async (req, res): Promise<void> => {
-  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.settingKey, req.params.key));
+  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.settingKey, String(req.params.key)));
   if (!row) { res.status(404).json({ error: "Paramètre introuvable" }); return; }
   res.json(row);
 });

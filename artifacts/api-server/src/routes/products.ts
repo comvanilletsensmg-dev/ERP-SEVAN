@@ -63,7 +63,7 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/products/:id", requireAuth, async (req, res): Promise<void> => {
-  const [product] = await db.select().from(productsTable).where(eq(productsTable.id, req.params.id));
+  const [product] = await db.select().from(productsTable).where(eq(productsTable.id, String(req.params.id)));
   if (!product) { res.status(404).json({ error: "Produit introuvable" }); return; }
   const stockMap = await computeStockMap();
   res.json({
@@ -75,7 +75,7 @@ router.get("/products/:id", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.delete("/products/:id", requireAuth, requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
-  await db.delete(productsTable).where(eq(productsTable.id, req.params.id));
+  await db.delete(productsTable).where(eq(productsTable.id, String(req.params.id)));
   req.log.info({ productId: req.params.id, by: (req as any).session?.userId }, "Product deleted");
   res.json({ success: true });
 });

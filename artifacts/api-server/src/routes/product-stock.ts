@@ -105,7 +105,7 @@ router.get("/stock/movements/:productId", requireAuth, async (req, res): Promise
   const movements = await db
     .select()
     .from(productAdjustmentsTable)
-    .where(eq(productAdjustmentsTable.productId, req.params.productId))
+    .where(eq(productAdjustmentsTable.productId, String(req.params.productId)))
     .orderBy(desc(productAdjustmentsTable.createdAt));
 
   res.json(

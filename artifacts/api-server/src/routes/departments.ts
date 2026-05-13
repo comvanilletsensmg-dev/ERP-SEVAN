@@ -29,7 +29,7 @@ router.put("/departments/:id", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES
   const update: Record<string, unknown> = {};
   if (name) update.name = name;
   if (code) update.code = code;
-  const [dept] = await db.update(departmentsTable).set(update).where(eq(departmentsTable.id, req.params.id)).returning();
+  const [dept] = await db.update(departmentsTable).set(update).where(eq(departmentsTable.id, String(req.params.id))).returning();
   if (!dept) { res.status(404).json({ error: "Département introuvable" }); return; }
   res.json(dept);
 });
