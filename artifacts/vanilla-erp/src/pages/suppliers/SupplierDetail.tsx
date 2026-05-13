@@ -6,6 +6,7 @@ import {
   MapPin, Building2, ShoppingCart,
   Plus, User, Landmark, MessageSquare, Trash2, Star,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
 const fmt = (n: number | null | undefined) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);

@@ -248,14 +248,12 @@ router.delete("/lots/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MA
     return;
   }
 
-  // Nullify lot_id on tables that use NO ACTION FK (bonuses, sale_items, stock_movements)
-  // so the CASCADE tables can delete cleanly afterward
+  // Delete child records with NOT NULL FK (cannot be nullified — must be removed first)
+  // CASCADE handles: lot_histories, lot_metrics, lot_costs, risk_events, predictions, operation_lot_statuses, production_tasks
   try {
-    await db.execute(sql`UPDATE bonuses        SET lot_id = NULL WHERE lot_id = ${id}`);
-    await db.execute(sql`UPDATE sale_items     SET lot_id = NULL WHERE lot_id = ${id}`);
-    await db.execute(sql`UPDATE stock_movements SET lot_id = NULL WHERE lot_id = ${id}`);
-
-    // Now delete — CASCADE handles lot_histories, lot_metrics, lot_costs, risk_events, predictions
+    await db.execute(sql`DELETE FROM sale_items      WHERE lot_id = ${id}`);
+    await db.execute(sql`DELETE FROM bonuses         WHERE lot_id = ${id}`);
+    await db.execute(sql`DELETE FROM stock_movements WHERE lot_id = ${id}`);
     await db.delete(lotsTable).where(eq(lotsTable.id, id));
   } catch (err: any) {
     req.log.error({ err, lotId: id }, "Erreur lors de la suppression du lot");
