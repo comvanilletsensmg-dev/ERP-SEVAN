@@ -22,7 +22,6 @@ const logisticsNav = [
   { label: "Statuts vanille",     href: "/logistics/lots-status",     icon: Target },
   { label: "Lots à risque",       href: "/logistics/risk",            icon: ShieldAlert },
   { label: "IA Vanille",          href: "/logistics/ai",              icon: Brain },
-  { label: "Paiements",           href: "/payments",                  icon: CreditCard },
   { label: "Mouvements stock",    href: "/stock-movements",           icon: ArrowLeftRight },
   { label: "Intelligence IA",       href: "/logistics/intelligence",      icon: Cpu },
   { label: "Import Produits",       href: "/logistics/import-products",   icon: Upload },
@@ -32,6 +31,7 @@ const logisticsNav = [
 const accountingNav = [
   { label: "Dashboard Financier", href: "/accounting/finance",    icon: TrendingUp },
   { label: "Clôture Mensuelle",   href: "/accounting/closing",    icon: LockKeyhole },
+  { label: "Paiements",           href: "/payments",              icon: CreditCard },
   { label: "Journal",             href: "/accounting",            icon: BookOpen },
   { label: "Factures",            href: "/accounting/invoices",   icon: FileText },
   { label: "Tiers",               href: "/accounting/partners",   icon: Building2 },
