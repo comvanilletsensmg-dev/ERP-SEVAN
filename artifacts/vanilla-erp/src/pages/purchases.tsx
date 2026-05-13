@@ -110,7 +110,20 @@ function KpiCard({ label, value, sub, icon: Icon, iconBg = "bg-gray-100", iconCo
 
 // ─── Suppliers hook ───────────────────────────────────────────────────────────
 function useSuppliers() {
-  return useQuery<any[]>({ queryKey: ["suppliers"], queryFn: () => api("/suppliers") });
+  return useQuery<any[]>({
+    queryKey: ["suppliers"],
+    queryFn: () => api("/suppliers").then((d: any) => d?.suppliers ?? d ?? []),
+  });
+}
+
+// ─── Catalog Products hook ────────────────────────────────────────────────────
+function useVanillaCatalog() {
+  return useQuery<any[]>({
+    queryKey: ["vanilla-catalog"],
+    queryFn: () => api("/products").then((p: any[]) =>
+      p.filter(x => ["gousses","poudre","extrait de vanille","pate de vanille","pâte de vanille"].includes((x.category ?? "").toLowerCase()))
+    ),
+  });
 }
 
 // ─── Reception Modal ──────────────────────────────────────────────────────────
@@ -204,9 +217,19 @@ function DeleteModal({ purchase, onClose, onConfirm, isPending }: { purchase: Pu
 function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onClose: () => void; onSuccess: () => void }) {
   const [step, setStep]   = useState<"type" | "form">("type");
   const [type, setType]   = useState("VANILLE");
+  const catalogQ = useVanillaCatalog();
+  const catalogProducts = catalogQ.data ?? [];
+
+  // Map category name to product type
+  const VANILLA_TYPES = [
+    { key: "GOUSSE",       label: "Gousse",         cat: "gousses" },
+    { key: "POUDRE",       label: "Poudre",          cat: "poudre" },
+    { key: "EXTRAIT",      label: "Extrait",         cat: "extrait de vanille" },
+    { key: "PATE_VANILLE", label: "Pâte de vanille", cat: "pâte de vanille" },
+  ];
+
   const [form, setForm]   = useState<any>({
     supplierId: "", supplierName: "",
-    // New supplier details
     supplierEmail: "", supplierPhone: "", supplierCity: "",
     supplierRegion: "", supplierNif: "", supplierStat: "",
     supplierRccm: "", supplierAddress: "",
@@ -216,14 +239,61 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     purchaseDate: new Date().toISOString().slice(0, 10),
     amountHt: "", vatRate: "0", vatAmount: "", amountTtc: "",
     quantity: "", unit: "unité", unitPrice: "",
-    weight: "", pricePerKg: "", humidity: "38",
+    weight: "", pricePerKg: "", humidity: "32",
     paymentMethod: "cash", warehouse: "", notes: "",
     assetCategory: "informatique", assetDuration: "48",
     serialNumber: "", location: "",
+    // Vanilla quality & traceability
+    productId: "", productType: "GOUSSE",
+    lengthCm: "", quality: "premium", grade: "A",
+    origin: "SAVA", preparation: "non fendue",
+    qualityNotes: "", vanillinRate: "", moldStatus: "ok",
   });
   const [useNewSupplier, setUseNewSupplier] = useState(false);
   const [showSupplierDetails, setShowSupplierDetails] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Catalog products filtered by current productType
+  const filteredCatalog = catalogProducts.filter(p => {
+    const typeToCategory: Record<string, string[]> = {
+      GOUSSE:       ["gousses"],
+      POUDRE:       ["poudre"],
+      EXTRAIT:      ["extrait de vanille"],
+      PATE_VANILLE: ["pâte de vanille", "pate de vanille"],
+    };
+    const cats = typeToCategory[form.productType] ?? [];
+    return cats.includes((p.category ?? "").toLowerCase());
+  });
+
+  // Preview lot code (real-time, client-side approximation)
+  const lotPreview = (() => {
+    const d = form.purchaseDate ? new Date(form.purchaseDate) : new Date();
+    const year = d.getFullYear();
+    const mmdd = `${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    const region = (form.supplierRegion || form.origin || "VAN").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "VAN";
+    const typeMap: Record<string, string> = { GOUSSE:"GOUSSE", POUDRE:"POUDRE", EXTRAIT:"EXTRAIT", PATE_VANILLE:"PATE" };
+    const t = typeMap[form.productType] ?? "VAN";
+    const parts = [`VAN-${year}-${mmdd}`, region, t];
+    if (form.lengthCm && parseFloat(form.lengthCm) > 0) parts.push(`${Math.round(parseFloat(form.lengthCm))}CM`);
+    if (form.humidity && parseFloat(form.humidity) > 0)  parts.push(`H${Math.round(parseFloat(form.humidity))}`);
+    return parts.join("-");
+  })();
+
+  // AI risk preview (client-side)
+  const riskPreview = (() => {
+    const h = parseFloat(form.humidity) || 0;
+    const vr = parseFloat(form.vanillinRate) || undefined;
+    let score = 0;
+    const risks: string[] = [];
+    if (h > 42)      { risks.push(`Humidité critique (${h}%)`); score += 50; }
+    else if (h > 38) { risks.push(`Humidité élevée (${h}%)`);   score += 25; }
+    if (form.moldStatus === "failed") { risks.push("Moisissures"); score += 50; }
+    else if (form.moldStatus === "risk") { risks.push("Risque moisissures"); score += 25; }
+    if (form.quality === "faible")  { risks.push("Qualité faible"); score += 20; }
+    if (vr !== undefined && vr < 1.5) { risks.push(`Vanilline très faible (${vr}%)`); score += 25; }
+    const level = score >= 50 ? "HIGH" : score >= 25 ? "MEDIUM" : "LOW";
+    return { score: Math.min(100, score), level, risks };
+  })();
 
   const set = (k: string, v: string) => {
     const next = { ...form, [k]: v };
@@ -233,6 +303,13 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
       const p = parseFloat(k === "pricePerKg" ? v : form.pricePerKg);
       if (!isNaN(w) && !isNaN(p)) next.amountTtc = String(Math.round(w * p));
     }
+    // Auto-fill pricePerKg from selected catalog product
+    if (k === "productId" && v && type === "VANILLE") {
+      const prod = catalogProducts.find(p => p.id === v);
+      if (prod?.purchase_price_kg) next.pricePerKg = String(prod.purchase_price_kg);
+    }
+    // Auto-fill productId when productType changes (reset product selection)
+    if (k === "productType") next.productId = "";
     // Auto-calc HT ↔ TTC
     if (k === "amountHt" || k === "vatRate") {
       const ht = parseFloat(k === "amountHt" ? v : form.amountHt) || 0;
@@ -321,6 +398,17 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
       body.pricePerKg= parseFloat(form.pricePerKg);
       body.humidity  = parseFloat(form.humidity) || 0;
       body.amountTtc = parseFloat(form.amountTtc) || body.weight * body.pricePerKg;
+      // Vanilla quality & traceability
+      if (form.productId)    body.productId    = form.productId;
+      if (form.productType)  body.productType  = form.productType;
+      if (form.lengthCm && parseFloat(form.lengthCm) > 0) body.lengthCm = parseFloat(form.lengthCm);
+      if (form.quality)      body.quality      = form.quality;
+      if (form.grade)        body.grade        = form.grade;
+      if (form.origin)       body.origin       = form.origin;
+      if (form.preparation)  body.preparation  = form.preparation;
+      if (form.qualityNotes) body.qualityNotes = form.qualityNotes;
+      if (form.vanillinRate && parseFloat(form.vanillinRate) > 0) body.vanillinRate = parseFloat(form.vanillinRate);
+      body.moldStatus = form.moldStatus || "ok";
     } else {
       if (form.quantity) body.quantity = parseFloat(form.quantity);
       if (form.unit)     body.unit     = form.unit;
@@ -564,27 +652,214 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
                 </div>
               )}
 
-              {/* Vanille-specific */}
+              {/* ══════ VANILLE ERP FORM ══════ */}
               {type === "VANILLE" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Poids (kg) *</label>
-                    <input type="number" step="0.1" value={form.weight} onChange={e => set("weight", e.target.value)} className={inputCls} placeholder="150"/>
-                    {errors.weight && <p className="text-red-500 text-xs mt-0.5">{errors.weight}</p>}
+                <div className="space-y-4">
+                  {/* ── Section A : Produit & Achat ── */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">A</span>
+                      Informations achat
+                    </p>
+
+                    {/* Type produit */}
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Type de vanille *</label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {VANILLA_TYPES.map(vt => (
+                          <button key={vt.key} type="button"
+                            onClick={() => set("productType", vt.key)}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${
+                              form.productType === vt.key
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : "bg-white text-gray-600 border-gray-300 hover:border-emerald-400"
+                            }`}>
+                            {vt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Produit catalogue */}
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Produit catalogue</label>
+                      <select value={form.productId} onChange={e => set("productId", e.target.value)}
+                        className={`${inputCls} text-xs`}>
+                        <option value="">— Sélectionner un produit —</option>
+                        {filteredCatalog.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.reference} — {p.name}
+                            {p.size ? ` (${p.size})` : ""}
+                            {p.purchase_price_kg ? ` · ${new Intl.NumberFormat("fr-MG").format(p.purchase_price_kg)} Ar/kg` : ""}
+                          </option>
+                        ))}
+                        {filteredCatalog.length === 0 && <option disabled>Aucun produit pour ce type</option>}
+                      </select>
+                    </div>
+
+                    {/* Poids + Prix/kg */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Poids (kg) *</label>
+                        <input type="number" step="0.1" value={form.weight}
+                          onChange={e => set("weight", e.target.value)}
+                          className={`${inputCls} text-xs`} placeholder="150"/>
+                        {errors.weight && <p className="text-red-500 text-[10px] mt-0.5">{errors.weight}</p>}
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Prix / kg (Ar) *</label>
+                        <input type="number" step="500" value={form.pricePerKg}
+                          onChange={e => set("pricePerKg", e.target.value)}
+                          className={`${inputCls} text-xs`} placeholder="40 000"/>
+                        {errors.pricePerKg && <p className="text-red-500 text-[10px] mt-0.5">{errors.pricePerKg}</p>}
+                      </div>
+                    </div>
+
+                    {/* Total */}
+                    {form.amountTtc && parseFloat(form.amountTtc) > 0 && (
+                      <div className="bg-white border border-emerald-300 rounded-lg px-3 py-2 flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Total TTC</span>
+                        <span className="text-sm font-bold text-emerald-700">
+                          {new Intl.NumberFormat("fr-MG").format(parseFloat(form.amountTtc))} Ar
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Humidité %</label>
-                    <input type="number" step="0.5" value={form.humidity} onChange={e => set("humidity", e.target.value)} className={inputCls}/>
+
+                  {/* ── Section B : Qualité vanille ── */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold">B</span>
+                      Contrôle qualité vanille
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Longueur (cm)</label>
+                        <input type="number" step="0.5" value={form.lengthCm}
+                          onChange={e => set("lengthCm", e.target.value)}
+                          className={`${inputCls} text-xs`} placeholder="18"/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Humidité %</label>
+                        <input type="number" step="0.5" value={form.humidity}
+                          onChange={e => set("humidity", e.target.value)}
+                          className={`${inputCls} text-xs ${parseFloat(form.humidity) > 38 ? "border-red-400 bg-red-50" : parseFloat(form.humidity) > 35 ? "border-amber-400" : ""}`}/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Taux vanilline %</label>
+                        <input type="number" step="0.1" value={form.vanillinRate}
+                          onChange={e => set("vanillinRate", e.target.value)}
+                          className={`${inputCls} text-xs`} placeholder="2.5"/>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Qualité</label>
+                        <select value={form.quality} onChange={e => set("quality", e.target.value)} className={`${inputCls} text-xs`}>
+                          <option value="premium">Premium</option>
+                          <option value="standard">Standard</option>
+                          <option value="faible">Faible</option>
+                          <option value="industrial">Industriel</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Grade</label>
+                        <select value={form.grade} onChange={e => set("grade", e.target.value)} className={`${inputCls} text-xs`}>
+                          <option value="A">Grade A</option>
+                          <option value="B">Grade B</option>
+                          <option value="C">Grade C</option>
+                          <option value="TK">TK (Tout Komori)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Origine (région)</label>
+                        <select value={form.origin} onChange={e => set("origin", e.target.value)} className={`${inputCls} text-xs`}>
+                          <option value="SAVA">SAVA (Sambava-Andapa-Vohemar-Antalaha)</option>
+                          <option value="DIANA">DIANA (Diego)</option>
+                          <option value="SOFIA">SOFIA (Mandritsara)</option>
+                          <option value="ANALANJIROFO">Analanjirofo (Fenerive)</option>
+                          <option value="MASOALA">Masoala</option>
+                          <option value="AUTRE">Autre</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Préparation</label>
+                        <select value={form.preparation} onChange={e => set("preparation", e.target.value)} className={`${inputCls} text-xs`}>
+                          <option value="non fendue">Non fendue</option>
+                          <option value="fendue">Fendue</option>
+                          <option value="preparee">Préparée (QCP)</option>
+                          <option value="coupee">Coupée (Cuts)</option>
+                          <option value="brute">Brute</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Contrôle moisissures</label>
+                      <div className="flex gap-2">
+                        {[
+                          { key: "ok",     label: "OK",            cls: "bg-emerald-600 text-white border-emerald-600" },
+                          { key: "risk",   label: "Risque",        cls: "bg-amber-500 text-white border-amber-500" },
+                          { key: "failed", label: "Moisissures",   cls: "bg-red-600 text-white border-red-600" },
+                        ].map(m => (
+                          <button key={m.key} type="button"
+                            onClick={() => set("moldStatus", m.key)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                              form.moldStatus === m.key ? m.cls : "bg-white text-gray-500 border-gray-300 hover:border-gray-400"
+                            }`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Notes qualité</label>
+                      <textarea value={form.qualityNotes} onChange={e => set("qualityNotes", e.target.value)}
+                        rows={2} className={`${inputCls} text-xs resize-none`}
+                        placeholder="Observations particulières sur la qualité, l'arôme, l'aspect…"/>
+                    </div>
+
+                    {/* AI Risk preview */}
+                    {riskPreview.score > 0 && (
+                      <div className={`rounded-lg p-2.5 text-xs border ${
+                        riskPreview.level === "HIGH"   ? "bg-red-50 border-red-200 text-red-700" :
+                        riskPreview.level === "MEDIUM" ? "bg-amber-50 border-amber-200 text-amber-700" :
+                        "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      }`}>
+                        <p className="font-bold mb-1 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5"/>
+                          IA — Risque {riskPreview.level} (score {riskPreview.score}/100)
+                        </p>
+                        {riskPreview.risks.map((r, i) => <p key={i} className="ml-5">• {r}</p>)}
+                      </div>
+                    )}
+                    {riskPreview.score === 0 && form.humidity && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-xs text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5"/>
+                        IA — Aucun risque détecté
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Prix / kg (Ar) *</label>
-                    <input type="number" step="500" value={form.pricePerKg} onChange={e => set("pricePerKg", e.target.value)} className={inputCls} placeholder="40000"/>
-                    {errors.pricePerKg && <p className="text-red-500 text-xs mt-0.5">{errors.pricePerKg}</p>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Total TTC (Ar)</label>
-                    <input type="number" value={form.amountTtc} onChange={e => set("amountTtc", e.target.value)}
-                      className={`${inputCls} bg-gray-50 font-semibold`} readOnly/>
+
+                  {/* ── Section C : Lot automatique ── */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">C</span>
+                      Lot généré automatiquement
+                    </p>
+                    <div className="bg-white border border-blue-200 rounded-lg px-3 py-2">
+                      <p className="text-[10px] text-gray-500 mb-0.5">Numéro de lot (aperçu)</p>
+                      <p className="font-mono text-sm font-bold text-blue-800 tracking-wide">{lotPreview}</p>
+                    </div>
+                    <p className="text-[10px] text-gray-500">
+                      Format : VAN-ANNÉE-MMJJ-RÉGION-TYPE-LONGUEURcm-HUMIDITÉ — Le code final est confirmé côté serveur.
+                    </p>
                   </div>
                 </div>
               )}
@@ -678,7 +953,7 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
                   <p className="font-semibold mb-1.5 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5"/> Écritures comptables générées</p>
                   <div className="space-y-0.5 font-mono">
-                    {type === "VANILLE" && <p>D 601 — Achats matières · {fmt(parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "VANILLE" && <p>D 31 — Stocks matières (vanille) · {fmt(parseFloat(form.amountTtc))} Ar</p>}
                     {type === "CONSOMMABLE" && <p>D 602 — Consommables · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
                     {type === "BUREAU" && <p>D 6064 — Fournitures bureau · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
                     {type === "INFORMATIQUE" && <p>D 615 — Entretien matériel · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
@@ -876,7 +1151,7 @@ function ListTab({ onNew }: { onNew: () => void }) {
       p.lot_code ?? "", p.asset_number ?? ""
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff"+csv,{type:"text/csv"}]));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff"+csv], {type:"text/csv"}));
     a.download = "achats-erp.csv"; a.click();
   }
 

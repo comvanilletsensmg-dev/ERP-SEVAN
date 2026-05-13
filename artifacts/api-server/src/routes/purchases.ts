@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   db, purchasesTable, purchaseReceptionsTable, suppliersTable,
   lotsTable, stockMovementsTable, journalEntriesTable, journalLinesTable,
-  accountsTable, fixedAssetsTable, consumablesTable,
+  accountsTable, fixedAssetsTable, consumablesTable, productsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole, ROLES } from "../middlewares/roles";
@@ -15,7 +15,7 @@ const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
 // ─── PCG account mapping by type ─────────────────────────────────────────────
 const DEBIT_ACCOUNT: Record<string, string> = {
-  VANILLE:       "601",
+  VANILLE:       "31",   // Stocks matières premières (PCG 2005)
   CONSOMMABLE:   "602",
   BUREAU:        "6064",
   INFORMATIQUE:  "615",
@@ -38,9 +38,68 @@ const ASSET_DURATION: Record<string, number> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function generateLotCode(): string {
-  const year = new Date().getFullYear();
-  return `VAN-${year}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+/** Generate intelligent lot code: VAN-YYYY-MMDD-REGION-TYPE-LENGTHcm-HUMIDITY */
+async function generateIntelligentLotCode(opts: {
+  supplierId: string;
+  productType?: string;
+  lengthCm?: number;
+  humidity?: number;
+  purchaseDate?: string;
+}): Promise<string> {
+  const date = opts.purchaseDate ? new Date(opts.purchaseDate) : new Date();
+  const year = date.getFullYear();
+  const mmdd = `${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+
+  const [sup] = await db.select({ region: suppliersTable.region, supplierCode: suppliersTable.supplierCode })
+    .from(suppliersTable).where(eq(suppliersTable.id, opts.supplierId));
+
+  const rawRegion = (sup?.region ?? sup?.supplierCode ?? "VAN");
+  const regionCode = rawRegion.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "VAN";
+
+  const typeMap: Record<string, string> = {
+    GOUSSE: "GOUSSE", POUDRE: "POUDRE", EXTRAIT: "EXTRAIT", PATE_VANILLE: "PATE",
+  };
+  const typeCode = typeMap[opts.productType ?? ""] ?? "VAN";
+
+  const parts: string[] = [`VAN-${year}-${mmdd}`, regionCode, typeCode];
+  if (opts.lengthCm && opts.lengthCm > 0)   parts.push(`${Math.round(opts.lengthCm)}CM`);
+  if (opts.humidity  && opts.humidity  > 0)  parts.push(`H${Math.round(opts.humidity)}`);
+
+  let code = parts.join("-");
+  const [exists] = await db.select({ id: lotsTable.id }).from(lotsTable).where(eq(lotsTable.code, code));
+  if (exists) code = `${code}-${Math.floor(100 + Math.random() * 900)}`;
+
+  return code;
+}
+
+/** AI risk detection for vanilla lots */
+function computeVanillaRisk(opts: {
+  humidity: number;
+  quality?: string;
+  moldStatus?: string;
+  vanillinRate?: number;
+}): { riskScore: number; riskLevel: "LOW" | "MEDIUM" | "HIGH"; risks: string[] } {
+  const risks: string[] = [];
+  let score = 0;
+
+  if (opts.humidity > 42)      { risks.push(`Humidité critique (${opts.humidity}%)`); score += 50; }
+  else if (opts.humidity > 38) { risks.push(`Humidité élevée (${opts.humidity}%)`);   score += 25; }
+  else if (opts.humidity < 18) { risks.push(`Humidité trop faible (${opts.humidity}%)`); score += 15; }
+
+  if (opts.moldStatus === "failed") { risks.push("Moisissures détectées"); score += 50; }
+  else if (opts.moldStatus === "risk") { risks.push("Risque de moisissures"); score += 25; }
+
+  if (opts.quality === "faible" || opts.quality === "industrial")
+    { risks.push("Qualité insuffisante"); score += 20; }
+
+  if (opts.vanillinRate !== undefined) {
+    if (opts.vanillinRate < 1.5) { risks.push(`Taux vanilline très faible (${opts.vanillinRate}%)`); score += 25; }
+    else if (opts.vanillinRate < 2) { risks.push(`Taux vanilline faible (${opts.vanillinRate}%)`); score += 10; }
+  }
+
+  const riskLevel = score >= 50 ? "HIGH" : score >= 25 ? "MEDIUM" : "LOW";
+  return { riskScore: Math.min(100, score), riskLevel, risks };
 }
 
 async function generatePurchaseRef(): Promise<string> {
@@ -188,6 +247,73 @@ router.get("/purchases", requireAuth, async (_req, res): Promise<void> => {
   res.json(rows);
 });
 
+// ─── GET /purchases/vanilla-analytics ─── MUST be BEFORE /:id ─────────────────
+router.get("/purchases/vanilla-analytics", requireAuth, async (req, res): Promise<void> => {
+  const [thisMonth] = (await db.execute(sql`
+    SELECT
+      COUNT(*)::int        AS count,
+      COALESCE(SUM(total_amount), 0)::real  AS total,
+      COALESCE(AVG(price_per_kg), 0)::real  AS avg_price_kg,
+      COALESCE(AVG(humidity), 0)::real      AS avg_humidity,
+      COALESCE(SUM(weight), 0)::real        AS total_weight
+    FROM purchases
+    WHERE type = 'VANILLE'
+      AND deleted_at IS NULL
+      AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+  `)).rows as any[];
+
+  const [lastWeek] = (await db.execute(sql`
+    SELECT
+      COUNT(*)::int        AS count,
+      COALESCE(SUM(total_amount), 0)::real  AS total,
+      COALESCE(SUM(weight), 0)::real        AS total_weight
+    FROM purchases
+    WHERE type = 'VANILLE'
+      AND deleted_at IS NULL
+      AND created_at >= NOW() - INTERVAL '7 days'
+  `)).rows as any[];
+
+  const topSuppliers = (await db.execute(sql`
+    SELECT
+      s.name,
+      COUNT(p.id)::int                       AS purchase_count,
+      COALESCE(SUM(p.total_amount), 0)::real AS total_amount,
+      COALESCE(SUM(p.weight), 0)::real       AS total_weight,
+      COALESCE(AVG(p.price_per_kg), 0)::real AS avg_price_kg
+    FROM purchases p
+    JOIN suppliers s ON s.id = p.supplier_id
+    WHERE p.type = 'VANILLE' AND p.deleted_at IS NULL
+      AND p.created_at >= NOW() - INTERVAL '90 days'
+    GROUP BY s.id, s.name
+    ORDER BY total_amount DESC
+    LIMIT 5
+  `)).rows;
+
+  const byProductType = (await db.execute(sql`
+    SELECT
+      product_type,
+      COUNT(*)::int                          AS count,
+      COALESCE(SUM(weight), 0)::real         AS weight,
+      COALESCE(SUM(total_amount), 0)::real   AS total
+    FROM purchases
+    WHERE type = 'VANILLE' AND deleted_at IS NULL AND product_type IS NOT NULL
+    GROUP BY product_type
+  `)).rows;
+
+  const riskLots = (await db.execute(sql`
+    SELECT
+      l.code, l.risk_level, l.risk_score, l.humidity,
+      l.weight_current, s.name AS supplier_name
+    FROM lots l
+    JOIN suppliers s ON s.id = l.supplier_id
+    WHERE l.risk_level IN ('HIGH', 'MEDIUM')
+    ORDER BY l.risk_score DESC
+    LIMIT 5
+  `)).rows;
+
+  res.json({ thisMonth, lastWeek, topSuppliers, byProductType, riskLots });
+});
+
 // ─── GET /purchases/:id ────────────────────────────────────────────────────────
 router.get("/purchases/:id", requireAuth, async (req, res): Promise<void> => {
   const id = String(req.params.id);
@@ -249,6 +375,17 @@ const createSchema = z.object({
   weight:        z.number().optional(),
   pricePerKg:    z.number().optional(),
   humidity:      z.number().min(0).max(100).optional(),
+  // Vanille quality & traceability
+  productId:     z.string().optional(),
+  productType:   z.enum(["GOUSSE", "POUDRE", "EXTRAIT", "PATE_VANILLE"]).optional(),
+  lengthCm:      z.number().min(0).max(100).optional(),
+  quality:       z.string().optional(),
+  grade:         z.string().optional(),
+  origin:        z.string().optional(),
+  preparation:   z.string().optional(),
+  qualityNotes:  z.string().optional(),
+  vanillinRate:  z.number().min(0).max(100).optional(),
+  moldStatus:    z.string().optional(),
   // Immobilisation-specific
   assetCategory: z.string().optional(),
   assetDuration: z.number().optional(),
@@ -345,6 +482,16 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
     quantity: d.quantity ?? null, unit: d.unit ?? "unité", unitPrice: d.unitPrice ?? null,
     weight: d.weight ?? 0, pricePerKg: d.pricePerKg ?? 0,
     totalAmount, humidity: d.humidity ?? 0,
+    // Vanilla quality & traceability
+    productId:    d.productId    ?? null,
+    productType:  d.productType  ?? null,
+    lengthCm:     d.lengthCm     ?? null,
+    quality:      d.quality      ?? null,
+    origin:       d.origin       ?? null,
+    preparation:  d.preparation  ?? null,
+    qualityNotes: d.qualityNotes ?? null,
+    vanillinRate: d.vanillinRate ?? null,
+    moldStatus:   d.moldStatus   ?? "ok",
     warehouse: d.warehouse ?? null, paymentMethod: d.paymentMethod,
     status: "valide", notes: d.notes ?? null,
     purchaseDate: d.purchaseDate ? d.purchaseDate : new Date().toISOString().slice(0, 10),
@@ -356,25 +503,55 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
 
   // ── 4. Type-specific side effects ────────────────────────────────────────────
   if (d.type === "VANILLE" && d.weight && d.pricePerKg) {
-    // Create lot → stock movement
-    let lotCode = generateLotCode();
-    for (let i = 0; i < 5; i++) {
-      const ex = await db.select().from(lotsTable).where(eq(lotsTable.code, lotCode));
-      if (!ex.length) break;
-      lotCode = generateLotCode();
-    }
+    // Generate intelligent lot code: VAN-YYYY-MMDD-REGION-TYPE-LENGTHcm-HUMIDITY
+    const lotCode = await generateIntelligentLotCode({
+      supplierId, productType: d.productType, lengthCm: d.lengthCm,
+      humidity: d.humidity, purchaseDate: d.purchaseDate,
+    });
+
+    // AI risk detection
+    const { riskScore, riskLevel, risks } = computeVanillaRisk({
+      humidity:     d.humidity    ?? 0,
+      quality:      d.quality,
+      moldStatus:   d.moldStatus,
+      vanillinRate: d.vanillinRate,
+    });
+
     const wRounded = Math.round((d.weight ?? 0) * 100) / 100;
     const [lot] = await db.insert(lotsTable).values({
       code: lotCode, supplierId, purchaseId: purchase.id,
+      productId:    d.productId   ?? null,
+      productType:  d.productType ?? null,
       weightInitial: wRounded, weightCurrent: wRounded,
-      humidity: d.humidity ?? 0, status: "raw",
+      humidity:     d.humidity    ?? 0,
+      grade:        d.grade       ?? null,
+      region:       d.origin      ?? null,
+      warehouse:    d.warehouse   ?? null,
+      // Quality & traceability
+      lengthCm:     d.lengthCm    ?? null,
+      quality:      d.quality     ?? null,
+      origin:       d.origin      ?? null,
+      preparation:  d.preparation ?? null,
+      vanillinRate: d.vanillinRate ?? null,
+      status:       "RAW",
+      riskScore,
+      riskLevel,
     }).returning();
+
     await db.insert(stockMovementsTable).values({
-      lotId: lot.id, type: "IN", quantity: wRounded,
-      note: `Achat ${reference} — ${d.description ?? "vanille"}`,
+      lotId:      lot.id,
+      type:       "IN",
+      quantity:   wRounded,
+      unitCost:   d.pricePerKg,
+      reference,
+      purchaseId: purchase.id,
+      note: `Achat ${reference} — ${d.productType ?? "vanille"} ${d.origin ?? ""}`.trim(),
     });
+
     await db.update(purchasesTable).set({ lotId: lot.id }).where(eq(purchasesTable.id, purchase.id));
     lotId = lot.id;
+
+    req.log.info({ lotCode, riskScore, riskLevel, risks }, "Vanilla lot created with intelligent code");
 
   } else if (d.type === "CONSOMMABLE" && d.description) {
     // Auto-add to consumables stock

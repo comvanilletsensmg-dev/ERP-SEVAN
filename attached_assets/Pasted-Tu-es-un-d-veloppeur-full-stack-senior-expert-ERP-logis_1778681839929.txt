@@ -1,0 +1,368 @@
+Tu es un développeur full-stack senior expert ERP logistique, gestion de stock, achats industriels et traçabilité agroalimentaire.
+
+Objectif :
+Transformer le module ACHATS VANILLE en système ERP industriel intelligent connecté à :
+- fournisseurs vanille
+- catalogue produits
+- lots
+- stock
+- opérations
+- comptabilité
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+IMPORTANT :
+Le système doit fonctionner comme un ERP professionnel d’exportation de vanille avec :
+- traçabilité complète
+- lots automatiques
+- stock intelligent
+- catalogue produits dynamique
+- liaison fournisseurs
+
+---------------------------------------------------
+1. TYPES D’ACHATS VANILLE
+---------------------------------------------------
+
+Créer types produits :
+
+- GOUSSE
+- POUDRE
+- EXTRAIT
+- PÂTE_VANILLE
+
+---------------------------------------------------
+2. FORMULAIRE ACHAT VANILLE
+---------------------------------------------------
+
+Créer formulaire ERP ultra professionnel.
+
+Sections :
+
+---------------------------------------------------
+A. INFORMATIONS ACHAT
+---------------------------------------------------
+
+- date achat
+- fournisseur vanille
+- type produit
+- produit catalogue
+- quantité
+- unité
+- prix/kg
+- devise
+- mode paiement
+
+---------------------------------------------------
+B. INFORMATIONS VANILLE
+---------------------------------------------------
+
+Ajouter :
+
+- longueur
+- humidité
+- qualité
+- grade
+- origine
+- préparation
+- notes qualité
+
+---------------------------------------------------
+C. INFORMATIONS LOT
+---------------------------------------------------
+
+Créer automatiquement :
+
+- numéro lot
+- date création
+- stock initial
+
+---------------------------------------------------
+3. LIAISON FOURNISSEURS VANILLE
+---------------------------------------------------
+
+IMPORTANT :
+
+Le fournisseur doit être obligatoirement :
+
+- fournisseur VANILLE
+ou
+- fournisseur EXTRAIT
+
+-----------------------------------
+
+Interdire :
+
+- fournisseurs consommables
+- fournisseurs services
+
+---------------------------------------------------
+4. PRODUITS LIÉS AU CATALOGUE
+---------------------------------------------------
+
+IMPORTANT :
+
+Le type de vanille acheté NE DOIT PAS être saisi manuellement.
+
+-----------------------------------
+
+Créer dropdown dynamique depuis :
+
+/catalog-products
+
+-----------------------------------
+
+Filtrer automatiquement selon :
+
+- GOUSSE
+- POUDRE
+- EXTRAIT
+- PÂTE_VANILLE
+
+---------------------------------------------------
+5. EXEMPLES PRODUITS
+---------------------------------------------------
+
+GOUSSE :
+- Vanille Gourmet
+- Vanille TK
+- Vanille Rouge US
+
+POUDRE :
+- Poudre premium
+- Poudre industrielle
+
+EXTRAIT :
+- Extrait simple
+- Extrait double concentration
+
+PÂTE :
+- Pâte premium
+
+---------------------------------------------------
+6. NUMÉRO LOT AUTOMATIQUE
+---------------------------------------------------
+
+Créer automatiquement numéro lot intelligent.
+
+Format :
+
+VAN-YYYY-MMDD-FOURNISSEUR-TYPE-LONGUEUR-HUMIDITE
+
+-----------------------------------
+
+Exemple :
+
+VAN-2026-0504-SAVA-GOUSSE-18CM-H32
+
+---------------------------------------------------
+7. GÉNÉRATION LOT AUTOMATIQUE
+---------------------------------------------------
+
+Lors validation achat :
+
+Créer automatiquement :
+
+- lot
+- entrée stock
+- mouvement stock
+
+---------------------------------------------------
+8. LIAISON LOTS
+---------------------------------------------------
+
+Lot doit contenir :
+
+- fournisseur
+- produit
+- humidité
+- longueur
+- poids
+- date achat
+- qualité
+
+---------------------------------------------------
+9. STOCK AUTOMATIQUE
+---------------------------------------------------
+
+Lors achat validé :
+
+Mettre à jour automatiquement :
+
+- stock produit
+- stock lot
+- catalogue produits
+
+---------------------------------------------------
+10. CATALOGUE PRODUITS DYNAMIQUE
+---------------------------------------------------
+
+Mettre à jour automatiquement :
+
+- quantité disponible
+- stock réel
+- stock réservé
+- coût moyen
+
+---------------------------------------------------
+11. MOUVEMENTS STOCK
+---------------------------------------------------
+
+Créer automatiquement :
+
+Type :
+IN
+
+-----------------------------------
+
+Avec :
+
+- fournisseur
+- lot
+- produit
+- quantité
+- valeur
+
+---------------------------------------------------
+12. COMPTABILITÉ AUTOMATIQUE
+---------------------------------------------------
+
+Créer automatiquement :
+
+31
+401
+
+-----------------------------------
+
+TVA si applicable :
+44566
+
+---------------------------------------------------
+13. PIÈCES JOINTES
+---------------------------------------------------
+
+Upload :
+
+- facture fournisseur
+- BL
+- photos marchandise
+- documents qualité
+
+---------------------------------------------------
+14. OCR FACTURES
+---------------------------------------------------
+
+Lire automatiquement :
+
+- fournisseur
+- quantité
+- montant
+- date
+
+---------------------------------------------------
+15. CONTRÔLE QUALITÉ
+---------------------------------------------------
+
+Ajouter :
+
+- humidité
+- longueur
+- taux vanilline
+- moisissure
+- statut qualité
+
+---------------------------------------------------
+16. IA DÉTECTION RISQUES
+---------------------------------------------------
+
+Détecter :
+
+- humidité anormale
+- fournisseur risque
+- pertes élevées
+- qualité faible
+
+---------------------------------------------------
+17. DASHBOARD ACHATS VANILLE
+---------------------------------------------------
+
+Afficher KPI :
+
+- achats semaine
+- achats mois
+- coût moyen/kg
+- top fournisseurs
+- humidité moyenne
+
+---------------------------------------------------
+18. FILTRES AVANCÉS
+---------------------------------------------------
+
+Filtrer :
+
+- type produit
+- fournisseur
+- humidité
+- longueur
+- qualité
+- période
+
+---------------------------------------------------
+19. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- Excel
+- PDF
+- journal achats vanille
+- traçabilité lots
+
+---------------------------------------------------
+20. SUPPRESSION ACHATS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER_ADMIN
+- ADMIN
+
+-----------------------------------
+
+Interdire suppression si :
+
+- lot exporté
+- stock utilisé
+- facture validée
+- clôture comptable effectuée
+
+-----------------------------------
+
+Journaliser :
+
+- auteur
+- date
+- raison suppression
+
+---------------------------------------------------
+21. LIVRABLE FINAL
+---------------------------------------------------
+
+Créer un système ERP industriel complet de gestion des achats vanille et extraits avec :
+
+- catalogue dynamique
+- lots intelligents
+- stock automatique
+- fournisseurs liés
+- comptabilité automatique
+- traçabilité complète
+
+Commence par :
+1. Prisma VanillaPurchase
+2. Prisma VanillaLot
+3. liaison catalogue produits
+4. génération auto lots
+5. mise à jour stock automatique
+6. dashboard achats vanille

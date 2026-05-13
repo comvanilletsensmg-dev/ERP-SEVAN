@@ -9,6 +9,13 @@ export const stockMovementsTable = pgTable("stock_movements", {
   type: text("type").notNull(), // IN | OUT | LOSS
   quantity: real("quantity").notNull(),
   note: text("note"),
+  unitCost: real("unit_cost"),
+  warehouse: text("warehouse"),
+  reference: text("reference"),
+  saleId: text("sale_id"),
+  purchaseId: text("purchase_id"),
+  deletedBy: text("deleted_by"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

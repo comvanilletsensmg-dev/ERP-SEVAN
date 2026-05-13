@@ -32,6 +32,16 @@ export const purchasesTable = pgTable("purchases", {
   pricePerKg:    real("price_per_kg").notNull().default(0),
   totalAmount:   real("total_amount").notNull(),
   humidity:      real("humidity").notNull().default(0),
+  // ── Vanille qualité & traçabilité
+  productId:     text("product_id"),
+  productType:   text("product_type"),
+  lengthCm:      real("length_cm"),
+  quality:       text("quality"),
+  origin:        text("origin"),
+  preparation:   text("preparation"),
+  qualityNotes:  text("quality_notes"),
+  vanillinRate:  real("vanillin_rate"),
+  moldStatus:    text("mold_status").default("ok"),
   // ── Logistique
   warehouse:     text("warehouse"),
   paymentMethod: text("payment_method").notNull().default("cash"),

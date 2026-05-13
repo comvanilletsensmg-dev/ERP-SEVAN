@@ -19,6 +19,13 @@ export const lotsTable = pgTable("lots", {
   // Status: RAW | CURING | SORTING | READY | AVAILABLE | SHIPPED | PHENOLED | MOLDY | DOWNGRADED
   // Legacy lowercase still accepted: raw, curing, drying, ready, sold
   status: text("status").notNull().default("RAW"),
+  // ── Qualité & traçabilité vanille
+  productType:  text("product_type"),
+  lengthCm:     real("length_cm"),
+  quality:      text("quality"),
+  origin:       text("origin"),
+  preparation:  text("preparation"),
+  vanillinRate: real("vanillin_rate"),
   riskScore: real("risk_score").notNull().default(0),
   riskLevel: text("risk_level").notNull().default("LOW"), // LOW | MEDIUM | HIGH
   isBlocked: boolean("is_blocked").notNull().default(false),
