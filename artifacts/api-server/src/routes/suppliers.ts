@@ -230,9 +230,39 @@ router.post("/suppliers/:id/notes", requireAuth, async (req: any, res): Promise<
 // ─── DELETE /suppliers/:id ────────────────────────────────────────────────────
 router.delete("/suppliers/:id", requireAuth, requireRole("SUPER_ADMIN", "LOGISTICS_MANAGER"), async (req, res): Promise<void> => {
   const { id } = req.params;
-  const [deleted] = await db.delete(suppliersTable).where(eq(suppliersTable.id, id)).returning();
-  if (!deleted) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
-  res.json({ ok: true });
+
+  // Verify supplier exists first
+  const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, id));
+  if (!supplier) { res.status(404).json({ error: "Fournisseur introuvable" }); return; }
+
+  // Block if supplier has linked lots (nullifying would lose traceability)
+  const lotsCount = (await db.execute(sql`SELECT COUNT(*) AS n FROM lots WHERE supplier_id = ${id}`)).rows[0] as any;
+  if (Number(lotsCount?.n) > 0) {
+    res.status(409).json({
+      error: `Ce fournisseur est lié à ${lotsCount.n} lot(s) — suppression impossible. Archivez-le ou réassignez les lots d'abord.`,
+    });
+    return;
+  }
+
+  // Block if supplier has linked purchases
+  const purchasesCount = (await db.execute(sql`SELECT COUNT(*) AS n FROM purchases WHERE supplier_id = ${id}`)).rows[0] as any;
+  if (Number(purchasesCount?.n) > 0) {
+    res.status(409).json({
+      error: `Ce fournisseur est lié à ${purchasesCount.n} achat(s) — suppression impossible. Archivez-le ou réassignez les achats d'abord.`,
+    });
+    return;
+  }
+
+  try {
+    await db.delete(suppliersTable).where(eq(suppliersTable.id, id));
+  } catch (err: any) {
+    req.log.error({ err, supplierId: id }, "Erreur suppression fournisseur");
+    res.status(500).json({ error: `Suppression échouée : ${err?.message ?? "erreur base de données"}` });
+    return;
+  }
+
+  req.log.info({ supplierId: id, supplierName: supplier.name }, "Fournisseur supprimé");
+  res.json({ ok: true, deletedId: id, name: supplier.name });
 });
 
 export default router;

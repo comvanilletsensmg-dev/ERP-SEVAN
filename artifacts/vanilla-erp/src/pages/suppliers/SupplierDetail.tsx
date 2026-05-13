@@ -58,12 +58,15 @@ export default function SupplierDetail({ id }: { id: string }) {
   const qc = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      fetch(`/api/suppliers/${id}`, { method: "DELETE", credentials: "include" }).then(r => {
-        if (!r.ok) throw new Error("Erreur lors de la suppression");
-        return r.json();
-      }),
-    onSuccess: () => navigate("/suppliers"),
+    mutationFn: async () => {
+      const r = await fetch(`/api/suppliers/${id}`, { method: "DELETE", credentials: "include" });
+      let data: any;
+      try { data = await r.json(); } catch { throw new Error("Erreur serveur inattendue"); }
+      if (!r.ok) throw new Error(data?.error ?? "Erreur lors de la suppression");
+      return data;
+    },
+    onSuccess: (d: any) => { toast.success(`Fournisseur « ${d.name} » supprimé`); navigate("/suppliers"); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const { data, isLoading } = useQuery({
