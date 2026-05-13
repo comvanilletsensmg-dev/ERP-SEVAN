@@ -31,6 +31,7 @@ import AccountingPartners from "@/pages/accounting/Partners";
 import TiersDetail from "@/pages/accounting/TiersDetail";
 import AccountingBank from "@/pages/accounting/Bank";
 import AccountingAssets from "@/pages/accounting/Assets";
+import AssetDetail from "@/pages/accounting/AssetDetail";
 import AccountingReports from "@/pages/accounting/Reports";
 import FinancialDashboard from "@/pages/accounting/FinancialDashboard";
 import ClosingPage from "@/pages/accounting/ClosingPage";
@@ -110,6 +111,11 @@ function Router() {
         return <ProtectedRoute component={C} />;
       }} />
       <Route path="/accounting/bank" component={() => <ProtectedRoute component={AccountingBank} />} />
+      <Route path="/accounting/assets/:id" component={(params: any) => {
+        const id = params?.params?.id ?? params?.id ?? "";
+        const C = () => <AssetDetail id={id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
       <Route path="/accounting/assets" component={() => <ProtectedRoute component={AccountingAssets} />} />
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/accounting/finance" component={() => <ProtectedRoute component={FinancialDashboard} />} />

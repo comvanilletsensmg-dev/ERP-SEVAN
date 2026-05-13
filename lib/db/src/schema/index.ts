@@ -42,3 +42,4 @@ export * from "./platform_settings";
 export * from "./planning";
 export * from "./operations";
 export * from "./invoice_payments";
+export * from "./asset_maintenance";
