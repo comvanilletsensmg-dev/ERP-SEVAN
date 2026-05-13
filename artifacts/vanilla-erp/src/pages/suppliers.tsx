@@ -1,222 +1,223 @@
-import { useState } from "react";
-import { useGetSuppliers, getGetSuppliersQueryKey, useCreateSupplier, useUpdateSupplier } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Plus, Edit2 } from "lucide-react";
+  Package, Wrench, Users, TrendingUp, AlertTriangle,
+  Plus, Search, Filter, Download, Eye, Edit2,
+  CheckCircle2, XCircle, Clock, Star,
+} from "lucide-react";
 
-const supplierSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  region: z.string().min(1, "Region is required"),
-  phone: z.string().optional().or(z.literal("")),
-  score: z.coerce.number().min(0).max(100).optional(),
-});
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);
 
-type SupplierForm = z.infer<typeof supplierSchema>;
+function ScoreBadge({ score }: { score: number }) {
+  const cls = score >= 80 ? "bg-green-100 text-green-700 border-green-200"
+    : score >= 60 ? "bg-amber-100 text-amber-700 border-amber-200"
+    : "bg-red-100 text-red-600 border-red-200";
+  const dot = score >= 80 ? "bg-green-500" : score >= 60 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`}/>
+      {score}/100
+    </span>
+  );
+}
 
-export default function Suppliers() {
-  const queryClient = useQueryClient();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editSupplierId, setEditSupplierId] = useState<string | null>(null);
-
-  const { data: suppliers, isLoading } = useGetSuppliers({
-    query: { queryKey: getGetSuppliersQueryKey() },
-  });
-  
-  const createSupplier = useCreateSupplier({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetSuppliersQueryKey() });
-        setIsCreateOpen(false);
-        createForm.reset();
-      },
-    },
-  });
-
-  const updateSupplier = useUpdateSupplier({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetSuppliersQueryKey() });
-        setEditSupplierId(null);
-        editForm.reset();
-      },
-    },
-  });
-
-  const createForm = useForm<SupplierForm>({
-    resolver: zodResolver(supplierSchema),
-    defaultValues: { name: "", region: "", phone: "", score: 100 },
-  });
-
-  const editForm = useForm<SupplierForm>({
-    resolver: zodResolver(supplierSchema),
-  });
-
-  const onCreateSubmit = (data: SupplierForm) => {
-    createSupplier.mutate({ data: { ...data, phone: data.phone || null } });
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    active:   { label: "Actif",   cls: "bg-emerald-100 text-emerald-700" },
+    inactive: { label: "Inactif", cls: "bg-gray-100 text-gray-500" },
+    blocked:  { label: "Bloqué",  cls: "bg-red-100 text-red-600" },
   };
+  const { label, cls } = map[status] ?? map.inactive;
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{label}</span>;
+}
 
-  const onEditSubmit = (data: SupplierForm) => {
-    if (editSupplierId) {
-      updateSupplier.mutate({ id: editSupplierId, data: { ...data, phone: data.phone || null } });
-    }
-  };
+function downloadCSV(rows: any[], filename: string) {
+  const headers = ["Code", "Nom", "Type", "Catégorie", "Région", "Ville", "Téléphone", "Email", "Score", "Achats (Ar)", "Statut"];
+  const csv = ["\ufeff" + headers.join(";"),
+    ...rows.map(r => [r.supplierCode, r.name, r.supplierType === "GOODS" ? "Biens" : "Services",
+      r.category ?? "", r.region, r.city ?? "", r.phone ?? "", r.email ?? "",
+      r.qualityScore, r.totalPurchases, r.status].join(";"))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: filename }).click();
+}
 
-  const openEdit = (supplier: any) => {
-    editForm.reset({
-      name: supplier.name,
-      region: supplier.region,
-      phone: supplier.phone || "",
-      score: supplier.score,
-    });
-    setEditSupplierId(supplier.id);
-  };
+// ─── Main component ───────────────────────────────────────────────────────────
+export default function SuppliersPage() {
+  const [, navigate] = useLocation();
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterRegion, setFilterRegion] = useState("all");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["suppliers-list"],
+    queryFn: () => fetch("/api/suppliers", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const suppliers: any[] = data?.suppliers ?? [];
+  const kpis = data?.kpis ?? {};
+
+  const regions = useMemo(() => [...new Set(suppliers.map(s => s.region).filter(Boolean))].sort(), [suppliers]);
+
+  const filtered = useMemo(() => suppliers.filter(s => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || s.name.toLowerCase().includes(q) || (s.supplierCode ?? "").toLowerCase().includes(q)
+      || (s.category ?? "").toLowerCase().includes(q) || (s.region ?? "").toLowerCase().includes(q);
+    const matchType = filterType === "all" || s.supplierType === filterType;
+    const matchStatus = filterStatus === "all" || s.status === filterStatus;
+    const matchRegion = filterRegion === "all" || s.region === filterRegion;
+    return matchSearch && matchType && matchStatus && matchRegion;
+  }), [suppliers, search, filterType, filterStatus, filterRegion]);
+
+  const alerts = suppliers.filter(s => s.score < 60 || s.status === "blocked" || s.status === "inactive");
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-serif text-primary tracking-tight">Suppliers</h2>
-          <p className="text-muted-foreground mt-1">Manage local vanilla growers and collectors</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Fournisseurs</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Gestion des fournisseurs de biens et services</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => downloadCSV(filtered, "fournisseurs.csv")}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                <Download className="w-3.5 h-3.5"/>Export CSV
+              </button>
+              <button onClick={() => navigate("/suppliers/new")}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+                <Plus className="w-4 h-4"/>Nouveau fournisseur
+              </button>
+            </div>
+          </div>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Supplier
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Supplier</DialogTitle>
-              <DialogDescription>Register a new supplier to track purchases.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" {...createForm.register("name")} />
-                {createForm.formState.errors.name && <p className="text-xs text-destructive">{createForm.formState.errors.name.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
-                <Input id="region" {...createForm.register("region")} />
-                {createForm.formState.errors.region && <p className="text-xs text-destructive">{createForm.formState.errors.region.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone (Optional)</Label>
-                <Input id="phone" {...createForm.register("phone")} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="score">Trust Score (0-100)</Label>
-                <Input id="score" type="number" {...createForm.register("score")} />
-              </div>
-              <Button type="submit" className="w-full" disabled={createSupplier.isPending}>
-                {createSupplier.isPending ? "Saving..." : "Save Supplier"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      <Dialog open={!!editSupplierId} onOpenChange={(open) => !open && setEditSupplierId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Supplier</DialogTitle>
-            <DialogDescription>Update supplier details.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input id="edit-name" {...editForm.register("name")} />
-              {editForm.formState.errors.name && <p className="text-xs text-destructive">{editForm.formState.errors.name.message}</p>}
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Total", value: kpis.total ?? 0, icon: Users, cls: "text-gray-800", bg: "bg-white" },
+            { label: "Actifs", value: kpis.actifs ?? 0, icon: CheckCircle2, cls: "text-emerald-700", bg: "bg-emerald-50" },
+            { label: "Fournisseurs biens", value: kpis.biens ?? 0, icon: Package, cls: "text-blue-700", bg: "bg-blue-50" },
+            { label: "Fournisseurs services", value: kpis.services ?? 0, icon: Wrench, cls: "text-purple-700", bg: "bg-purple-50" },
+            { label: "Montant achats", value: fmt(kpis.montantAchats ?? 0) + " Ar", icon: TrendingUp, cls: "text-gray-800", bg: "bg-white", small: true },
+            { label: "Alertes", value: alerts.length, icon: AlertTriangle, cls: "text-red-600", bg: "bg-red-50" },
+          ].map(({ label, value, icon: Icon, cls, bg, small }) => (
+            <div key={label} className={`${bg} border border-gray-200 rounded-xl p-4 shadow-sm`}>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-gray-500">{label}</p>
+                <Icon className={`w-4 h-4 ${cls} opacity-70`}/>
+              </div>
+              <p className={`${small ? "text-base" : "text-xl"} font-bold ${cls}`}>{value}</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-region">Region</Label>
-              <Input id="edit-region" {...editForm.register("region")} />
-              {editForm.formState.errors.region && <p className="text-xs text-destructive">{editForm.formState.errors.region.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone (Optional)</Label>
-              <Input id="edit-phone" {...editForm.register("phone")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-score">Trust Score (0-100)</Label>
-              <Input id="edit-score" type="number" {...editForm.register("score")} />
-            </div>
-            <Button type="submit" className="w-full" disabled={updateSupplier.isPending}>
-              {updateSupplier.isPending ? "Updating..." : "Update Supplier"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+          ))}
+        </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Region</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="text-right">Score</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading suppliers...</TableCell>
-              </TableRow>
-            ) : suppliers?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No suppliers found.</TableCell>
-              </TableRow>
-            ) : (
-              suppliers?.map((supplier) => (
-                <TableRow key={supplier.id}>
-                  <TableCell className="font-medium">{supplier.name}</TableCell>
-                  <TableCell>{supplier.region}</TableCell>
-                  <TableCell>{supplier.phone || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      supplier.score >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                      supplier.score >= 70 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                      'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {supplier.score}/100
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(supplier)}>
-                      <Edit2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+        {/* Alerts banner */}
+        {alerts.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0"/>
+            <p className="text-sm text-amber-700">
+              <strong>{alerts.length} fournisseur(s)</strong> nécessite(nt) attention : score faible, inactif ou bloqué.
+            </p>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher fournisseur, code, catégorie…"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/>
+            </div>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="all">Tous les types</option>
+              <option value="GOODS">Biens</option>
+              <option value="SERVICES">Services</option>
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="all">Tous les statuts</option>
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
+              <option value="blocked">Bloqué</option>
+            </select>
+            <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="all">Toutes les régions</option>
+              {regions.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <span className="text-xs text-gray-400 ml-auto">{filtered.length} résultat(s)</span>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                {["Code", "Fournisseur", "Type", "Région / Ville", "Contact", "Score qualité", "Achats (Ar)", "Statut", ""].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading ? (
+                <tr><td colSpan={9} className="text-center py-12 text-gray-300">Chargement…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-gray-300">
+                  <Users className="w-10 h-10 mx-auto mb-2 opacity-30"/>
+                  Aucun fournisseur trouvé
+                </td></tr>
+              ) : filtered.map((s: any) => (
+                <tr key={s.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/suppliers/${s.id}`)}>
+                  <td className="px-4 py-3 font-mono text-xs font-bold text-gray-500">{s.supplierCode ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-gray-900">{s.name}</div>
+                    {s.category && <div className="text-xs text-gray-400">{s.category}</div>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {s.supplierType === "GOODS"
+                      ? <span className="flex items-center gap-1 text-xs text-blue-700"><Package className="w-3 h-3"/>Biens</span>
+                      : <span className="flex items-center gap-1 text-xs text-purple-700"><Wrench className="w-3 h-3"/>Services</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">
+                    <div>{s.region}</div>
+                    {s.city && s.city !== s.region && <div className="text-gray-400">{s.city}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">
+                    <div>{s.phone ?? "—"}</div>
+                    {s.email && <div className="text-gray-400 truncate max-w-32">{s.email}</div>}
+                  </td>
+                  <td className="px-4 py-3"><ScoreBadge score={s.qualityScore ?? s.score}/></td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-800">{fmt(s.totalPurchases)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={s.status}/></td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <button onClick={() => navigate(`/suppliers/${s.id}`)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+                        <Eye className="w-3.5 h-3.5"/>
+                      </button>
+                      <button onClick={() => navigate(`/suppliers/${s.id}/edit`)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+                        <Edit2 className="w-3.5 h-3.5"/>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

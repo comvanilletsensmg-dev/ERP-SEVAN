@@ -10,6 +10,8 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Suppliers from "@/pages/suppliers";
+import SupplierDetail from "@/pages/suppliers/SupplierDetail";
+import SupplierForm from "@/pages/suppliers/SupplierForm";
 import Purchases from "@/pages/purchases";
 import Lots from "@/pages/lots";
 import Clients from "@/pages/clients";
@@ -86,6 +88,17 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path="/suppliers/new" component={() => <ProtectedRoute component={SupplierForm} />} />
+      <Route path="/suppliers/:id/edit" component={(params: any) => {
+        const id = params?.params?.id ?? params?.id ?? "";
+        const C = () => <SupplierForm id={id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
+      <Route path="/suppliers/:id" component={(params: any) => {
+        const id = params?.params?.id ?? params?.id ?? "";
+        const C = () => <SupplierDetail id={id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
       <Route path="/suppliers" component={() => <ProtectedRoute component={Suppliers} />} />
       <Route path="/purchases" component={() => <ProtectedRoute component={Purchases} />} />
       <Route path="/lots" component={() => <ProtectedRoute component={Lots} />} />
