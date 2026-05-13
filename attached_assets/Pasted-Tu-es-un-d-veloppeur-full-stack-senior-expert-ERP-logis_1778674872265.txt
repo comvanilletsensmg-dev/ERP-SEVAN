@@ -1,0 +1,237 @@
+Tu es un développeur full-stack senior expert ERP logistique, stock et comptabilité.
+
+Objectif :
+Créer un module MOUVEMENTS DE STOCK ultra professionnel connecté à :
+- CRM
+- ventes
+- clients
+- achats
+- fournisseurs
+- lots
+- comptabilité
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. PAGE MOUVEMENTS
+---------------------------------------------------
+
+Créer :
+
+/stock-movements
+
+Afficher :
+
+- date
+- type
+- lot
+- fournisseur
+- client
+- vente
+- achat
+- quantité
+- valeur
+- entrepôt
+
+---------------------------------------------------
+2. TYPES MOUVEMENTS
+---------------------------------------------------
+
+Ajouter :
+
+- IN
+- OUT
+- LOSS
+- TRANSFER
+- ADJUSTMENT
+- RETURN
+- EXPORT
+- TRANSFORMATION
+
+---------------------------------------------------
+3. LIAISON CRM / CLIENTS
+---------------------------------------------------
+
+Chaque sortie stock doit afficher :
+
+- vente liée
+- client
+- commercial
+
+Boutons :
+
+Voir vente
+Voir client
+
+---------------------------------------------------
+4. LIAISON ACHATS / FOURNISSEURS
+---------------------------------------------------
+
+Chaque entrée stock doit afficher :
+
+- achat lié
+- fournisseur
+- facture fournisseur
+
+---------------------------------------------------
+5. MULTI-ENTREPÔTS
+---------------------------------------------------
+
+Ajouter :
+
+- entrepôt source
+- entrepôt destination
+
+---------------------------------------------------
+6. TRANSFERTS INTERNES
+---------------------------------------------------
+
+Créer transfert automatique :
+
+sortie dépôt source
++
+entrée dépôt destination
+
+---------------------------------------------------
+7. AJUSTEMENTS STOCK
+---------------------------------------------------
+
+Ajouter :
+
+- raison ajustement
+- validation admin
+
+---------------------------------------------------
+8. VALORISATION STOCK
+---------------------------------------------------
+
+Afficher :
+
+- coût unitaire
+- valeur mouvement
+- coût moyen pondéré
+
+---------------------------------------------------
+9. PIÈCES JOINTES
+---------------------------------------------------
+
+Upload :
+
+- BL
+- facture
+- reçu
+- documents export
+
+---------------------------------------------------
+10. EXPORTS
+---------------------------------------------------
+
+Créer :
+
+- export Excel
+- export PDF
+
+---------------------------------------------------
+11. FILTRES AVANCÉS
+---------------------------------------------------
+
+Filtrer :
+
+- lot
+- client
+- fournisseur
+- type
+- commercial
+- période
+
+---------------------------------------------------
+12. DASHBOARD
+---------------------------------------------------
+
+Créer KPI :
+
+- entrées
+- sorties
+- pertes
+- transferts
+
+---------------------------------------------------
+13. IA ANOMALIES
+---------------------------------------------------
+
+Détection :
+
+- pertes anormales
+- doublons
+- incohérences
+
+---------------------------------------------------
+14. RÉSERVATION STOCK
+---------------------------------------------------
+
+Permettre réservation :
+
+- commande export
+- client
+- production
+
+---------------------------------------------------
+15. SUPPRESSION MOUVEMENTS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER ADMIN
+- ADMIN
+
+-----------------------------------
+
+Interdire suppression si :
+
+- export validé
+- clôture comptable
+- facture validée
+
+-----------------------------------
+
+Journaliser :
+
+- utilisateur
+- date
+- raison suppression
+
+---------------------------------------------------
+16. HISTORIQUE
+---------------------------------------------------
+
+Afficher :
+
+- modifications
+- actions utilisateurs
+
+---------------------------------------------------
+17. COMPTABILITÉ
+---------------------------------------------------
+
+Créer écritures automatiques :
+
+- variation stock
+- coût sortie
+
+---------------------------------------------------
+18. LIVRABLE
+---------------------------------------------------
+
+- traçabilité stock industrielle
+- connecté CRM/achats/compta
+- ERP premium
+
+Commence par :
+1. Prisma StockMovement
+2. dashboard mouvements
+3. liaison CRM/ventes
+4. exports Excel
+5. permissions suppression

@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CreditCard, TrendingUp, TrendingDown, AlertTriangle, Clock,
   Plus, Loader2, X, CheckCircle2, Search, Building2, Smartphone,
-  Banknote, Receipt, ArrowUpRight, ArrowDownLeft, ChevronDown,
+  Banknote, Receipt, ArrowUpRight, ArrowDownLeft, ChevronDown, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt     = (n: number) => new Intl.NumberFormat("fr-MG").format(Math.round(n ?? 0));
@@ -267,13 +268,55 @@ function SupplierPaymentModal({ open, onClose, onSuccess }: any) {
   );
 }
 
+// ─── Delete confirmation modal ────────────────────────────────────────────────
+function DeleteModal({ open, label, amount, onConfirm, onClose, isPending }: {
+  open: boolean; label: string; amount: number;
+  onConfirm: () => void; onClose: () => void; isPending: boolean;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <Trash2 className="w-5 h-5 text-red-600"/>
+          </div>
+          <div>
+            <h2 className="font-bold text-gray-900">Supprimer ce paiement ?</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Cette action est irréversible</p>
+          </div>
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5">
+          <p className="text-sm text-red-800">{label}</p>
+          <p className="text-base font-bold text-red-700 mt-0.5">{fmt(amount)} Ar</p>
+          <p className="text-xs text-red-500 mt-1">L'écriture comptable associée sera également supprimée.</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button onClick={onConfirm} disabled={isPending}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Trash2 className="w-4 h-4"/>}
+            Supprimer définitivement
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function Payments() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canDelete = user?.role === "SUPER_ADMIN" || user?.role === "ACCOUNTANT";
+
   const [tab, setTab]                     = useState<"clients" | "suppliers" | "invoices">("clients");
   const [showClientModal, setClientModal] = useState(false);
   const [showSupplierModal, setSupplierModal] = useState(false);
   const [search, setSearch]               = useState("");
+  const [deleteTarget, setDeleteTarget]   = useState<{ id: string; type: "client" | "supplier"; label: string; amount: number } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["payments-dashboard"],
@@ -281,6 +324,24 @@ export default function Payments() {
   });
 
   const onSuccess = () => qc.invalidateQueries({ queryKey: ["payments-dashboard"] });
+
+  const deleteMut = useMutation({
+    mutationFn: (target: { id: string; type: "client" | "supplier" }) => {
+      const url = target.type === "client"
+        ? `/api/payments/${target.id}`
+        : `/api/payments/purchase/${target.id}`;
+      return fetch(url, { method: "DELETE", credentials: "include" }).then(async r => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "Échec de la suppression");
+        return r.json();
+      });
+    },
+    onSuccess: () => {
+      toast.success("Paiement supprimé et écriture comptable annulée");
+      qc.invalidateQueries({ queryKey: ["payments-dashboard"] });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const clientPayments:   any[] = data?.clientPayments   ?? [];
   const supplierPayments: any[] = data?.supplierPayments  ?? [];
@@ -314,6 +375,14 @@ export default function Payments() {
     <div className="min-h-screen bg-gray-50">
       <ClientPaymentModal   open={showClientModal}   onClose={() => setClientModal(false)}   onSuccess={onSuccess}/>
       <SupplierPaymentModal open={showSupplierModal} onClose={() => setSupplierModal(false)} onSuccess={onSuccess}/>
+      <DeleteModal
+        open={!!deleteTarget}
+        label={deleteTarget?.label ?? ""}
+        amount={deleteTarget?.amount ?? 0}
+        isPending={deleteMut.isPending}
+        onConfirm={() => deleteTarget && deleteMut.mutate({ id: deleteTarget.id, type: deleteTarget.type })}
+        onClose={() => setDeleteTarget(null)}
+      />
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
@@ -403,25 +472,37 @@ export default function Payments() {
                       {["Date","Client","Mode","Référence vente","Montant"].map((h, i) => (
                         <th key={i} className={`text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${i === 4 ? "text-right" : ""}`}>{h}</th>
                       ))}
+                      {canDelete && <th className="px-4 py-3"/>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredClients.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-gray-50">
+                      <tr key={p.id} className="hover:bg-gray-50 group">
                         <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(p.created_at)}</td>
                         <td className="px-4 py-3 font-medium text-gray-800">{p.client_name ?? <span className="text-gray-300">—</span>}</td>
                         <td className="px-4 py-3"><MethodBadge method={p.method}/></td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{String(p.sale_id ?? "").slice(0, 8).toUpperCase()}</td>
                         <td className="px-4 py-3 text-right font-bold text-blue-700">{fmt(p.amount)} Ar</td>
+                        {canDelete && (
+                          <td className="px-3 py-3 text-right">
+                            <button
+                              onClick={() => setDeleteTarget({ id: p.id, type: "client", label: `Encaissement — ${p.client_name ?? "Client"}`, amount: Number(p.amount) })}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Supprimer ce paiement">
+                              <Trash2 className="w-3.5 h-3.5"/>
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-blue-50 border-t-2 border-blue-100">
                     <tr>
-                      <td colSpan={4} className="px-4 py-2.5 text-xs font-bold text-blue-600 uppercase tracking-wider">Total encaissé</td>
+                      <td colSpan={canDelete ? 5 : 4} className="px-4 py-2.5 text-xs font-bold text-blue-600 uppercase tracking-wider">Total encaissé</td>
                       <td className="px-4 py-2.5 text-right font-bold text-blue-700">
                         {fmt(filteredClients.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0))} Ar
                       </td>
+                      {canDelete && <td/>}
                     </tr>
                   </tfoot>
                 </table>
@@ -445,11 +526,12 @@ export default function Payments() {
                       {["Date","Description","Référence","Statut","Montant"].map((h, i) => (
                         <th key={i} className={`text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${i === 4 ? "text-right" : ""}`}>{h}</th>
                       ))}
+                      {canDelete && <th className="px-4 py-3"/>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredSuppliers.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-gray-50">
+                      <tr key={p.id} className="hover:bg-gray-50 group">
                         <td className="px-4 py-3 text-xs text-gray-500">{fmtDt(p.created_at)}</td>
                         <td className="px-4 py-3 text-xs text-gray-700 max-w-xs truncate">{p.description}</td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-500">{p.reference}</td>
@@ -459,6 +541,16 @@ export default function Payments() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-amber-700">{fmt(p.amount)} Ar</td>
+                        {canDelete && (
+                          <td className="px-3 py-3 text-right">
+                            <button
+                              onClick={() => setDeleteTarget({ id: p.id, type: "supplier", label: p.description ?? "Paiement fournisseur", amount: Number(p.amount) })}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Supprimer ce paiement">
+                              <Trash2 className="w-3.5 h-3.5"/>
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

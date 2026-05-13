@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { CreatePaymentBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { requireRole } from "../middlewares/roles";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -207,6 +208,50 @@ router.post("/payments/purchase", requireAuth, async (req, res): Promise<void> =
     amount, method, provider, reference, note, journalEntryId,
     createdAt: new Date().toISOString(),
   });
+});
+
+// ─── DELETE /payments/:id  (client payment) ───────────────────────────────────
+router.delete("/payments/:id", requireAuth, requireRole("SUPER_ADMIN", "ACCOUNTANT"), async (req, res): Promise<void> => {
+  const { id } = req.params;
+
+  const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, id));
+  if (!payment) { res.status(404).json({ error: "Paiement introuvable" }); return; }
+
+  // Delete associated journal entry if any
+  const entryRow = (await db.execute(sql`
+    SELECT id FROM journal_entries WHERE reference = ${'PAIEMENT-' + id.slice(0, 8).toUpperCase()} LIMIT 1
+  `)).rows[0] as any;
+
+  await db.delete(paymentsTable).where(eq(paymentsTable.id, id));
+
+  if (entryRow?.id) {
+    await db.execute(sql`DELETE FROM journal_lines WHERE entry_id = ${entryRow.id}`);
+    await db.execute(sql`DELETE FROM journal_entries WHERE id = ${entryRow.id}`);
+  }
+
+  req.log.info({ paymentId: id }, "Encaissement client supprimé");
+  res.json({ success: true });
+});
+
+// ─── DELETE /payments/purchase/:id  (supplier payment / bank_transaction) ─────
+router.delete("/payments/purchase/:id", requireAuth, requireRole("SUPER_ADMIN", "ACCOUNTANT"), async (req, res): Promise<void> => {
+  const { id } = req.params;
+
+  const txRow = (await db.execute(sql`
+    SELECT id, journal_entry_id FROM bank_transactions WHERE id = ${id} AND reference LIKE 'PAY-FRN-%' LIMIT 1
+  `)).rows[0] as any;
+
+  if (!txRow) { res.status(404).json({ error: "Paiement fournisseur introuvable" }); return; }
+
+  await db.execute(sql`DELETE FROM bank_transactions WHERE id = ${id}`);
+
+  if (txRow.journal_entry_id) {
+    await db.execute(sql`DELETE FROM journal_lines WHERE entry_id = ${txRow.journal_entry_id}`);
+    await db.execute(sql`DELETE FROM journal_entries WHERE id = ${txRow.journal_entry_id}`);
+  }
+
+  req.log.info({ txId: id }, "Paiement fournisseur supprimé");
+  res.json({ success: true });
 });
 
 export default router;
