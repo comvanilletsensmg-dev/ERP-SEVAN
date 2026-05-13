@@ -134,10 +134,10 @@ router.get("/suppliers/:id", requireAuth, async (req, res): Promise<void> => {
   // Assigned employee
   let assignedEmployee = null;
   if (supplier.assignedEmployeeId) {
-    const [emp] = await db.execute(sql`
+    const empResult = await db.execute(sql`
       SELECT id, name, position, department, phone, email FROM employees WHERE id = ${supplier.assignedEmployeeId}
     `);
-    assignedEmployee = emp ?? null;
+    assignedEmployee = empResult.rows[0] ?? null;
   }
 
   // Journal balance for account 401 (Fournisseurs) — total debits and credits
