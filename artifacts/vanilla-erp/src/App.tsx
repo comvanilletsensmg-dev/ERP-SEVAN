@@ -14,6 +14,7 @@ import SupplierDetail from "@/pages/suppliers/SupplierDetail";
 import SupplierForm from "@/pages/suppliers/SupplierForm";
 import Purchases from "@/pages/purchases";
 import Lots from "@/pages/lots";
+import LotDetail from "@/pages/lots/LotDetail";
 import Clients from "@/pages/clients";
 import Sales from "@/pages/sales";
 import Accounting from "@/pages/accounting";
@@ -101,6 +102,10 @@ function Router() {
       }} />
       <Route path="/suppliers" component={() => <ProtectedRoute component={Suppliers} />} />
       <Route path="/purchases" component={() => <ProtectedRoute component={Purchases} />} />
+      <Route path="/lots/:id" component={(params: any) => {
+        const C = () => <LotDetail id={params.id} />;
+        return <ProtectedRoute component={C} />;
+      }} />
       <Route path="/lots" component={() => <ProtectedRoute component={Lots} />} />
       <Route path="/clients" component={() => <ProtectedRoute component={Clients} />} />
       <Route path="/sales" component={() => <ProtectedRoute component={Sales} />} />

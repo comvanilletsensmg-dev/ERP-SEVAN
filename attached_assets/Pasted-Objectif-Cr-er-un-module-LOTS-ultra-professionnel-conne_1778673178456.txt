@@ -1,0 +1,226 @@
+Objectif :
+Créer un module LOTS ultra professionnel connecté à :
+- fournisseurs
+- achats
+- stock
+- opérations
+- comptabilité
+- export
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. PAGE LOTS
+---------------------------------------------------
+
+Créer :
+
+/lots
+
+Afficher :
+
+- code lot
+- fournisseur
+- achat lié
+- poids initial
+- poids actuel
+- pertes
+- humidité
+- qualité
+- statut
+
+---------------------------------------------------
+2. FICHE LOT COMPLÈTE
+---------------------------------------------------
+
+Créer :
+
+/lots/:id
+
+---------------------------------------------------
+3. LIAISON FOURNISSEUR
+---------------------------------------------------
+
+Afficher :
+
+- fournisseur
+- score fournisseur
+- région collecte
+
+Bouton :
+
+Voir fournisseur
+
+---------------------------------------------------
+4. LIAISON ACHAT
+---------------------------------------------------
+
+Afficher :
+
+- achat origine
+- facture achat
+- prix/kg
+- coût total
+
+---------------------------------------------------
+5. TIMELINE LOT
+---------------------------------------------------
+
+Afficher :
+
+Achat
+→ Séchage
+→ Phénolage
+→ Maturation
+→ Préparation
+→ Export
+
+---------------------------------------------------
+6. CONTRÔLE QUALITÉ
+---------------------------------------------------
+
+Ajouter :
+
+- humidité
+- odeur
+- texture
+- couleur
+- taille
+
+---------------------------------------------------
+7. TRAITEMENTS
+---------------------------------------------------
+
+Créer :
+
+- phénolage
+- séchage
+- affinage
+- tri
+- préparation export
+
+---------------------------------------------------
+8. GESTION PERTES
+---------------------------------------------------
+
+Types :
+
+- moisissure
+- humidité
+- évaporation
+- casse
+
+---------------------------------------------------
+9. STOCK
+---------------------------------------------------
+
+Afficher :
+
+- emplacement
+- mouvements
+- entrepôt
+
+---------------------------------------------------
+10. COÛT RÉEL LOT
+---------------------------------------------------
+
+Calcul :
+
+achat
++ traitement
++ consommables
++ RH
++ export
+
+---------------------------------------------------
+11. EXPORT
+---------------------------------------------------
+
+Afficher :
+
+- client export
+- destination
+- commande liée
+
+---------------------------------------------------
+12. DOCUMENTS
+---------------------------------------------------
+
+Upload :
+
+- photos
+- certificats
+- documents export
+
+---------------------------------------------------
+13. IA LOTS
+---------------------------------------------------
+
+Détection :
+
+- moisissure
+- humidité critique
+- pertes anormales
+
+---------------------------------------------------
+14. SUPPRESSION LOTS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER ADMIN
+- RESPONSABLE LOGISTIQUE
+
+-----------------------------------
+
+Interdire suppression si :
+
+- lot exporté
+- lot clôturé
+
+-----------------------------------
+
+Journaliser :
+
+- utilisateur
+- date
+- raison
+
+---------------------------------------------------
+15. HISTORIQUE
+---------------------------------------------------
+
+Afficher :
+
+- modifications
+- actions utilisateurs
+
+---------------------------------------------------
+16. DASHBOARD
+---------------------------------------------------
+
+Créer KPI :
+
+- total lots
+- kg stock
+- lots risque
+- pertes globales
+
+---------------------------------------------------
+17. LIVRABLE
+---------------------------------------------------
+
+- gestion lots industrielle
+- traçabilité complète
+- connecté ERP
+- prêt export
+
+Commence par :
+1. Prisma Lot avancé
+2. fiche lot complète
+3. timeline production
+4. liaison achats/fournisseurs
+5. permissions suppression
