@@ -1,0 +1,337 @@
+Tu es un développeur full-stack senior expert ERP comptable, fiscalité Madagascar (PCG 2005) et reporting financier professionnel.
+
+Objectif :
+Créer un module RAPPORTS COMPTABLES ultra professionnel uniquement pour la comptabilité.
+
+IMPORTANT :
+Ce module n’est PAS un dashboard général d’administration.
+Il doit servir :
+- au comptable
+- au chef comptable
+- au DG financier
+- aux audits
+- aux impôts
+
+Le module doit être :
+- conforme PCG 2005 Madagascar
+- exportable
+- fiable
+- connecté à tout le module comptable
+
+Stack :
+- Backend : Node.js + Express
+- DB : Prisma + PostgreSQL
+- Front : React + Tailwind
+- Charts : Recharts
+- PDF : Puppeteer
+- Excel : xlsx
+
+-----------------------------------
+1. STRUCTURE DU MODULE
+-----------------------------------
+
+/accounting/reports
+
+Sections :
+
+- Compte de résultat
+- Balance générale
+- Grand livre
+- Journal comptable
+- TVA & fiscalité
+- Trésorerie
+- Balance auxiliaire clients
+- Balance auxiliaire fournisseurs
+- États financiers
+- Export fiscal
+
+-----------------------------------
+2. COMPTE DE RÉSULTAT DYNAMIQUE
+-----------------------------------
+
+Afficher automatiquement :
+
+PRODUITS :
+- comptes 70x
+
+CHARGES :
+- comptes 60x
+- 61x
+- 62x
+- 63x
+- 64x
+- 68x
+
+-----------------------------------
+
+Fonctionnalités :
+
+- drill-down comptes
+- détail écriture
+- comparatif périodes
+- graphique évolution mensuelle
+
+-----------------------------------
+
+KPIs :
+
+- chiffre d’affaires
+- charges
+- résultat net
+- marge nette %
+
+-----------------------------------
+3. BALANCE GÉNÉRALE PROFESSIONNELLE
+-----------------------------------
+
+Afficher :
+
+- compte
+- libellé
+- débit
+- crédit
+- solde
+
+-----------------------------------
+
+Fonctionnalités :
+
+- filtre période
+- export Excel
+- export PDF
+- recherche compte
+
+-----------------------------------
+
+Détection anomalies :
+
+- compte déséquilibré
+- mouvement suspect
+
+-----------------------------------
+4. GRAND LIVRE
+-----------------------------------
+
+Page :
+
+/accounting/reports/general-ledger
+
+-----------------------------------
+
+Afficher :
+
+- date
+- journal
+- référence
+- libellé
+- débit
+- crédit
+- solde cumulé
+
+-----------------------------------
+
+Filtres :
+
+- compte
+- période
+- journal
+
+-----------------------------------
+5. JOURNAL COMPTABLE
+-----------------------------------
+
+Afficher :
+
+- ventes
+- achats
+- banque
+- OD
+
+-----------------------------------
+
+Fonctionnalités :
+
+- export officiel
+- regroupement par journal
+- totalisation
+
+-----------------------------------
+6. RAPPORT TVA & FISCALITÉ
+-----------------------------------
+
+Calcul automatique :
+
+- TVA collectée
+- TVA déductible
+- TVA nette
+
+-----------------------------------
+
+Cas export :
+
+TVA = 0
+
+-----------------------------------
+
+Afficher :
+
+- ventes locales
+- ventes export
+- opérations exonérées
+
+-----------------------------------
+
+Exports :
+
+- PDF fiscal
+- Excel fiscal
+
+-----------------------------------
+7. TRÉSORERIE
+-----------------------------------
+
+Afficher :
+
+- banque
+- caisse
+- flux entrants
+- flux sortants
+
+-----------------------------------
+
+Graphiques :
+
+- cash flow mensuel
+- évolution solde
+
+-----------------------------------
+8. BALANCE AUXILIAIRE CLIENTS
+-----------------------------------
+
+Afficher :
+
+- client
+- total facturé
+- total payé
+- solde restant
+
+-----------------------------------
+
+Aging :
+
+- 0–30 jours
+- 30–60 jours
+- 60+ jours
+
+-----------------------------------
+9. BALANCE AUXILIAIRE FOURNISSEURS
+-----------------------------------
+
+Afficher :
+
+- fournisseur
+- achats
+- paiements
+- dettes
+
+-----------------------------------
+10. ÉTATS FINANCIERS
+-----------------------------------
+
+Générer :
+
+- bilan
+- compte résultat
+- balance
+
+-----------------------------------
+
+Exports :
+
+- PDF officiel
+- Excel
+
+-----------------------------------
+11. FILTRES GLOBAUX
+-----------------------------------
+
+Filtres :
+
+- période
+- journal
+- devise
+- compte PCG
+
+-----------------------------------
+12. EXPORTS PROFESSIONNELS
+-----------------------------------
+
+A. PDF
+
+- branding entreprise
+- logo
+- NIF
+- STAT
+
+-----------------------------------
+
+B. Excel
+
+- multi-feuilles
+- format audit
+
+-----------------------------------
+13. AUTOMATISATION
+-----------------------------------
+
+Les rapports doivent être alimentés automatiquement depuis :
+
+- factures
+- paiements
+- journal
+- rapprochement bancaire
+- immobilisations
+
+-----------------------------------
+14. ALERTES COMPTABLES
+-----------------------------------
+
+Afficher alertes :
+
+- écritures déséquilibrées
+- TVA incohérente
+- rapprochement manquant
+- solde négatif
+
+-----------------------------------
+15. UI PREMIUM
+-----------------------------------
+
+- design SaaS comptable
+- tables professionnelles
+- graphiques sobres
+- responsive
+
+-----------------------------------
+16. SÉCURITÉ
+-----------------------------------
+
+Accès :
+
+- COMPTABLE
+- CHEF COMPTABLE
+- ADMIN
+
+-----------------------------------
+17. LIVRABLE
+-----------------------------------
+
+- reporting comptable professionnel
+- conforme PCG 2005
+- prêt audit & impôts
+- connecté ERP
+
+Commence par :
+1. compte de résultat dynamique
+2. balance générale
+3. grand livre
