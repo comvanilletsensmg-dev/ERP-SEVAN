@@ -1,0 +1,536 @@
+Tu es un développeur full-stack senior expert ERP, CRM, logistique, achats et comptabilité.
+
+Objectif :
+Créer un module FOURNISSEURS ultra professionnel inspiré des meilleurs ERP (Dolibarr, Odoo, SAP Business One),
+adapté à une entreprise exportatrice de vanille à Madagascar.
+
+Le module doit être :
+- moderne
+- responsive
+- scalable
+- relié à la comptabilité
+- relié à la logistique
+- relié au CRM/commercial
+- relié aux achats
+- prêt pour audit et gestion professionnelle
+
+Stack obligatoire :
+- Frontend : React + Tailwind + Shadcn UI
+- Backend : Node.js + Express
+- ORM : Prisma
+- Database : PostgreSQL
+- Upload : Multer
+- OCR : Tesseract.js
+- PDF : Puppeteer
+
+IMPORTANT :
+Le formulaire fournisseur doit gérer 2 TYPES DE FOURNISSEURS :
+
+1. FOURNISSEURS DE BIENS
+2. FOURNISSEURS DE SERVICES
+
+Le formulaire doit adapter automatiquement les champs et catégories selon le type choisi.
+
+---------------------------------------------------
+1. PAGE LISTE FOURNISSEURS
+---------------------------------------------------
+
+Créer page :
+
+/suppliers
+
+Afficher :
+
+- Nom fournisseur
+- Type
+- Catégorie
+- Région
+- Téléphone
+- Commercial assigné
+- Score qualité
+- Solde fournisseur
+- Statut
+- Actions
+
+-----------------------------------
+
+Ajouter dashboard KPI en haut :
+
+- Total fournisseurs
+- Fournisseurs actifs
+- Fournisseurs biens
+- Fournisseurs services
+- Montant achats
+- Dettes fournisseurs
+
+---------------------------------------------------
+2. PAGE AJOUT / ÉDITION FOURNISSEUR
+---------------------------------------------------
+
+Créer page :
+
+/suppliers/new
+/suppliers/:id/edit
+
+UI moderne inspirée Dolibarr.
+
+---------------------------------------------------
+3. ONGLETS DU FORMULAIRE (IMPORTANT)
+---------------------------------------------------
+
+Créer onglets :
+
+- Informations générales
+- Contacts & Adresses
+- Fournisseur
+- Comptabilité
+- Modes de règlement
+- Factures fournisseur
+- Notes
+- Fichiers joints
+- Événements / Agenda
+- Historique
+- Qualité fournisseur
+- Commercial assigné
+
+---------------------------------------------------
+4. SECTION TYPE FOURNISSEUR
+---------------------------------------------------
+
+Afficher cards sélectionnables :
+
+[ Fournisseur de biens ]
+[ Fournisseur de services ]
+
+-----------------------------------
+
+Sauvegarder :
+
+supplierType = GOODS | SERVICES
+
+---------------------------------------------------
+5. FOURNISSEURS DE BIENS
+---------------------------------------------------
+
+Si type = GOODS :
+
+Afficher catégories :
+
+- Fournisseur vanille
+- Fournisseur sachets sous-vide
+- Fournisseur papier paraffiné
+- Fournisseur cartons
+- Fournisseur matériel bureau
+- Fournisseur informatique
+- Fournisseur immobilier
+- Fournisseur matériel industriel
+- Fournisseur consommables
+- Fournisseur emballage
+
+-----------------------------------
+
+Afficher champs spécifiques :
+
+- région collecte
+- capacité livraison
+- qualité produit
+- volume disponible
+- délai livraison moyen
+
+---------------------------------------------------
+6. FOURNISSEURS DE SERVICES
+---------------------------------------------------
+
+Si type = SERVICES :
+
+Afficher catégories :
+
+- Fret aérien
+- Transit / douane
+- Papier export
+- Location agrément export
+- Coursier
+- Transport
+- Business developer freelance
+- Commercial freelance
+- Maintenance
+- Nettoyage
+- Sécurité
+- Consultant
+- Prestataire logistique
+
+-----------------------------------
+
+Afficher champs spécifiques :
+
+- type prestation
+- fréquence prestation
+- tarif prestation
+- contrat prestation
+- disponibilité
+
+---------------------------------------------------
+7. INFORMATIONS GÉNÉRALES
+---------------------------------------------------
+
+Créer champs :
+
+- Nom fournisseur
+- Nom commercial
+- Code fournisseur auto
+- Statut (actif/inactif/bloqué)
+
+-----------------------------------
+
+Checkbox :
+
+- Prospect
+- Client
+- Fournisseur
+
+---------------------------------------------------
+8. CONTACTS & ADRESSES
+---------------------------------------------------
+
+Créer :
+
+- Adresse complète
+- Code postal
+- Ville
+- Région
+- Pays
+- Téléphone
+- Mobile
+- WhatsApp
+- Email
+- Site web
+
+---------------------------------------------------
+9. INFORMATIONS FISCALES
+---------------------------------------------------
+
+Créer :
+
+- NIF
+- STAT
+- RCCM
+- Numéro TVA
+- Assujetti TVA
+
+Validation automatique.
+
+---------------------------------------------------
+10. MODES DE RÈGLEMENT
+---------------------------------------------------
+
+Créer section :
+
+Modes de règlement
+
+-----------------------------------
+
+Options :
+
+- Espèces
+- Mvola
+- Orange Money
+- Airtel Money
+- Virement bancaire
+- Chèque
+
+-----------------------------------
+
+Conditions paiement :
+
+- Comptant
+- 15 jours
+- 30 jours
+- 45 jours
+- Fin de mois
+- 50% avance
+
+---------------------------------------------------
+11. INFORMATIONS BANCAIRES
+---------------------------------------------------
+
+Créer :
+
+- Banque
+- Numéro compte
+- IBAN
+- SWIFT
+- Titulaire compte
+
+---------------------------------------------------
+12. COMMERCIAL ASSIGNÉ
+---------------------------------------------------
+
+Créer relation CRM :
+
+Dropdown employés :
+
+- Business Developer
+- Commercial
+- Responsable Achat
+
+-----------------------------------
+
+Afficher :
+
+- historique interactions
+- visites
+- appels
+- relances
+
+---------------------------------------------------
+13. COMPTABILITÉ (CRITIQUE)
+---------------------------------------------------
+
+Créer onglet :
+
+Comptabilité
+
+-----------------------------------
+
+Afficher :
+
+- Compte fournisseur 401
+- Solde fournisseur
+- Total achats
+- Total paiements
+- Dette restante
+
+-----------------------------------
+
+Créer automatiquement :
+
+écritures comptables :
+
+601/602
+44566
+401
+
+---------------------------------------------------
+14. FACTURES FOURNISSEUR
+---------------------------------------------------
+
+Créer onglet :
+
+Factures fournisseur
+
+-----------------------------------
+
+Fonctionnalités :
+
+- upload PDF/image
+- OCR lecture facture
+- liaison compta
+- validation facture
+
+-----------------------------------
+
+Extraire automatiquement :
+
+- numéro facture
+- montant
+- TVA
+- date
+- fournisseur
+
+---------------------------------------------------
+15. NOTES INTERNES
+---------------------------------------------------
+
+Créer système notes :
+
+- auteur
+- date
+- commentaire
+
+-----------------------------------
+
+Types :
+
+- qualité
+- incident
+- paiement
+- relation commerciale
+
+---------------------------------------------------
+16. FICHIERS JOINTS
+---------------------------------------------------
+
+Créer upload documents :
+
+- contrats
+- CIN
+- agréments
+- certificats
+- factures
+- photos
+
+---------------------------------------------------
+17. ÉVÉNEMENTS / AGENDA
+---------------------------------------------------
+
+Créer calendrier fournisseur :
+
+- rendez-vous
+- visite terrain
+- rappel paiement
+- relance commerciale
+
+---------------------------------------------------
+18. HISTORIQUE COMPLET
+---------------------------------------------------
+
+Afficher timeline :
+
+- création
+- modifications
+- achats
+- paiements
+- notes
+- interactions
+
+---------------------------------------------------
+19. QUALITÉ FOURNISSEUR (ULTRA IMPORTANT)
+---------------------------------------------------
+
+Créer score fournisseur IA :
+
+0 → 100
+
+-----------------------------------
+
+Calcul basé sur :
+
+- qualité vanille
+- taux moisissure
+- respect délais
+- conformité
+- incidents
+- litiges
+
+-----------------------------------
+
+Couleurs :
+
+vert = excellent
+orange = moyen
+rouge = risque
+
+---------------------------------------------------
+20. LIAISON LOGISTIQUE
+---------------------------------------------------
+
+Afficher :
+
+- commandes fournisseur
+- livraisons
+- achats liés
+- lots liés
+
+---------------------------------------------------
+21. LIAISON CRM
+---------------------------------------------------
+
+Le commercial assigné peut :
+
+- suivre fournisseur
+- ajouter notes
+- programmer relances
+- enregistrer appels
+
+---------------------------------------------------
+22. LIAISON ACHATS
+---------------------------------------------------
+
+Depuis fournisseur :
+
+- créer achat
+- créer commande
+- créer demande prix
+
+---------------------------------------------------
+23. FILTRES AVANCÉS
+---------------------------------------------------
+
+Filtrer :
+
+- type fournisseur
+- catégorie
+- région
+- score
+- commercial
+- statut
+
+---------------------------------------------------
+24. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- Excel
+- PDF
+- balance fournisseurs
+- historique achats
+
+---------------------------------------------------
+25. ALERTES
+---------------------------------------------------
+
+Afficher alertes :
+
+- fournisseur inactif
+- dette élevée
+- document expiré
+- score faible
+- retard livraison
+
+---------------------------------------------------
+26. UI/UX
+---------------------------------------------------
+
+Design :
+
+- style ERP premium
+- tables professionnelles
+- formulaires modernes
+- cards KPI
+- responsive
+- animations légères
+
+---------------------------------------------------
+27. SÉCURITÉ
+---------------------------------------------------
+
+Accès :
+
+- DG
+- Comptable
+- Responsable logistique
+- Responsable achat
+- Commercial assigné
+
+---------------------------------------------------
+28. LIVRABLE FINAL
+---------------------------------------------------
+
+Le module doit être :
+
+- digne d’un ERP professionnel
+- inspiré Dolibarr/Odoo
+- connecté à la comptabilité
+- connecté au CRM
+- connecté à la logistique
+- connecté aux achats
+
+Commence par :
+
+1. Prisma Supplier complet
+2. UI formulaire style Dolibarr moderne
+3. onglets professionnels
+4. liaison comptabilité
+5. upload factures fournisseur
+6. dashboard fournisseurs
