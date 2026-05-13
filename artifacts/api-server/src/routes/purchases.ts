@@ -8,6 +8,7 @@ import { requireAuth } from "../middlewares/auth";
 import { requireRole, ROLES } from "../middlewares/roles";
 import { eq, sql, desc, and, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -46,6 +47,7 @@ async function generateIntelligentLotCode(opts: {
   lengthCm?: number;
   humidity?: number;
   purchaseDate?: string;
+  origin?: string;
 }): Promise<string> {
   const date = opts.purchaseDate ? new Date(opts.purchaseDate) : new Date();
   const year = date.getFullYear();
@@ -54,7 +56,8 @@ async function generateIntelligentLotCode(opts: {
   const [sup] = await db.select({ region: suppliersTable.region, supplierCode: suppliersTable.supplierCode })
     .from(suppliersTable).where(eq(suppliersTable.id, opts.supplierId));
 
-  const rawRegion = (sup?.region ?? sup?.supplierCode ?? "VAN");
+  // Priority: explicit origin field > supplier DB region > supplier code > fallback
+  const rawRegion = opts.origin?.trim() || sup?.region?.trim() || sup?.supplierCode || "VAN";
   const regionCode = rawRegion.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "VAN";
 
   const typeMap: Record<string, string> = {
@@ -122,6 +125,7 @@ async function generateAssetNumber(): Promise<string> {
 
 async function findOrCreateAccount(code: string) {
   const [acc] = await db.select().from(accountsTable).where(eq(accountsTable.code, code));
+  if (!acc) logger.warn({ code }, `PCG account ${code} not found — journal entry line skipped`);
   return acc ?? null;
 }
 
@@ -174,7 +178,10 @@ router.get("/purchases/analytics", requireAuth, async (_req, res): Promise<void>
       COALESCE(AVG(price_per_kg), 0)    AS avg_price,
       COALESCE(SUM(weight), 0)          AS kg_total,
       COALESCE(AVG(humidity), 0)        AS avg_humidity,
-      COUNT(DISTINCT supplier_id)::int  AS nb_suppliers
+      COUNT(DISTINCT CASE
+        WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+        THEN supplier_id END
+      )::int AS nb_suppliers
     FROM purchases WHERE deleted_at IS NULL
   `)).rows as any[];
 
@@ -393,7 +400,7 @@ const createSchema = z.object({
   location:      z.string().optional(),
 });
 
-router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
+router.post("/purchases", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.LOGISTICS_MANAGER, ROLES.ACCOUNTANT), async (req, res): Promise<void> => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
 
@@ -506,7 +513,7 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
     // Generate intelligent lot code: VAN-YYYY-MMDD-REGION-TYPE-LENGTHcm-HUMIDITY
     const lotCode = await generateIntelligentLotCode({
       supplierId, productType: d.productType, lengthCm: d.lengthCm,
-      humidity: d.humidity, purchaseDate: d.purchaseDate,
+      humidity: d.humidity, purchaseDate: d.purchaseDate, origin: d.origin,
     });
 
     // AI risk detection
@@ -607,10 +614,15 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
         .from(suppliersTable).where(eq(suppliersTable.id, supplierId))
     : [undefined];
 
+  const journalDesc = d.description
+    ?? (d.type === "VANILLE"
+        ? `Achat vanille - ${reference} — ${d.productType ?? "GOUSSE"} ${d.weight ?? ""}kg ${d.origin ?? ""}`.trim()
+        : `Achat ${d.type.toLowerCase()} - ${reference}`);
+
   const entry = await createPurchaseJournalEntry({
     purchaseId: purchase.id, reference,
     debitCode, amountHt, vatAmount, amountTtc,
-    description: d.description ?? `Achat ${d.type.toLowerCase()} - ${reference}`,
+    description: journalDesc,
     supplierName: sup?.name,
     supplierCode: sup?.supplierCode ?? undefined,
   });
@@ -624,17 +636,29 @@ router.post("/purchases", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ─── PUT /purchases/:id/status ────────────────────────────────────────────────
+// Strict forward-only state machine (ADMIN can revert brouillon↔valide for corrections)
+const STATUS_FLOW: Record<string, string[]> = {
+  brouillon:    ["valide"],
+  valide:       ["receptionne", "brouillon"],  // allow un-validate for correction
+  receptionne:  ["comptabilise"],
+  comptabilise: [],
+};
+
 router.put("/purchases/:id/status", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.LOGISTICS_MANAGER), async (req, res): Promise<void> => {
   const id = String(req.params.id);
   const { status } = req.body;
-  const validStatuses = ["brouillon", "valide", "receptionne", "comptabilise"];
+  const validStatuses = Object.keys(STATUS_FLOW);
   if (!validStatuses.includes(status)) { res.status(400).json({ error: "Statut invalide" }); return; }
 
   const [p] = (await db.execute(sql`SELECT * FROM purchases WHERE id = ${id} AND deleted_at IS NULL`)).rows as any[];
   if (!p) { res.status(404).json({ error: "Achat introuvable" }); return; }
 
-  if (p.status === "comptabilise" && status !== "comptabilise") {
-    res.status(400).json({ error: "Un achat comptabilisé ne peut plus changer de statut" }); return;
+  const allowed = STATUS_FLOW[p.status as string] ?? [];
+  if (!allowed.includes(status)) {
+    res.status(400).json({
+      error: `Transition "${p.status}" → "${status}" non autorisée. Transitions valides: ${allowed.join(", ") || "aucune"}`
+    });
+    return;
   }
 
   await db.execute(sql`UPDATE purchases SET status = ${status} WHERE id = ${id}`);
@@ -646,10 +670,27 @@ router.put("/purchases/:id/status", requireAuth, requireRole(ROLES.SUPER_ADMIN, 
 router.post("/purchases/:id/reception", requireAuth, requireRole(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.LOGISTICS_MANAGER), async (req, res): Promise<void> => {
   const id = String(req.params.id);
   const { quantity, notes } = req.body;
-  if (!quantity || quantity <= 0) { res.status(400).json({ error: "Quantité requise" }); return; }
+  if (!quantity || isNaN(Number(quantity)) || Number(quantity) <= 0) {
+    res.status(400).json({ error: "Quantité requise et doit être > 0" }); return;
+  }
 
   const [p] = (await db.execute(sql`SELECT * FROM purchases WHERE id = ${id} AND deleted_at IS NULL`)).rows as any[];
   if (!p) { res.status(404).json({ error: "Achat introuvable" }); return; }
+
+  if (!["valide", "receptionne"].includes(p.status)) {
+    res.status(400).json({ error: `Réception impossible: l'achat est en statut "${p.status}". Validez l'achat d'abord.` }); return;
+  }
+
+  // Warn if quantity exceeds expected (still allowed but flagged)
+  const expectedQty = Number(p.quantity ?? p.weight ?? 0);
+  const [totRow0] = (await db.execute(sql`
+    SELECT COALESCE(SUM(quantity), 0) AS already FROM purchase_receptions WHERE purchase_id = ${id}
+  `)).rows as any[];
+  const alreadyReceived = Number(totRow0?.already ?? 0);
+  const newTotal = alreadyReceived + Number(quantity);
+  if (expectedQty > 0 && newTotal > expectedQty * 1.1) {
+    req.log.warn({ purchaseId: id, expectedQty, newTotal }, "Reception quantity exceeds 110% of expected");
+  }
 
   const recId = crypto.randomUUID();
   const createdBy = req.currentUser?.email ?? null;
@@ -658,13 +699,8 @@ router.post("/purchases/:id/reception", requireAuth, requireRole(ROLES.SUPER_ADM
     VALUES (${recId}, ${id}, ${quantity}, ${notes ?? null}, ${createdBy})
   `);
 
-  // If fully received → auto-transition to "receptionne"
-  const [totRow] = (await db.execute(sql`
-    SELECT COALESCE(SUM(quantity), 0) AS total FROM purchase_receptions WHERE purchase_id = ${id}
-  `)).rows as any[];
-
-  const expectedQty = Number(p.quantity ?? p.weight ?? 0);
-  if (expectedQty > 0 && Number(totRow?.total ?? 0) >= expectedQty) {
+  // Auto-transition to "receptionne" when fully received
+  if (expectedQty > 0 && newTotal >= expectedQty) {
     await db.execute(sql`UPDATE purchases SET status = 'receptionne' WHERE id = ${id}`);
   }
 
@@ -713,13 +749,23 @@ router.delete("/purchases/:id", requireAuth, requireRole(...ADMIN_ROLES), async 
     WHERE id = ${id}
   `);
 
-  // Clean up linked lot if vanilla
+  // Clean up linked lot if vanilla (only initial IN movement should exist — already verified above)
   if (p.lot_id) {
     try {
       await db.delete(stockMovementsTable).where(eq(stockMovementsTable.lotId, p.lot_id as string));
       await db.execute(sql`UPDATE lots SET purchase_id = NULL WHERE id = ${p.lot_id}`);
-      await db.execute(sql`DELETE FROM lots WHERE id = ${p.lot_id}`);
-    } catch { /* ignore cascade errors */ }
+      // Hard-delete guarded by FK check — will error if lot has related records (sale_items etc.)
+      const delRes = await db.execute(sql`
+        DELETE FROM lots WHERE id = ${p.lot_id}
+          AND NOT EXISTS (SELECT 1 FROM sale_items WHERE lot_id = ${p.lot_id})
+          AND NOT EXISTS (SELECT 1 FROM export_orders WHERE lot_id = ${p.lot_id})
+      `);
+      if ((delRes as any).rowCount === 0) {
+        req.log.warn({ lotId: p.lot_id }, "Lot not deleted: has linked sale_items or export_orders");
+      }
+    } catch (err) {
+      req.log.warn({ lotId: p.lot_id, err }, "Could not clean up lot on purchase delete");
+    }
   }
 
   req.log.info({ purchaseId: id, type: p.type, reference: p.reference, reason, by: req.currentUser?.email }, "Purchase soft-deleted");

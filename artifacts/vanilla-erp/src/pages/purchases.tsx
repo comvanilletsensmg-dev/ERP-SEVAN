@@ -132,8 +132,13 @@ function ReceptionModal({ purchase, onClose }: { purchase: Purchase; onClose: ()
   const [qty, setQty]     = useState("");
   const [notes, setNotes] = useState("");
 
+  const expectedQty = purchase.quantity ?? purchase.weight ?? 0;
+  const qtyNum      = parseFloat(qty) || 0;
+  const overQty     = expectedQty > 0 && qtyNum > expectedQty * 1.1;
+  const underQty    = expectedQty > 0 && qtyNum > 0 && qtyNum < expectedQty * 0.5;
+
   const mut = useMutation({
-    mutationFn: () => api(`/purchases/${purchase.id}/reception`, { method: "POST", body: JSON.stringify({ quantity: parseFloat(qty), notes }) }),
+    mutationFn: () => api(`/purchases/${purchase.id}/reception`, { method: "POST", body: JSON.stringify({ quantity: qtyNum, notes }) }),
     onSuccess: () => { toast.success("Réception enregistrée"); qc.invalidateQueries({ queryKey: ["purchases"] }); onClose(); },
     onError: (e: any) => toast.error(e.message),
   });
@@ -151,10 +156,25 @@ function ReceptionModal({ purchase, onClose }: { purchase: Purchase; onClose: ()
         </div>
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Quantité reçue *</label>
-            <input type="number" step="0.01" value={qty} onChange={e => setQty(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">Quantité reçue *</label>
+              {expectedQty > 0 && (
+                <span className="text-xs text-gray-400">Attendu : {fmt(expectedQty)} {purchase.unit ?? "kg"}</span>
+              )}
+            </div>
+            <input type="number" step="0.01" min="0" value={qty} onChange={e => setQty(e.target.value)}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                overQty ? "border-amber-400 bg-amber-50" : underQty ? "border-blue-300" : "border-gray-300 focus:border-emerald-400"
+              }`}
               placeholder={`Ex: ${purchase.quantity ?? purchase.weight ?? 1}`}/>
+            {overQty && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3"/> Quantité supérieure à 110% de la commande — vérifiez avant de valider
+              </p>
+            )}
+            {underQty && (
+              <p className="text-xs text-blue-500 mt-1">Réception partielle — l'achat restera en statut "Validé"</p>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Notes</label>
@@ -165,7 +185,7 @@ function ReceptionModal({ purchase, onClose }: { purchase: Purchase; onClose: ()
         </div>
         <div className="flex gap-3 mt-4">
           <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-          <button onClick={() => mut.mutate()} disabled={!qty || mut.isPending}
+          <button onClick={() => mut.mutate()} disabled={!qty || qtyNum <= 0 || mut.isPending}
             className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60">
             {mut.isPending ? "Enregistrement…" : "Valider réception"}
           </button>
@@ -265,12 +285,18 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     return cats.includes((p.category ?? "").toLowerCase());
   });
 
-  // Preview lot code (real-time, client-side approximation)
+  // Resolve lot preview region: selected supplier's DB region > new supplier region > origin > fallback
+  const selectedSupplier = !useNewSupplier && form.supplierId
+    ? suppliers.find((s: any) => s.id === form.supplierId)
+    : null;
+
+  // Preview lot code (real-time, client-side approximation — server is authoritative)
   const lotPreview = (() => {
     const d = form.purchaseDate ? new Date(form.purchaseDate) : new Date();
     const year = d.getFullYear();
     const mmdd = `${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    const region = (form.supplierRegion || form.origin || "VAN").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "VAN";
+    const rawRegion = form.origin || selectedSupplier?.region || form.supplierRegion || "VAN";
+    const region = rawRegion.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4) || "VAN";
     const typeMap: Record<string, string> = { GOUSSE:"GOUSSE", POUDRE:"POUDRE", EXTRAIT:"EXTRAIT", PATE_VANILLE:"PATE" };
     const t = typeMap[form.productType] ?? "VAN";
     const parts = [`VAN-${year}-${mmdd}`, region, t];
@@ -279,7 +305,7 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     return parts.join("-");
   })();
 
-  // AI risk preview (client-side)
+  // AI risk preview (client-side — mirrors server computeVanillaRisk exactly)
   const riskPreview = (() => {
     const h = parseFloat(form.humidity) || 0;
     const vr = parseFloat(form.vanillinRate) || undefined;
@@ -287,10 +313,14 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     const risks: string[] = [];
     if (h > 42)      { risks.push(`Humidité critique (${h}%)`); score += 50; }
     else if (h > 38) { risks.push(`Humidité élevée (${h}%)`);   score += 25; }
-    if (form.moldStatus === "failed") { risks.push("Moisissures"); score += 50; }
+    else if (h > 0 && h < 18) { risks.push(`Humidité trop faible (${h}%)`); score += 15; }
+    if (form.moldStatus === "failed") { risks.push("Moisissures détectées"); score += 50; }
     else if (form.moldStatus === "risk") { risks.push("Risque moisissures"); score += 25; }
-    if (form.quality === "faible")  { risks.push("Qualité faible"); score += 20; }
-    if (vr !== undefined && vr < 1.5) { risks.push(`Vanilline très faible (${vr}%)`); score += 25; }
+    if (form.quality === "faible" || form.quality === "industrial")  { risks.push("Qualité insuffisante"); score += 20; }
+    if (vr !== undefined) {
+      if (vr < 1.5)  { risks.push(`Vanilline très faible (${vr}%)`); score += 25; }
+      else if (vr < 2) { risks.push(`Vanilline faible (${vr}%)`); score += 10; }
+    }
     const level = score >= 50 ? "HIGH" : score >= 25 ? "MEDIUM" : "LOW";
     return { score: Math.min(100, score), level, risks };
   })();
@@ -376,7 +406,10 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
     };
     if (useNewSupplier) {
       body.supplierName = form.supplierName.trim();
-      if (type !== "VANILLE") {
+      if (type === "VANILLE") {
+        // For vanilla, use explicit region if entered, otherwise derive from origin field
+        body.supplierRegion = form.supplierRegion?.trim() || form.origin || "";
+      } else {
         if (form.supplierEmail)         body.supplierEmail         = form.supplierEmail;
         if (form.supplierPhone)         body.supplierPhone         = form.supplierPhone;
         if (form.supplierCity)          body.supplierCity          = form.supplierCity;
@@ -428,7 +461,8 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
 
   const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400";
 
-  // Supplier filter: exclude VANILLE suppliers for non-VANILLE purchases
+  // Supplier filter: GOODS suppliers for VANILLE, non-GOODS for others
+  // /api/suppliers returns camelCase (Drizzle ORM): supplierType, not supplier_type
   const filteredSuppliers = type === "VANILLE"
     ? suppliers.filter(s => s.supplierType === "GOODS" || !s.supplierType)
     : suppliers.filter(s => s.supplierType !== "GOODS");
@@ -500,13 +534,22 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
                   <select value={form.supplierId} onChange={e => set("supplierId", e.target.value)} className={inputCls}>
                     <option value="">— Sélectionner —</option>
                     {filteredSuppliers.map((s: any) => (
-                      <option key={s.id} value={s.id}>{s.name} {s.supplier_code ? `(${s.supplier_code})` : ""}</option>
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.supplierCode ? `(${s.supplierCode})` : ""}
+                        {s.region ? ` · ${s.region}` : ""}
+                      </option>
                     ))}
                   </select>
                 ) : (
                   <div className="space-y-2">
                     <input value={form.supplierName} onChange={e => set("supplierName", e.target.value)}
                       className={inputCls} placeholder="Nom du nouveau fournisseur *"/>
+                    {/* Region field for VANILLE new supplier (critical for lot code) */}
+                    {type === "VANILLE" && (
+                      <input value={form.supplierRegion} onChange={e => set("supplierRegion", e.target.value)}
+                        className={`${inputCls} text-xs`}
+                        placeholder="Région du fournisseur (ex: SAVA, DIANA…) — utilisée dans le code lot"/>
+                    )}
                     {/* Extra supplier details — non-VANILLE only */}
                     {type !== "VANILLE" && (
                       <div>
@@ -1146,8 +1189,9 @@ function ListTab({ onNew }: { onNew: () => void }) {
   function exportCSV() {
     const headers = ["Réf","Date","Type","Fournisseur","Description","Montant TTC","Statut","Lot","Immobilisation"];
     const rows = filtered.map(p => [
-      p.reference ?? "", fmtDate(p.created_at), p.type, p.supplier_name,
-      p.description ?? "", p.total_amount, p.status,
+      p.reference ?? "", fmtDate(p.purchase_date ?? p.created_at), p.type, p.supplier_name,
+      p.description ?? (p.type === "VANILLE" ? `${p.weight}kg · ${p.price_per_kg}Ar/kg` : ""),
+      p.total_amount, p.status,
       p.lot_code ?? "", p.asset_number ?? ""
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -1243,7 +1287,7 @@ function ListTab({ onNew }: { onNew: () => void }) {
                       </td>
                       <td className="py-3 px-4">
                         <div className="text-xs text-gray-700 max-w-36 truncate">
-                          {p.description ?? (p.type === "VANILLE" ? `${p.weight} kg · ${p.price_per_kg} Ar/kg` : "—")}
+                          {p.description ?? (p.type === "VANILLE" ? `${fmt(p.weight)} kg · ${fmt(p.price_per_kg)} Ar/kg` : "—")}
                         </div>
                         {p.category && <div className="text-xs text-gray-400">{p.category}</div>}
                       </td>
