@@ -1,0 +1,205 @@
+Tu es un développeur full-stack senior expert ERP IAM (Identity & Access Management).
+
+Objectif :
+Créer un module GESTION UTILISATEURS ultra professionnel connecté à :
+- RH
+- sécurité
+- comptabilité
+- logistique
+- CRM
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. PAGE UTILISATEURS
+---------------------------------------------------
+
+Créer :
+
+/users
+
+Afficher :
+
+- employé lié
+- email
+- rôle
+- département
+- dernière connexion
+- statut
+
+---------------------------------------------------
+2. LIAISON EMPLOYÉS RH
+---------------------------------------------------
+
+Obligatoire :
+
+Utilisateur
+↔ Employé RH
+
+-----------------------------------
+
+Quand employé sélectionné :
+
+auto-remplir :
+
+- nom
+- email
+- poste
+- département
+
+---------------------------------------------------
+3. RÔLES ERP
+---------------------------------------------------
+
+Créer rôles :
+
+- SUPER_ADMIN
+- ADMIN
+- DG
+- DGA
+- RH
+- COMPTABLE
+- RESPONSABLE_LOGISTIQUE
+- COMMERCIAL
+- BUSINESS_DEVELOPER
+- DSI
+
+---------------------------------------------------
+4. PERMISSIONS GRANULAIRES
+---------------------------------------------------
+
+Permissions par module :
+
+- voir
+- créer
+- modifier
+- supprimer
+- exporter
+
+-----------------------------------
+
+Modules :
+
+- achats
+- fournisseurs
+- lots
+- stock
+- paiements
+- comptabilité
+- RH
+- CRM
+
+---------------------------------------------------
+5. PROFILS MÉTIERS
+---------------------------------------------------
+
+Créer templates :
+
+- Comptable
+- RH
+- Logistique
+- Commercial
+
+---------------------------------------------------
+6. HISTORIQUE CONNEXIONS
+---------------------------------------------------
+
+Afficher :
+
+- IP
+- appareil
+- navigateur
+- dernière connexion
+
+---------------------------------------------------
+7. DOUBLE AUTHENTIFICATION
+---------------------------------------------------
+
+Ajouter :
+
+- OTP email
+- Google Authenticator
+
+---------------------------------------------------
+8. SESSIONS
+---------------------------------------------------
+
+Afficher :
+
+- appareils connectés
+- sessions actives
+
+---------------------------------------------------
+9. SUPPRESSION UTILISATEURS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER_ADMIN
+- RH
+
+-----------------------------------
+
+Interdire suppression si :
+
+- écritures comptables validées
+- données critiques liées
+
+-----------------------------------
+
+Journaliser :
+
+- auteur
+- date
+- raison
+
+---------------------------------------------------
+10. DASHBOARD SÉCURITÉ
+---------------------------------------------------
+
+Créer KPI :
+
+- utilisateurs actifs
+- connexions
+- échecs login
+- comptes bloqués
+
+---------------------------------------------------
+11. FILTRES
+---------------------------------------------------
+
+Filtrer :
+
+- rôle
+- département
+- actif
+- dernière connexion
+
+---------------------------------------------------
+12. EXPORTS
+---------------------------------------------------
+
+Exporter :
+
+- utilisateurs
+- permissions
+- audit sécurité
+
+---------------------------------------------------
+13. LIVRABLE
+---------------------------------------------------
+
+- IAM ERP professionnel
+- sécurité avancée
+- connecté RH
+- permissions granulaires
+
+Commence par :
+1. Prisma User + Permission
+2. liaison RH employés
+3. gestion permissions
+4. dashboard sécurité
+5. suppression sécurisée
