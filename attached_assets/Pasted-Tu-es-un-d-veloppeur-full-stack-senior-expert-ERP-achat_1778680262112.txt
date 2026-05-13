@@ -1,0 +1,214 @@
+Tu es un développeur full-stack senior expert ERP achats, logistique, immobilisations et comptabilité.
+
+Objectif :
+Transformer le module ACHATS en système ERP d’approvisionnement professionnel connecté à :
+- fournisseurs
+- consommables
+- immobilisations
+- comptabilité
+- stock
+- opérations
+
+Stack :
+- React + Tailwind + Shadcn UI
+- Node.js + Express
+- Prisma + PostgreSQL
+
+---------------------------------------------------
+1. TYPES ACHATS
+---------------------------------------------------
+
+Ajouter types :
+
+- VANILLE
+- CONSOMMABLE
+- BUREAU
+- INFORMATIQUE
+- IMMOBILISATION
+- SERVICE
+
+---------------------------------------------------
+2. FORMULAIRE ACHAT
+---------------------------------------------------
+
+Créer formulaire professionnel avec :
+
+- type achat
+- catégorie
+- fournisseur
+- date
+- devise
+- HT
+- TVA
+- TTC
+- quantité
+- entrepôt
+- mode paiement
+
+---------------------------------------------------
+3. FOURNISSEURS AUTO
+---------------------------------------------------
+
+Si fournisseur inexistant :
+
+Créer automatiquement fournisseur.
+
+-----------------------------------
+
+Catégories :
+
+- consommable
+- bureau
+- informatique
+- service
+
+-----------------------------------
+
+Exclure fournisseurs vanille.
+
+---------------------------------------------------
+4. LIAISON STOCK
+---------------------------------------------------
+
+Achat consommable
+→ entrée stock automatique
+
+---------------------------------------------------
+5. LIAISON IMMOBILISATIONS
+---------------------------------------------------
+
+Si type IMMOBILISATION :
+
+Créer automatiquement fiche immobilisation.
+
+---------------------------------------------------
+6. COMPTABILITÉ
+---------------------------------------------------
+
+Créer automatiquement écritures :
+
+Consommables :
+602 / 401
+
+Immobilisations :
+21x / 401
+
+TVA :
+44566
+
+---------------------------------------------------
+7. PIÈCES JOINTES
+---------------------------------------------------
+
+Upload :
+
+- facture
+- BL
+- devis
+- reçu
+
+---------------------------------------------------
+8. OCR FACTURES
+---------------------------------------------------
+
+Lire automatiquement :
+
+- fournisseur
+- montant
+- TVA
+- date
+
+---------------------------------------------------
+9. WORKFLOW ACHATS
+---------------------------------------------------
+
+Statuts :
+
+- brouillon
+- validé
+- réceptionné
+- comptabilisé
+
+---------------------------------------------------
+10. RÉCEPTIONS
+---------------------------------------------------
+
+Gérer :
+
+- réception partielle
+- réception complète
+
+---------------------------------------------------
+11. DASHBOARD
+---------------------------------------------------
+
+Afficher KPI :
+
+- achats mois
+- consommables
+- immobilisations
+- dépenses fournisseurs
+
+---------------------------------------------------
+12. EXPORTS
+---------------------------------------------------
+
+Créer :
+
+- Excel
+- PDF
+- journal achats
+
+---------------------------------------------------
+13. FILTRES
+---------------------------------------------------
+
+Filtrer :
+
+- type achat
+- catégorie
+- fournisseur
+- période
+- statut
+
+---------------------------------------------------
+14. SUPPRESSION ACHATS
+---------------------------------------------------
+
+Autoriser suppression uniquement :
+
+- SUPER_ADMIN
+- ADMIN
+
+-----------------------------------
+
+Interdire suppression si :
+
+- stock utilisé
+- facture validée
+- clôture comptable
+
+-----------------------------------
+
+Journaliser :
+
+- auteur
+- date
+- raison
+
+---------------------------------------------------
+15. LIVRABLE
+---------------------------------------------------
+
+- ERP achats professionnel
+- connecté comptabilité
+- connecté stock
+- connecté immobilisations
+- connecté fournisseurs
+
+Commence par :
+1. Prisma Purchase
+2. types achats
+3. auto création fournisseurs
+4. liaison stock
+5. permissions suppression

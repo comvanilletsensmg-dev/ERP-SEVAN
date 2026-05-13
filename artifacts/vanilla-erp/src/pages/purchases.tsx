@@ -1,612 +1,968 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  ShoppingCart, TrendingUp, Weight, Users, AlertTriangle,
-  Plus, Search, Download, Loader2,
-  Droplets, Package, X, Trash2,
+  ShoppingCart, Plus, Search, Download, Trash2, RefreshCw,
+  Package, Leaf, Monitor, Building2, Wrench, FileText,
+  TrendingUp, AlertTriangle, CheckCircle2, Clock, Truck,
+  BookOpen, ChevronRight, X, Eye, PlayCircle,
+  BarChart3, List, Filter, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt   = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);
-const fmtKg = (n: number) => `${n?.toFixed(1)} kg`;
-const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
-const fmtDt   = (d: string) => new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Purchase {
+  id: string; type: string; category: string | null; description: string | null;
+  reference: string | null; currency: string; amount_ht: number | null;
+  vat_rate: number | null; vat_amount: number | null; amount_ttc: number | null;
+  quantity: number | null; unit: string | null; unit_price: number | null;
+  weight: number; price_per_kg: number; total_amount: number; humidity: number;
+  warehouse: string | null; payment_method: string; status: string;
+  purchase_date: string | null; notes: string | null;
+  lot_id: string | null; fixed_asset_id: string | null; journal_entry_id: string | null;
+  created_at: string;
+  supplier_id: string; supplier_name: string; supplier_code: string | null; supplier_region: string | null;
+  lot_code: string | null; lot_status: string | null;
+  asset_name: string | null; asset_number: string | null;
+}
 
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Espèces", mobile_money: "Mobile Money", bank_transfer: "Virement bancaire",
-  Espèces: "Espèces", Mvola: "Mvola", "Orange Money": "Orange Money",
-  "Airtel Money": "Airtel Money", Virement: "Virement", Chèque: "Chèque",
-};
+// ─── Config ───────────────────────────────────────────────────────────────────
+const TYPES = [
+  { key: "VANILLE",       label: "Vanille",         icon: Leaf,      color: "bg-emerald-100 text-emerald-700 border-emerald-200",  dot: "bg-emerald-500" },
+  { key: "CONSOMMABLE",   label: "Consommable",      icon: Package,   color: "bg-blue-100 text-blue-700 border-blue-200",           dot: "bg-blue-500" },
+  { key: "BUREAU",        label: "Bureau",           icon: FileText,  color: "bg-amber-100 text-amber-700 border-amber-200",        dot: "bg-amber-500" },
+  { key: "INFORMATIQUE",  label: "Informatique",     icon: Monitor,   color: "bg-violet-100 text-violet-700 border-violet-200",     dot: "bg-violet-500" },
+  { key: "IMMOBILISATION",label: "Immobilisation",   icon: Building2, color: "bg-rose-100 text-rose-700 border-rose-200",           dot: "bg-rose-500" },
+  { key: "SERVICE",       label: "Service",          icon: Wrench,    color: "bg-slate-100 text-slate-700 border-slate-200",        dot: "bg-slate-500" },
+];
+
+const STATUSES = [
+  { key: "brouillon",    label: "Brouillon",   color: "bg-gray-100 text-gray-600 border-gray-200",    dot: "bg-gray-400",    icon: FileText },
+  { key: "valide",       label: "Validé",      color: "bg-blue-100 text-blue-700 border-blue-200",    dot: "bg-blue-500",    icon: CheckCircle2 },
+  { key: "receptionne",  label: "Réceptionné", color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", icon: Truck },
+  { key: "comptabilise", label: "Comptabilisé",color: "bg-purple-100 text-purple-700 border-purple-200", dot: "bg-purple-500", icon: BookOpen },
+];
 
 const PAYMENT_OPTIONS = [
   { value: "cash",          label: "Espèces" },
   { value: "mobile_money",  label: "Mvola / Orange / Airtel" },
   { value: "bank_transfer", label: "Virement bancaire" },
+  { value: "cheque",        label: "Chèque" },
 ];
 
-function qualityInfo(humidity: number) {
-  if (humidity < 35) return { label: "Excellent", color: "text-emerald-700", bg: "bg-emerald-100", dot: "bg-emerald-500" };
-  if (humidity < 40) return { label: "Bon",       color: "text-blue-700",    bg: "bg-blue-100",    dot: "bg-blue-500" };
-  if (humidity < 45) return { label: "Correct",   color: "text-amber-700",   bg: "bg-amber-100",   dot: "bg-amber-500" };
-  return                    { label: "Risqué",    color: "text-red-600",     bg: "bg-red-100",     dot: "bg-red-500" };
+const TYPE_PIE_COLORS = ["#059669","#3B82F6","#F59E0B","#7C3AED","#E11D48","#64748B"];
+
+const fmt    = (n: number) => new Intl.NumberFormat("fr-MG", { maximumFractionDigits: 0 }).format(n ?? 0);
+const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+const fmtDt   = (d: string | null) => d ? new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—";
+
+function typeCfg(key: string) { return TYPES.find(t => t.key === key) ?? TYPES[0]!; }
+function statusCfg(key: string) { return STATUSES.find(s => s.key === key) ?? STATUSES[1]!; }
+
+async function api(path: string, opts?: RequestInit) {
+  const r = await fetch(`/api${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
+  let data: any;
+  try { data = await r.json(); } catch { throw new Error("Erreur serveur"); }
+  if (!r.ok) throw new Error(data?.error ?? r.statusText);
+  return data;
 }
 
-function HumidityBadge({ humidity }: { humidity: number }) {
-  const qi = qualityInfo(humidity);
+// ─── TypeBadge ────────────────────────────────────────────────────────────────
+function TypeBadge({ type }: { type: string }) {
+  const cfg = typeCfg(type);
+  const Icon = cfg.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${qi.bg} ${qi.color}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${qi.dot}`}/>
-      {humidity}%
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cfg.color}`}>
+      <Icon className="w-3 h-3" />{cfg.label}
     </span>
   );
 }
 
-function downloadCSV(rows: any[]) {
-  const cols = ["Date","Fournisseur","Poids (kg)","Prix/kg (Ar)","Humidité %","Lot","Paiement","Total (Ar)"];
-  const csv = ["\ufeff" + cols.join(";"), ...rows.map(r => [
-    fmtDate(r.created_at), r.supplier_name ?? r.supplier?.name ?? "—",
-    r.weight, r.price_per_kg, r.humidity, r.lot_code ?? "—",
-    PAYMENT_LABELS[r.payment_method] ?? r.payment_method, r.total_amount,
-  ].join(";"))].join("\n");
-  Object.assign(document.createElement("a"), {
-    href: URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })),
-    download: "achats.csv",
-  }).click();
+function StatusBadge({ status }: { status: string }) {
+  const cfg = statusCfg(status);
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}/>
+      {cfg.label}
+    </span>
+  );
 }
 
-// ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, color = "text-gray-900", bg = "bg-white" }: any) {
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, icon: Icon, iconBg = "bg-gray-100", iconColor = "text-gray-600", color = "text-gray-900" }: any) {
   return (
-    <div className={`${bg} border border-gray-200 rounded-xl p-4 shadow-sm`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs text-gray-500">{label}</p>
-        <Icon className={`w-4 h-4 opacity-60 ${color}`}/>
+    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+        <Icon className={`w-5 h-5 ${iconColor}`} />
       </div>
-      <p className={`text-xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      <div>
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className={`text-xl font-bold ${color}`}>{value}</p>
+        {sub && <p className="text-xs text-gray-400">{sub}</p>}
+      </div>
     </div>
   );
 }
 
-// ─── Form modal ───────────────────────────────────────────────────────────────
-function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onClose: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({
-    supplierId: "", weight: "", pricePerKg: "", totalAmount: "",
-    humidity: "38", paymentMethod: "cash",
+// ─── Suppliers hook ───────────────────────────────────────────────────────────
+function useSuppliers() {
+  return useQuery<any[]>({ queryKey: ["suppliers"], queryFn: () => api("/suppliers") });
+}
+
+// ─── Reception Modal ──────────────────────────────────────────────────────────
+function ReceptionModal({ purchase, onClose }: { purchase: Purchase; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [qty, setQty]     = useState("");
+  const [notes, setNotes] = useState("");
+
+  const mut = useMutation({
+    mutationFn: () => api(`/purchases/${purchase.id}/reception`, { method: "POST", body: JSON.stringify({ quantity: parseFloat(qty), notes }) }),
+    onSuccess: () => { toast.success("Réception enregistrée"); qc.invalidateQueries({ queryKey: ["purchases"] }); onClose(); },
+    onError: (e: any) => toast.error(e.message),
   });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center"><Truck className="w-5 h-5 text-emerald-600"/></div>
+          <div>
+            <h2 className="font-bold text-gray-900">Enregistrer réception</h2>
+            <p className="text-xs text-gray-500">{purchase.reference ?? purchase.id.slice(0, 8).toUpperCase()}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Quantité reçue *</label>
+            <input type="number" step="0.01" value={qty} onChange={e => setQty(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+              placeholder={`Ex: ${purchase.quantity ?? purchase.weight ?? 1}`}/>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 resize-none"
+              placeholder="État marchandise, observations…"/>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-4">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+          <button onClick={() => mut.mutate()} disabled={!qty || mut.isPending}
+            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60">
+            {mut.isPending ? "Enregistrement…" : "Valider réception"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
+function DeleteModal({ purchase, onClose, onConfirm, isPending }: { purchase: Purchase; onClose: () => void; onConfirm: (r: string) => void; isPending: boolean }) {
+  const [reason, setReason] = useState("");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center"><Trash2 className="w-5 h-5 text-red-600"/></div>
+          <div>
+            <h2 className="font-bold text-gray-900">Supprimer {purchase.reference ?? "cet achat"} ?</h2>
+            <p className="text-xs text-gray-500">Action irréversible · {purchase.supplier_name}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+        </div>
+        {purchase.status === "comptabilise" && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-sm text-red-800 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0"/>
+            Cet achat est comptabilisé — suppression impossible.
+          </div>
+        )}
+        <div className="mb-4">
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">Raison <span className="text-red-500">*</span></label>
+          <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none"
+            placeholder="Ex: Achat en double, erreur de saisie…"/>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+          <button onClick={() => onConfirm(reason)} disabled={!reason.trim() || isPending || purchase.status === "comptabilise"}
+            className="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+            {isPending ? "Suppression…" : "Supprimer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Purchase Form ─────────────────────────────────────────────────────────────
+function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onClose: () => void; onSuccess: () => void }) {
+  const [step, setStep]   = useState<"type" | "form">("type");
+  const [type, setType]   = useState("VANILLE");
+  const [form, setForm]   = useState<any>({
+    supplierId: "", supplierName: "",
+    description: "", category: "", currency: "MGA",
+    purchaseDate: new Date().toISOString().slice(0, 10),
+    amountHt: "", vatRate: "0", vatAmount: "", amountTtc: "",
+    quantity: "", unit: "unité", unitPrice: "",
+    weight: "", pricePerKg: "", humidity: "38",
+    paymentMethod: "cash", warehouse: "", notes: "",
+    assetCategory: "informatique", assetDuration: "48",
+    serialNumber: "", location: "",
+  });
+  const [useNewSupplier, setUseNewSupplier] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
   const set = (k: string, v: string) => {
     const next = { ...form, [k]: v };
-    // Auto-calculate total
-    if (k === "weight" || k === "pricePerKg") {
-      const w = k === "weight" ? parseFloat(v) : parseFloat(form.weight);
-      const p = k === "pricePerKg" ? parseFloat(v) : parseFloat(form.pricePerKg);
-      if (!isNaN(w) && !isNaN(p)) next.totalAmount = String(Math.round(w * p));
+    // Auto-calc for vanille
+    if (type === "VANILLE" && (k === "weight" || k === "pricePerKg")) {
+      const w = parseFloat(k === "weight" ? v : form.weight);
+      const p = parseFloat(k === "pricePerKg" ? v : form.pricePerKg);
+      if (!isNaN(w) && !isNaN(p)) next.amountTtc = String(Math.round(w * p));
+    }
+    // Auto-calc HT ↔ TTC
+    if (k === "amountHt" || k === "vatRate") {
+      const ht = parseFloat(k === "amountHt" ? v : form.amountHt) || 0;
+      const vr = parseFloat(k === "vatRate" ? v : form.vatRate) || 0;
+      if (ht > 0 && vr > 0) {
+        const va = Math.round(ht * vr / 100);
+        next.vatAmount = String(va); next.amountTtc = String(ht + va);
+      }
+    }
+    if (k === "amountTtc" && form.vatRate) {
+      const ttc = parseFloat(v) || 0;
+      const vr  = parseFloat(form.vatRate) || 0;
+      if (ttc > 0 && vr > 0) {
+        const ht = Math.round(ttc / (1 + vr / 100));
+        next.amountHt = String(ht); next.vatAmount = String(ttc - ht);
+      }
+    }
+    // Auto-calc from qty × unitPrice
+    if (k === "quantity" || k === "unitPrice") {
+      const q = parseFloat(k === "quantity" ? v : form.quantity) || 0;
+      const p = parseFloat(k === "unitPrice" ? v : form.unitPrice) || 0;
+      if (q > 0 && p > 0) {
+        const ht = Math.round(q * p);
+        next.amountHt = String(ht);
+        const vr = parseFloat(form.vatRate) || 0;
+        if (vr > 0) { const va = Math.round(ht * vr / 100); next.vatAmount = String(va); next.amountTtc = String(ht + va); }
+        else next.amountTtc = String(ht);
+      }
     }
     setForm(next);
   };
 
-  const createMutation = useMutation({
-    mutationFn: (body: any) => fetch("/api/purchases", {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
-    onSuccess: (data: any) => {
-      toast.success(`Achat enregistré — Lot ${data?.lot?.code ?? ""} créé`);
-      onSuccess();
-      onClose();
+  const createMut = useMutation({
+    mutationFn: (body: any) => api("/purchases", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: (d: any) => {
+      toast.success(`Achat ${d.reference} créé`);
+      onSuccess(); onClose();
     },
-    onError: (err: any) => toast.error(String(err.message)),
+    onError: (e: any) => toast.error(e.message),
   });
 
-  const validate = () => {
+  function validate() {
     const e: Record<string, string> = {};
-    if (!form.supplierId)              e.supplierId  = "Fournisseur requis";
-    if (!form.weight || parseFloat(form.weight) <= 0)         e.weight    = "Poids requis";
-    if (!form.pricePerKg || parseFloat(form.pricePerKg) <= 0) e.pricePerKg = "Prix requis";
-    if (!form.humidity || parseFloat(form.humidity) < 0)      e.humidity  = "Humidité requise";
+    if (!useNewSupplier && !form.supplierId) e.supplierId = "Fournisseur requis";
+    if (useNewSupplier && !form.supplierName.trim()) e.supplierName = "Nom fournisseur requis";
+    if (type === "VANILLE") {
+      if (!form.weight || parseFloat(form.weight) <= 0) e.weight = "Poids requis";
+      if (!form.pricePerKg || parseFloat(form.pricePerKg) <= 0) e.pricePerKg = "Prix/kg requis";
+    } else {
+      if (!form.amountTtc && !form.amountHt) e.amountHt = "Montant requis";
+      if (!form.description.trim()) e.description = "Description requise";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
-  };
+  }
 
-  const handleSubmit = () => {
+  function handleSubmit() {
     if (!validate()) return;
-    createMutation.mutate({
-      supplierId:    form.supplierId,
-      weight:        parseFloat(form.weight),
-      pricePerKg:    parseFloat(form.pricePerKg),
-      totalAmount:   parseFloat(form.totalAmount) || Math.round(parseFloat(form.weight) * parseFloat(form.pricePerKg)),
-      paymentMethod: form.paymentMethod,
-      humidity:      parseFloat(form.humidity),
-    });
-  };
+    const body: any = {
+      type, category: form.category || undefined, description: form.description || undefined,
+      currency: form.currency, purchaseDate: form.purchaseDate, notes: form.notes || undefined,
+      warehouse: form.warehouse || undefined, paymentMethod: form.paymentMethod,
+      vatRate: parseFloat(form.vatRate) || 0,
+    };
+    if (useNewSupplier) body.supplierName = form.supplierName.trim();
+    else body.supplierId = form.supplierId;
 
-  const humidity = parseFloat(form.humidity) || 0;
-  const qi = qualityInfo(humidity);
-  const supplier = suppliers.find(s => s.id === form.supplierId);
+    if (type === "VANILLE") {
+      body.weight    = parseFloat(form.weight);
+      body.pricePerKg= parseFloat(form.pricePerKg);
+      body.humidity  = parseFloat(form.humidity) || 0;
+      body.amountTtc = parseFloat(form.amountTtc) || body.weight * body.pricePerKg;
+    } else {
+      if (form.quantity) body.quantity = parseFloat(form.quantity);
+      if (form.unit)     body.unit     = form.unit;
+      if (form.unitPrice) body.unitPrice = parseFloat(form.unitPrice);
+      if (form.amountHt)  body.amountHt  = parseFloat(form.amountHt);
+      if (form.vatAmount) body.vatAmount = parseFloat(form.vatAmount);
+      if (form.amountTtc) body.amountTtc = parseFloat(form.amountTtc);
+    }
+    if (type === "IMMOBILISATION") {
+      body.assetCategory = form.assetCategory;
+      body.assetDuration = parseInt(form.assetDuration) || 48;
+      body.serialNumber  = form.serialNumber || undefined;
+      body.location      = form.location || undefined;
+    }
+    createMut.mutate(body);
+  }
 
-  const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none";
-  const errCls   = "text-red-400 text-xs mt-0.5";
+  const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400";
+
+  // Supplier filter: exclude VANILLE suppliers for non-VANILLE purchases
+  const filteredSuppliers = type === "VANILLE"
+    ? suppliers.filter(s => s.supplierType === "GOODS" || !s.supplierType)
+    : suppliers.filter(s => s.supplierType !== "GOODS");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-4 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-white"/>
-            <h2 className="text-white font-bold">Nouvel achat matière première</h2>
+            <h2 className="text-white font-bold">Nouvel achat</h2>
+            {step === "form" && <ChevronRight className="w-4 h-4 text-white/50"/>}
+            {step === "form" && <span className="text-white/80 text-sm">{typeCfg(type).label}</span>}
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white">
-            <X className="w-5 h-5"/>
-          </button>
+          <button onClick={onClose} className="text-white/70 hover:text-white"><X className="w-5 h-5"/></button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
-          {/* Supplier */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Fournisseur *</label>
-            <select value={form.supplierId} onChange={e => set("supplierId", e.target.value)} className={inputCls}>
-              <option value="">— Sélectionner —</option>
-              {suppliers.filter(s => s.supplierType === "GOODS" || !s.supplierType).map((s: any) => (
-                <option key={s.id} value={s.id}>{s.name} {s.supplierCode ? `(${s.supplierCode})` : ""} — {s.region || s.city || ""}</option>
-              ))}
-            </select>
-            {errors.supplierId && <p className={errCls}>{errors.supplierId}</p>}
-          </div>
-
-          {/* Weight + humidity */}
-          <div className="grid grid-cols-2 gap-3">
+        <div className="overflow-y-auto flex-1 p-5">
+          {/* Step 1: Type selector */}
+          {step === "type" && (
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Poids (kg) *</label>
-              <input type="number" step="0.1" min="0" value={form.weight}
-                onChange={e => set("weight", e.target.value)} className={inputCls} placeholder="Ex : 150"/>
-              {errors.weight && <p className={errCls}>{errors.weight}</p>}
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 flex items-center justify-between">
-                <span>Humidité % *</span>
-                <span className={`text-xs font-bold ${qi.color}`}>{qi.label}</span>
-              </label>
-              <input type="number" step="0.5" min="0" max="100" value={form.humidity}
-                onChange={e => set("humidity", e.target.value)} className={inputCls}/>
-              {errors.humidity && <p className={errCls}>{errors.humidity}</p>}
-              {/* Humidity indicator bar */}
-              <div className="mt-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${humidity < 35 ? "bg-emerald-500" : humidity < 40 ? "bg-blue-500" : humidity < 45 ? "bg-amber-500" : "bg-red-500"}`}
-                  style={{ width: `${Math.min(100, (humidity / 60) * 100)}%` }}/>
+              <p className="text-sm text-gray-600 mb-4 font-medium">Sélectionnez le type d'achat :</p>
+              <div className="grid grid-cols-2 gap-3">
+                {TYPES.map(t => {
+                  const Icon = t.icon;
+                  return (
+                    <button key={t.key} onClick={() => { setType(t.key); setStep("form"); }}
+                      className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-left group">
+                      <div className={`w-9 h-9 rounded-lg ${t.color.includes("emerald") ? "bg-emerald-100" : t.color.includes("blue") ? "bg-blue-100" : t.color.includes("amber") ? "bg-amber-100" : t.color.includes("violet") ? "bg-violet-100" : t.color.includes("rose") ? "bg-rose-100" : "bg-slate-100"} flex items-center justify-center`}>
+                        <Icon className={`w-5 h-5 ${t.color.split(" ")[1]}`}/>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm">{t.label}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.key === "VANILLE" ? "Matière première" :
+                           t.key === "CONSOMMABLE" ? "Stockage auto" :
+                           t.key === "BUREAU" ? "Fournitures" :
+                           t.key === "INFORMATIQUE" ? "Matériel IT" :
+                           t.key === "IMMOBILISATION" ? "Fiche immo" : "Prestation"}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 ml-auto"/>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          </div>
-
-          {/* Price per kg + total */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Prix / kg (Ar) *</label>
-              <input type="number" step="500" min="0" value={form.pricePerKg}
-                onChange={e => set("pricePerKg", e.target.value)} className={inputCls} placeholder="Ex : 40000"/>
-              {errors.pricePerKg && <p className={errCls}>{errors.pricePerKg}</p>}
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Total (Ar)</label>
-              <input type="number" value={form.totalAmount} onChange={e => set("totalAmount", e.target.value)}
-                className={inputCls + " bg-gray-50 font-semibold"} placeholder="Auto-calculé"/>
-              <p className="text-xs text-gray-400 mt-0.5">Auto-calculé · modifiable</p>
-            </div>
-          </div>
-
-          {/* Payment method */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Mode de paiement</label>
-            <div className="grid grid-cols-3 gap-2">
-              {PAYMENT_OPTIONS.map(opt => (
-                <button key={opt.value} type="button" onClick={() => set("paymentMethod", opt.value)}
-                  className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${form.paymentMethod === opt.value ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary card */}
-          {form.weight && form.pricePerKg && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-              <p className="text-xs font-semibold text-emerald-700 mb-2">Résumé de l'achat</p>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-xs text-gray-500">Poids</p>
-                  <p className="font-bold text-gray-800">{parseFloat(form.weight) || 0} kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Prix / kg</p>
-                  <p className="font-bold text-gray-800">{fmt(parseFloat(form.pricePerKg))} Ar</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Total</p>
-                  <p className="font-bold text-emerald-700 text-base">{fmt(parseFloat(form.totalAmount))} Ar</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                Un lot <span className="font-mono font-bold">VAN-{new Date().getFullYear()}-XXXX</span> sera créé automatiquement
-                {supplier && <> · Fournisseur : <strong>{supplier.name}</strong></>}
-              </p>
             </div>
           )}
 
-          {/* Quality warning */}
-          {humidity > 45 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5"/>
-              <p className="text-xs text-red-700">
-                <strong>Alerte qualité :</strong> Humidité {humidity}% dépasse le seuil acceptable de 45%. Risque de moisissure — vérifier avant validation.
-              </p>
+          {/* Step 2: Form */}
+          {step === "form" && (
+            <div className="space-y-4">
+              <button onClick={() => setStep("type")} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                ← Changer de type
+              </button>
+
+              {/* Supplier */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-gray-700">Fournisseur *</label>
+                  <button onClick={() => setUseNewSupplier(!useNewSupplier)}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                    <Zap className="w-3 h-3"/>
+                    {useNewSupplier ? "Sélectionner existant" : "Créer automatiquement"}
+                  </button>
+                </div>
+                {!useNewSupplier ? (
+                  <select value={form.supplierId} onChange={e => set("supplierId", e.target.value)} className={inputCls}>
+                    <option value="">— Sélectionner —</option>
+                    {filteredSuppliers.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name} {s.supplier_code ? `(${s.supplier_code})` : ""}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={form.supplierName} onChange={e => set("supplierName", e.target.value)}
+                    className={inputCls} placeholder="Nom du nouveau fournisseur"/>
+                )}
+                {(errors.supplierId || errors.supplierName) && <p className="text-red-500 text-xs mt-0.5">{errors.supplierId || errors.supplierName}</p>}
+              </div>
+
+              {/* Description */}
+              {type !== "VANILLE" && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Description *</label>
+                  <input value={form.description} onChange={e => set("description", e.target.value)}
+                    className={inputCls} placeholder={
+                      type === "CONSOMMABLE" ? "Ex: Sel fin, Cordons, Étiquettes…" :
+                      type === "BUREAU" ? "Ex: Ramettes A4, Stylos, Enveloppes…" :
+                      type === "INFORMATIQUE" ? "Ex: Laptop Dell, Imprimante HP…" :
+                      type === "IMMOBILISATION" ? "Ex: Voiture Toyota, Entrepôt Nord…" :
+                      "Ex: Transport, Consultant, Nettoyage…"}/>
+                  {errors.description && <p className="text-red-500 text-xs mt-0.5">{errors.description}</p>}
+                </div>
+              )}
+
+              {/* Category */}
+              {(type === "CONSOMMABLE" || type === "BUREAU" || type === "INFORMATIQUE") && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Catégorie</label>
+                  <input value={form.category} onChange={e => set("category", e.target.value)}
+                    className={inputCls} placeholder="Ex: emballage, bureau, réseau…"/>
+                </div>
+              )}
+
+              {/* Immobilisation-specific */}
+              {type === "IMMOBILISATION" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Catégorie</label>
+                    <select value={form.assetCategory} onChange={e => set("assetCategory", e.target.value)} className={inputCls}>
+                      <option value="informatique">Informatique (2183)</option>
+                      <option value="mobilier">Mobilier (2184)</option>
+                      <option value="transport">Transport (2154)</option>
+                      <option value="installation">Installation (2135)</option>
+                      <option value="equipment">Équipement (2183)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Durée amort. (mois)</label>
+                    <input type="number" value={form.assetDuration} onChange={e => set("assetDuration", e.target.value)} className={inputCls}/>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">N° série</label>
+                    <input value={form.serialNumber} onChange={e => set("serialNumber", e.target.value)} className={inputCls} placeholder="SN-XXXXX"/>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Localisation</label>
+                    <input value={form.location} onChange={e => set("location", e.target.value)} className={inputCls} placeholder="Bureau 1, Entrepôt…"/>
+                  </div>
+                </div>
+              )}
+
+              {/* Vanille-specific */}
+              {type === "VANILLE" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Poids (kg) *</label>
+                    <input type="number" step="0.1" value={form.weight} onChange={e => set("weight", e.target.value)} className={inputCls} placeholder="150"/>
+                    {errors.weight && <p className="text-red-500 text-xs mt-0.5">{errors.weight}</p>}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Humidité %</label>
+                    <input type="number" step="0.5" value={form.humidity} onChange={e => set("humidity", e.target.value)} className={inputCls}/>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Prix / kg (Ar) *</label>
+                    <input type="number" step="500" value={form.pricePerKg} onChange={e => set("pricePerKg", e.target.value)} className={inputCls} placeholder="40000"/>
+                    {errors.pricePerKg && <p className="text-red-500 text-xs mt-0.5">{errors.pricePerKg}</p>}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Total TTC (Ar)</label>
+                    <input type="number" value={form.amountTtc} onChange={e => set("amountTtc", e.target.value)}
+                      className={`${inputCls} bg-gray-50 font-semibold`} readOnly/>
+                  </div>
+                </div>
+              )}
+
+              {/* Qty + Unit (for non-vanilla non-service) */}
+              {type !== "VANILLE" && type !== "SERVICE" && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Quantité</label>
+                    <input type="number" step="0.01" value={form.quantity} onChange={e => set("quantity", e.target.value)} className={inputCls} placeholder="1"/>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">Unité</label>
+                    <select value={form.unit} onChange={e => set("unit", e.target.value)} className={inputCls}>
+                      {["unité","kg","litre","mètre","boîte","carton","lot"].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1.5">P.U. (Ar)</label>
+                    <input type="number" value={form.unitPrice} onChange={e => set("unitPrice", e.target.value)} className={inputCls} placeholder="0"/>
+                  </div>
+                </div>
+              )}
+
+              {/* Amounts HT / TVA / TTC (for non-vanilla) */}
+              {type !== "VANILLE" && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Montants</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Montant HT (Ar) *</label>
+                      <input type="number" value={form.amountHt} onChange={e => set("amountHt", e.target.value)}
+                        className={inputCls} placeholder="0"/>
+                      {errors.amountHt && <p className="text-red-500 text-xs mt-0.5">{errors.amountHt}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">TVA %</label>
+                      <select value={form.vatRate} onChange={e => set("vatRate", e.target.value)} className={inputCls}>
+                        <option value="0">0% (Exonéré)</option>
+                        <option value="8.5">8.5%</option>
+                        <option value="20">20%</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Total TTC (Ar)</label>
+                      <input type="number" value={form.amountTtc} onChange={e => set("amountTtc", e.target.value)}
+                        className={`${inputCls} font-semibold`} placeholder="0"/>
+                    </div>
+                  </div>
+                  {form.vatAmount && parseFloat(form.vatAmount) > 0 && (
+                    <p className="text-xs text-blue-600">TVA = {fmt(parseFloat(form.vatAmount))} Ar · Compte 44566 débité</p>
+                  )}
+                </div>
+              )}
+
+              {/* Date + payment + warehouse */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Date achat</label>
+                  <input type="date" value={form.purchaseDate} onChange={e => set("purchaseDate", e.target.value)} className={inputCls}/>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Mode paiement</label>
+                  <select value={form.paymentMethod} onChange={e => set("paymentMethod", e.target.value)} className={inputCls}>
+                    {PAYMENT_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Entrepôt / lieu</label>
+                  <input value={form.warehouse} onChange={e => set("warehouse", e.target.value)} className={inputCls} placeholder="Entrepôt 1, Bureau, Site A…"/>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1.5">Devise</label>
+                  <select value={form.currency} onChange={e => set("currency", e.target.value)} className={inputCls}>
+                    <option value="MGA">MGA (Ariary)</option>
+                    <option value="EUR">EUR (Euro)</option>
+                    <option value="USD">USD (Dollar)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">Notes</label>
+                <textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2}
+                  className={`${inputCls} resize-none`} placeholder="Commentaires, conditions, références…"/>
+              </div>
+
+              {/* Accounting preview */}
+              {(type !== "VANILLE" ? (parseFloat(form.amountHt) > 0 || parseFloat(form.amountTtc) > 0) : parseFloat(form.amountTtc) > 0) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+                  <p className="font-semibold mb-1.5 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5"/> Écritures comptables générées</p>
+                  <div className="space-y-0.5 font-mono">
+                    {type === "VANILLE" && <p>D 601 — Achats matières · {fmt(parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "CONSOMMABLE" && <p>D 602 — Consommables · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "BUREAU" && <p>D 6064 — Fournitures bureau · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "INFORMATIQUE" && <p>D 615 — Entretien matériel · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "IMMOBILISATION" && <p>D 218x — Immobilisation · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
+                    {type === "SERVICE" && <p>D 614 — Services ext. · {fmt(parseFloat(form.amountHt) || parseFloat(form.amountTtc))} Ar</p>}
+                    {parseFloat(form.vatAmount) > 0 && <p>D 44566 — TVA déductible · {fmt(parseFloat(form.vatAmount))} Ar</p>}
+                    <p>C 401 — Fournisseurs · {fmt(parseFloat(form.amountTtc) || parseFloat(form.amountHt))} Ar</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
+        </div>
 
-          {/* Accounting note */}
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
-            <strong>Écritures automatiques PCG 2005 :</strong> D<strong>601</strong> (Achats) · D<strong>44566</strong> (TVA déductible) · C<strong>401</strong> (Fournisseur)
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-              Annuler
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100">Annuler</button>
+          {step === "form" && (
+            <button onClick={handleSubmit} disabled={createMut.isPending}
+              className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 flex items-center gap-2">
+              {createMut.isPending && <RefreshCw className="w-3.5 h-3.5 animate-spin"/>}
+              {createMut.isPending ? "Enregistrement…" : "Créer l'achat"}
             </button>
-            <button onClick={handleSubmit} disabled={createMutation.isPending}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60">
-              {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4"/>}
-              {createMutation.isPending ? "Enregistrement…" : "Enregistrer l'achat"}
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-export default function Purchases() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+// ─── Dashboard Tab ─────────────────────────────────────────────────────────────
+function DashboardTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["purchases-analytics"], queryFn: () => api("/purchases/analytics") });
+  if (isLoading) return <div className="flex items-center justify-center py-16 text-gray-400"><RefreshCw className="w-5 h-5 animate-spin mr-2"/>Chargement…</div>;
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
-  const [search, setSearch] = useState("");
-  const [filterSupplier, setFilterSupplier] = useState("all");
-  const [filterPayment, setFilterPayment] = useState("all");
-  const [showAlerts, setShowAlerts] = useState(true);
+  const kpis = data?.kpis ?? {};
+  const byType: any[] = data?.byType ?? [];
+  const monthly: any[] = data?.monthly ?? [];
+  const topSuppliers: any[] = data?.topSuppliers ?? [];
+  const byStatus: any[] = data?.byStatus ?? [];
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => fetch(`/api/purchases/${id}`, { method: "DELETE", credentials: "include" })
-      .then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
-    onSuccess: () => {
-      toast.success("Achat supprimé — lot et stock associés retirés");
-      qc.invalidateQueries({ queryKey: ["purchases-list"] });
-      qc.invalidateQueries({ queryKey: ["purchases-analytics"] });
-      setDeleteTarget(null);
-    },
-    onError: (err: any) => toast.error("Erreur : " + err.message),
-  });
+  const pieData = byType.map((t: any, i: number) => ({
+    name: typeCfg(t.type).label, value: Number(t.nb), fill: TYPE_PIE_COLORS[i % TYPE_PIE_COLORS.length],
+  }));
 
-  // Queries
-  const { data: purchases = [], isLoading } = useQuery({
-    queryKey: ["purchases-list"],
-    queryFn: () => fetch("/api/purchases", { credentials: "include" }).then(r => r.json()),
-  });
-
-  const { data: suppliersData } = useQuery({
-    queryKey: ["suppliers-list"],
-    queryFn: () => fetch("/api/suppliers", { credentials: "include" }).then(r => r.json()),
-  });
-  const suppliers: any[] = Array.isArray(suppliersData) ? suppliersData : (suppliersData as any)?.suppliers ?? [];
-
-  const { data: analytics } = useQuery({
-    queryKey: ["purchases-analytics"],
-    queryFn: () => fetch("/api/purchases/analytics", { credentials: "include" }).then(r => r.json()),
-  });
-
-  const kpis = analytics?.kpis ?? {};
-  const monthly: any[] = analytics?.monthly ?? [];
-  const topSuppliers: any[] = analytics?.topSuppliers ?? [];
-  const qualityAlerts: any[] = analytics?.alerts?.quality ?? [];
-  const priceAlerts: any[] = analytics?.alerts?.price ?? [];
-  const totalAlerts = qualityAlerts.length + priceAlerts.length;
-
-  // Filters
-  const purchasesList: any[] = Array.isArray(purchases) ? purchases : [];
-  const supplierNames = useMemo(() => [...new Set(purchasesList.map(p => p.supplier_name || p.supplier?.name).filter(Boolean))].sort(), [purchasesList]);
-
-  const filtered = useMemo(() => purchasesList.filter(p => {
-    const q = search.toLowerCase();
-    const sName = (p.supplier_name || p.supplier?.name || "").toLowerCase();
-    const lotCode = (p.lot_code || "").toLowerCase();
-    const matchSearch = !q || sName.includes(q) || lotCode.includes(q);
-    const matchSupplier = filterSupplier === "all" || sName.includes(filterSupplier.toLowerCase());
-    const matchPayment = filterPayment === "all" || p.payment_method === filterPayment;
-    return matchSearch && matchSupplier && matchPayment;
-  }), [purchasesList, search, filterSupplier, filterPayment]);
-
-  const barColors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444"];
+  const statusMap: Record<string, any> = {};
+  byStatus.forEach((s: any) => { statusMap[s.status] = s; });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {isFormOpen && (
-        <PurchaseForm
-          suppliers={suppliers}
-          onClose={() => setIsFormOpen(false)}
-          onSuccess={() => { qc.invalidateQueries({ queryKey: ["purchases-list"] }); qc.invalidateQueries({ queryKey: ["purchases-analytics"] }); }}
-        />
-      )}
+    <div className="space-y-5">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard icon={ShoppingCart} label="Total achats"      value={fmt(kpis.total)} sub={`${kpis.nb} commandes`} iconBg="bg-emerald-100" iconColor="text-emerald-600" color="text-emerald-700"/>
+        <KpiCard icon={TrendingUp}   label="Prix moy. / kg"    value={`${fmt(kpis.avgPrice)} Ar`} sub={`${fmt(kpis.kgTotal)} kg vanille`} iconBg="bg-blue-100" iconColor="text-blue-600"/>
+        <KpiCard icon={Building2}    label="Fournisseurs actifs" value={kpis.nbSuppliers} sub="ce mois" iconBg="bg-violet-100" iconColor="text-violet-600"/>
+        <KpiCard icon={CheckCircle2} label="Comptabilisés"     value={statusMap["comptabilise"]?.nb ?? 0} sub={`/${kpis.nb} total`} iconBg="bg-purple-100" iconColor="text-purple-600"/>
+      </div>
 
-      {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5 text-red-600"/>
-              </div>
-              <div>
-                <h2 className="font-bold text-gray-900">Supprimer cet achat ?</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Action irréversible</p>
-              </div>
+      {/* Status breakdown */}
+      <div className="grid grid-cols-4 gap-3">
+        {STATUSES.map(s => {
+          const d = statusMap[s.key];
+          return (
+            <div key={s.key} className={`border rounded-xl p-3 ${s.color.replace("text-", "border-").split(" ")[0]} bg-white`}>
+              <p className={`text-xs font-medium ${s.color.split(" ")[1]}`}>{s.label}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{d?.nb ?? 0}</p>
+              <p className="text-xs text-gray-400">{fmt(Number(d?.total ?? 0))} Ar</p>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
-              <p className="font-semibold mb-1">{deleteTarget.label}</p>
-              <p className="text-xs">Le lot associé et le mouvement de stock seront également supprimés.</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-                Annuler
-              </button>
-              <button onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                disabled={deleteMutation.isPending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Trash2 className="w-4 h-4"/>}
-                {deleteMutation.isPending ? "Suppression…" : "Supprimer définitivement"}
-              </button>
-            </div>
-          </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Monthly chart */}
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h3 className="font-semibold text-gray-800 mb-3 text-sm">Dépenses mensuelles (Ar)</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+              <XAxis dataKey="label" tick={{ fontSize: 10 }}/>
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${(v/1_000_000).toFixed(1)}M`}/>
+              <Tooltip formatter={(v: any) => [`${fmt(v)} Ar`]}/>
+              <Bar dataKey="total" fill="#059669" radius={[4,4,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      )}
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Achats</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Matières premières vanille · liaisons stock, lots et comptabilité automatiques</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => downloadCSV(filtered)}
-                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                <Download className="w-3.5 h-3.5"/>Export CSV
-              </button>
-              <button onClick={() => setIsFormOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
-                <Plus className="w-4 h-4"/>Nouvel achat
-              </button>
-            </div>
-          </div>
+        {/* Type pie */}
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h3 className="font-semibold text-gray-800 mb-3 text-sm">Répartition par type</h3>
+          {pieData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`} labelLine={false} fontSize={10}>
+                  {pieData.map((entry, i) => <Cell key={i} fill={entry.fill}/>)}
+                </Pie>
+                <Tooltip/>
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-48 text-gray-300 text-sm">Aucune donnée</div>
+          )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          <KpiCard label="Total achats" value={fmt(kpis.total) + " Ar"} icon={TrendingUp} bg="bg-emerald-50" color="text-emerald-700"/>
-          <KpiCard label="Kg achetés" value={kpis.kgTotal ? kpis.kgTotal.toFixed(1) + " kg" : "—"} icon={Weight} color="text-blue-700" bg="bg-blue-50"/>
-          <KpiCard label="Prix moyen / kg" value={kpis.avgPrice ? fmt(kpis.avgPrice) + " Ar" : "—"} sub={`Min: ${fmt(kpis.prixMin)} · Max: ${fmt(kpis.prixMax)}`} icon={ShoppingCart}/>
-          <KpiCard label="Humidité moy." value={kpis.avgHumidity ? kpis.avgHumidity.toFixed(1) + "%" : "—"} icon={Droplets} color={kpis.avgHumidity > 44 ? "text-red-600" : "text-gray-800"}/>
-          <KpiCard label="Achats enregistrés" value={kpis.nb ?? 0} icon={Package} color="text-gray-700"/>
-          <KpiCard label="Fournisseurs actifs" value={kpis.nbSuppliers ?? 0} icon={Users} color="text-purple-700" bg="bg-purple-50"/>
-        </div>
-
-        {/* Alerts */}
-        {showAlerts && totalAlerts > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500"/>
-                <span className="text-sm font-semibold text-amber-800">{totalAlerts} alerte(s) détectée(s)</span>
-              </div>
-              <button onClick={() => setShowAlerts(false)} className="text-amber-400 hover:text-amber-600">
-                <X className="w-4 h-4"/>
-              </button>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {qualityAlerts.map((a: any) => (
-                <div key={a.id} className="bg-white border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                  <Droplets className="w-4 h-4 text-red-500 shrink-0"/>
-                  <div className="text-xs">
-                    <span className="font-semibold text-gray-800">{a.supplier_name ?? "?"}</span>
-                    <span className="text-red-600 ml-1">Humidité {Number(a.humidity).toFixed(1)}%</span>
-                    <span className="text-gray-400 ml-1">· {fmtDate(a.created_at)}</span>
-                  </div>
-                </div>
-              ))}
-              {priceAlerts.map((a: any) => (
-                <div key={a.id} className="bg-white border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-amber-500 shrink-0"/>
-                  <div className="text-xs">
-                    <span className="font-semibold text-gray-800">{a.supplier_name ?? "?"}</span>
-                    <span className="text-amber-700 ml-1">{fmt(Number(a.price_per_kg))} Ar/kg</span>
-                    <span className="text-gray-400 ml-1">· +{Math.round((Number(a.price_per_kg) / Number(a.avg_price) - 1) * 100)}% vs moy.</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Analytics row */}
-        {monthly.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Price evolution chart */}
-            <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Évolution du prix moyen / kg</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={monthly} margin={{ top: 5, right: 10, bottom: 0, left: 10 }}>
-                  <defs>
-                    <linearGradient id="prixGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#d1d5db"/>
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} stroke="#d1d5db"/>
-                  <Tooltip formatter={(v: number) => [`${fmt(v)} Ar/kg`, "Prix moyen"]} labelStyle={{ fontSize: 11 }}/>
-                  <Area type="monotone" dataKey="avg_price" stroke="#10b981" fill="url(#prixGrad)" strokeWidth={2}/>
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Top suppliers */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Top fournisseurs</h3>
-              <div className="space-y-3">
-                {topSuppliers.map((s: any, i: number) => {
-                  const maxTotal = Number(topSuppliers[0]?.total ?? 1);
-                  const pct = Math.round((Number(s.total) / maxTotal) * 100);
-                  return (
-                    <div key={i}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-gray-700 truncate max-w-28">{s.name}</span>
-                        <span className="text-gray-500 font-mono">{fmtKg(Number(s.kg))}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColors[i] }}/>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                        <span>{s.nb} achat(s)</span>
-                        <span>{fmt(Number(s.total))} Ar</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher fournisseur, lot…"
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/>
-            </div>
-            <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-              <option value="all">Tous les fournisseurs</option>
-              {supplierNames.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-              <option value="all">Tous les paiements</option>
-              {PAYMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <span className="text-xs text-gray-400 ml-auto">{filtered.length} achat(s)</span>
-          </div>
-        </div>
-
-        {/* Purchases table */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      {/* Top suppliers */}
+      {topSuppliers.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b"><h3 className="font-semibold text-gray-800 text-sm">Top 5 fournisseurs</h3></div>
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 text-xs text-gray-500">
               <tr>
-                {["Date","Fournisseur","Poids","Prix / kg","Humidité","Lot","Paiement","Total (Ar)", ...(isSuperAdmin ? [""] : [])].map((h, i) => (
-                  <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                ))}
+                <th className="text-left px-4 py-2">Fournisseur</th>
+                <th className="text-right px-4 py-2">Commandes</th>
+                <th className="text-right px-4 py-2">Total (Ar)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-300">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2"/>Chargement…
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center">
-                  <ShoppingCart className="w-10 h-10 mx-auto mb-2 opacity-20"/>
-                  <p className="text-gray-300">Aucun achat enregistré</p>
-                  <button onClick={() => setIsFormOpen(true)}
-                    className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">
-                    Enregistrer un achat
-                  </button>
-                </td></tr>
-              ) : filtered.map((p: any) => {
-                const supplierName = p.supplier_name || p.supplier?.name || "—";
-                const pm = PAYMENT_LABELS[p.payment_method] ?? p.payment_method;
-                return (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(p.created_at || p.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{supplierName}</div>
-                      {p.supplier_code && <div className="text-xs text-gray-400 font-mono">{p.supplier_code}</div>}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{p.weight} kg</td>
-                    <td className="px-4 py-3 font-mono text-xs">{fmt(p.price_per_kg || p.pricePerKg)} Ar</td>
-                    <td className="px-4 py-3"><HumidityBadge humidity={p.humidity}/></td>
-                    <td className="px-4 py-3">
-                      {(p.lot_code || p.lotId)
-                        ? <span className="font-mono text-xs text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{p.lot_code ?? "lié"}</span>
-                        : <span className="text-gray-300 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{pm}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900">{fmt(p.total_amount || p.totalAmount)} Ar</td>
-                    {isSuperAdmin && (
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => setDeleteTarget({
-                            id: p.id,
-                            label: `${supplierName} — ${p.weight} kg — ${fmtDate(p.created_at || p.createdAt)}`,
-                          })}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer cet achat">
-                          <Trash2 className="w-3.5 h-3.5"/>
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-            {filtered.length > 0 && (
-              <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                <tr>
-                  <td colSpan={2} className="px-4 py-2.5 text-xs font-bold text-gray-700 uppercase">Total ({filtered.length})</td>
-                  <td className="px-4 py-2.5 font-mono font-bold text-xs text-gray-700">
-                    {filtered.reduce((s: number, p: any) => s + Number(p.weight), 0).toFixed(1)} kg
-                  </td>
-                  <td colSpan={4}/>
-                  <td className="px-4 py-2.5 font-mono font-bold text-gray-900">
-                    {fmt(filtered.reduce((s: number, p: any) => s + Number(p.total_amount || p.totalAmount), 0))} Ar
-                  </td>
+              {topSuppliers.map((s: any, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-2.5 font-medium text-gray-800">{s.name}</td>
+                  <td className="px-4 py-2.5 text-right text-gray-600">{s.nb}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{fmt(Number(s.total))}</td>
                 </tr>
-              </tfoot>
-            )}
+              ))}
+            </tbody>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Accounting reminder */}
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700">
-          <p><strong>Comptabilité PCG 2005 :</strong> Chaque achat génère automatiquement des écritures :</p>
-          <p className="mt-1">→ Débit <strong>601</strong> (Achats matières HT) · Débit <strong>44566</strong> (TVA déductible 20%) · Crédit <strong>401</strong> (Fournisseurs)</p>
-          <p className="mt-1">→ Un lot <strong>VAN-YYYY-XXXX</strong> et un mouvement de stock <strong>IN</strong> sont créés en cascade</p>
+// ─── List Tab ─────────────────────────────────────────────────────────────────
+function ListTab({ onNew }: { onNew: () => void }) {
+  const qc   = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+
+  const [search, setSearch]       = useState("");
+  const [filterType, setFilterType]     = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPeriod, setFilterPeriod] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<Purchase | null>(null);
+  const [receptionTarget, setReceptionTarget] = useState<Purchase | null>(null);
+
+  const { data: purchases = [], isLoading, refetch } = useQuery<Purchase[]>({
+    queryKey: ["purchases"], queryFn: () => api("/purchases"),
+  });
+
+  const statusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api(`/purchases/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
+    onSuccess: () => { toast.success("Statut mis à jour"); qc.invalidateQueries({ queryKey: ["purchases"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api(`/purchases/${id}`, { method: "DELETE", body: JSON.stringify({ reason }) }),
+    onSuccess: (d: any) => {
+      toast.success(`Achat ${d.reference ?? ""} supprimé`);
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ["purchases"] });
+      qc.invalidateQueries({ queryKey: ["purchases-analytics"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const periodFilter = (p: Purchase) => {
+    if (filterPeriod === "all") return true;
+    const d = new Date(p.created_at);
+    const now = new Date();
+    if (filterPeriod === "week")  { const w = new Date(now); w.setDate(w.getDate() - 7);  return d >= w; }
+    if (filterPeriod === "month") { const m = new Date(now); m.setMonth(m.getMonth() - 1); return d >= m; }
+    if (filterPeriod === "year")  { return d.getFullYear() === now.getFullYear(); }
+    return true;
+  };
+
+  const filtered = useMemo(() => purchases.filter(p => {
+    const q = search.toLowerCase();
+    const matchQ = !q || (p.supplier_name ?? "").toLowerCase().includes(q) ||
+      (p.reference ?? "").toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q);
+    const matchT = filterType === "all" || p.type === filterType;
+    const matchS = filterStatus === "all" || p.status === filterStatus;
+    return matchQ && matchT && matchS && periodFilter(p);
+  }), [purchases, search, filterType, filterStatus, filterPeriod]);
+
+  function exportCSV() {
+    const headers = ["Réf","Date","Type","Fournisseur","Description","Montant TTC","Statut","Lot","Immobilisation"];
+    const rows = filtered.map(p => [
+      p.reference ?? "", fmtDate(p.created_at), p.type, p.supplier_name,
+      p.description ?? "", p.total_amount, p.status,
+      p.lot_code ?? "", p.asset_number ?? ""
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff"+csv,{type:"text/csv"}]));
+    a.download = "achats-erp.csv"; a.click();
+  }
+
+  // Next status in workflow
+  function nextStatus(s: string): string | null {
+    const flow: Record<string, string> = { brouillon: "valide", valide: "receptionne", receptionne: "comptabilise" };
+    return flow[s] ?? null;
+  }
+
+  return (
+    <>
+      {deleteTarget && <DeleteModal purchase={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={r => deleteMut.mutate({ id: deleteTarget.id, reason: r })} isPending={deleteMut.isPending}/>}
+      {receptionTarget && <ReceptionModal purchase={receptionTarget} onClose={() => setReceptionTarget(null)}/>}
+
+      {/* Filters */}
+      <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+            placeholder="Rechercher réf, fournisseur, description…"/>
         </div>
+        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          <option value="all">Tous types</option>
+          {TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          <option value="all">Tous statuts</option>
+          {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+        <select value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          <option value="all">Toute période</option>
+          <option value="week">Cette semaine</option>
+          <option value="month">Ce mois</option>
+          <option value="year">Cette année</option>
+        </select>
+        <div className="flex gap-2 ml-auto">
+          <button onClick={() => refetch()} className="p-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"><RefreshCw className="w-4 h-4"/></button>
+          <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+            <Download className="w-4 h-4"/> Export
+          </button>
+          <button onClick={onNew} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+            <Plus className="w-4 h-4"/> Nouvel achat
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-gray-400"><RefreshCw className="w-5 h-5 animate-spin mr-2"/>Chargement…</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30"/>
+            <p className="text-sm">Aucun achat trouvé</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs">Référence</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs">Type</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs">Fournisseur</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs">Description</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-600 text-xs">Montant TTC</th>
+                  <th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs">Statut</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs">Liens</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-600 text-xs">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(p => {
+                  const ns = nextStatus(p.status);
+                  const nsCfg = ns ? statusCfg(ns) : null;
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-mono text-xs font-semibold text-gray-700">{p.reference ?? "—"}</div>
+                        <div className="text-xs text-gray-400">{fmtDt(p.created_at)}</div>
+                      </td>
+                      <td className="py-3 px-4"><TypeBadge type={p.type}/></td>
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-800 text-xs">{p.supplier_name}</div>
+                        {p.supplier_code && <div className="text-xs text-gray-400">{p.supplier_code}</div>}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-xs text-gray-700 max-w-36 truncate">
+                          {p.description ?? (p.type === "VANILLE" ? `${p.weight} kg · ${p.price_per_kg} Ar/kg` : "—")}
+                        </div>
+                        {p.category && <div className="text-xs text-gray-400">{p.category}</div>}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="font-bold text-gray-900">{fmt(p.total_amount)} Ar</div>
+                        {p.vat_amount && p.vat_amount > 0 && <div className="text-xs text-gray-400">TVA: {fmt(p.vat_amount)}</div>}
+                      </td>
+                      <td className="py-3 px-4 text-center"><StatusBadge status={p.status}/></td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-0.5">
+                          {p.lot_code && (
+                            <div className="text-xs bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono inline-block">{p.lot_code}</div>
+                          )}
+                          {p.asset_number && (
+                            <div className="text-xs bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono inline-block">{p.asset_number}</div>
+                          )}
+                          {p.journal_entry_id && (
+                            <div className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded inline-block">✓ Comptabilisé</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Advance workflow */}
+                          {ns && nsCfg && (
+                            <button onClick={() => {
+                              if (ns === "receptionne") setReceptionTarget(p);
+                              else statusMut.mutate({ id: p.id, status: ns });
+                            }}
+                              title={`Passer en "${nsCfg.label}"`}
+                              className={`p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors hover:${nsCfg.color.split(" ")[1]}`}>
+                              <PlayCircle className="w-4 h-4"/>
+                            </button>
+                          )}
+                          {/* Delete (admin only) */}
+                          {isAdmin && (
+                            <button onClick={() => setDeleteTarget(p)} title="Supprimer"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                              <Trash2 className="w-4 h-4"/>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-400 flex items-center justify-between">
+              <span>{filtered.length} achat{filtered.length !== 1 ? "s" : ""} · Total: {fmt(filtered.reduce((s, p) => s + (p.total_amount ?? 0), 0))} Ar</span>
+              <Filter className="w-3.5 h-3.5 text-gray-300"/>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+export default function PurchasesPage() {
+  const qc = useQueryClient();
+  const [tab, setTab]       = useState<"dashboard"|"list">("dashboard");
+  const [showForm, setShowForm] = useState(false);
+  const { data: suppliers = [] } = useSuppliers();
+
+  const tabs = [
+    { id: "dashboard" as const, label: "Tableau de bord", icon: BarChart3 },
+    { id: "list"      as const, label: "Liste des achats", icon: List },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {showForm && (
+        <PurchaseForm
+          suppliers={suppliers}
+          onClose={() => setShowForm(false)}
+          onSuccess={() => { qc.invalidateQueries({ queryKey: ["purchases"] }); qc.invalidateQueries({ queryKey: ["purchases-analytics"] }); }}
+        />
+      )}
+
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ShoppingCart className="w-7 h-7 text-emerald-600"/> Module Achats
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">Approvisionnement · Stock · Immobilisations · Comptabilité</p>
+          </div>
+          <button onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 shadow-sm">
+            <Plus className="w-4 h-4"/> Nouvel achat
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1.5 shadow-sm w-fit">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? "bg-emerald-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"}`}>
+              <t.icon className="w-4 h-4"/>{t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "dashboard" ? <DashboardTab/> : <ListTab onNew={() => setShowForm(true)}/>}
       </div>
     </div>
   );
