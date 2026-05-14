@@ -56,6 +56,18 @@ const SettingsSchema = z.object({
   currency: z.enum(["MGA", "USD", "EUR"]).default("MGA"),
 });
 
+// GET /api/public/branding — no auth required (used by login page)
+router.get("/public/branding", async (_req, res): Promise<void> => {
+  const [row] = await db.select({
+    companyName: companySettingsTable.companyName,
+    logoUrl: companySettingsTable.logoUrl,
+  }).from(companySettingsTable).limit(1);
+  res.json({
+    companyName: row?.companyName ?? "Vanilla ERP",
+    logoUrl: row?.logoUrl ?? null,
+  });
+});
+
 router.get("/settings", requireAuth, async (req, res): Promise<void> => {
   const [row] = await db.select().from(companySettingsTable).limit(1);
   if (!row) {

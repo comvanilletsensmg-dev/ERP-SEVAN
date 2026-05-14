@@ -22,11 +22,19 @@ function useClock() {
   return time;
 }
 
-const STATS = [
-  { label: "Lots actifs", value: "247", unit: "t vanille" },
-  { label: "Valeur portefeuille", value: "4.2", unit: "M€" },
-  { label: "Clients actifs", value: "38", unit: "pays" },
-];
+function useBranding() {
+  const [branding, setBranding] = useState<{ companyName: string; logoUrl: string | null }>({
+    companyName: "Vanilla ERP",
+    logoUrl: null,
+  });
+  useEffect(() => {
+    fetch("/api/public/branding")
+      .then(r => r.json())
+      .then(d => setBranding({ companyName: d.companyName ?? "Vanilla ERP", logoUrl: d.logoUrl ?? null }))
+      .catch(() => {});
+  }, []);
+  return branding;
+}
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -39,7 +47,9 @@ export default function Login() {
   const [emailSent, setEmailSent] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const time = useClock();
+  const branding = useBranding();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -107,6 +117,8 @@ export default function Login() {
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  const showLogo = branding.logoUrl && !logoError;
+
   return (
     <div
       className="min-h-screen flex"
@@ -137,12 +149,26 @@ export default function Login() {
           {/* Top: Logo + Clock */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              {/* Logo mark */}
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #c4973a, #e8c87a)" }}>
-                <span className="text-white font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>V</span>
+              {/* Company logo or fallback initial */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
+                style={showLogo ? { background: "transparent" } : { background: "linear-gradient(135deg, #c4973a, #e8c87a)" }}
+              >
+                {showLogo ? (
+                  <img
+                    src={branding.logoUrl!}
+                    alt={branding.companyName}
+                    className="w-full h-full object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <span className="text-white font-black text-lg" style={{ fontFamily: "Georgia, serif" }}>
+                    {branding.companyName.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
               <div>
-                <p className="text-white font-semibold text-sm tracking-widest uppercase opacity-90">Vanilla ERP</p>
+                <p className="text-white font-semibold text-sm tracking-widest uppercase opacity-90">{branding.companyName}</p>
                 <p className="text-xs tracking-wider opacity-40" style={{ color: "#c4973a" }}>Enterprise Platform</p>
               </div>
             </div>
@@ -162,7 +188,7 @@ export default function Login() {
             </div>
             <h1 className="text-white leading-none font-light mt-4" style={{ fontSize: "clamp(2.5rem, 4vw, 3.5rem)", letterSpacing: "-0.02em", fontFamily: "Georgia, 'Times New Roman', serif" }}>
               Gérez votre<br />
-              <span style={{ color: "#c4973a", fontStyle: "italic" }}>empire vanille</span><br />
+              <span style={{ color: "#c4973a", fontStyle: "italic" }}>{branding.companyName}</span><br />
               depuis un seul écran.
             </h1>
             <p className="mt-6 text-sm leading-relaxed opacity-50" style={{ color: "#d4e8da", maxWidth: "380px" }}>
@@ -176,13 +202,19 @@ export default function Login() {
               <div className="flex-1 h-px opacity-15" style={{ background: "#c4973a" }} />
             </div>
 
-            {/* Live stats */}
-            <div className="grid grid-cols-3 gap-4">
-              {STATS.map((s) => (
-                <div key={s.label} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="text-2xl font-bold" style={{ color: "#e8c87a" }}>{s.value}</p>
-                  <p className="text-xs opacity-40 mt-0.5" style={{ color: "#d4e8da" }}>{s.unit}</p>
-                  <p className="text-xs opacity-30 mt-1" style={{ color: "#d4e8da" }}>{s.label}</p>
+            {/* Value props */}
+            <div className="space-y-3">
+              {[
+                { icon: "🌿", label: "Traçabilité complète", desc: "Du champ au client, chaque lot suivi" },
+                { icon: "📊", label: "Pilotage en temps réel", desc: "Dashboards financiers et logistiques unifiés" },
+                { icon: "🔒", label: "Sécurité enterprise", desc: "RBAC granulaire, 2FA, audit complet" },
+              ].map(v => (
+                <div key={v.label} className="flex items-center gap-3">
+                  <span className="text-lg">{v.icon}</span>
+                  <div>
+                    <p className="text-sm font-medium text-white opacity-70">{v.label}</p>
+                    <p className="text-xs opacity-30" style={{ color: "#d4e8da" }}>{v.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -206,11 +238,18 @@ export default function Login() {
 
         {/* Mobile header */}
         <div className="lg:hidden flex items-center gap-3 p-6 border-b border-amber-100">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1a3c2a, #2d5a3d)" }}>
-            <span className="text-white font-black text-sm" style={{ fontFamily: "Georgia, serif" }}>V</span>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+            style={showLogo ? { background: "transparent" } : { background: "linear-gradient(135deg, #1a3c2a, #2d5a3d)" }}
+          >
+            {showLogo ? (
+              <img src={branding.logoUrl!} alt={branding.companyName} className="w-full h-full object-contain" onError={() => setLogoError(true)} />
+            ) : (
+              <span className="text-white font-black text-sm" style={{ fontFamily: "Georgia, serif" }}>{branding.companyName.charAt(0)}</span>
+            )}
           </div>
           <div>
-            <p className="font-semibold text-sm" style={{ color: "#1a3c2a" }}>Vanilla ERP</p>
+            <p className="font-semibold text-sm" style={{ color: "#1a3c2a" }}>{branding.companyName}</p>
             <p className="text-xs text-gray-400">Madagascar Operations</p>
           </div>
         </div>
@@ -367,8 +406,8 @@ export default function Login() {
                 <div className="flex items-start gap-4 p-4 rounded-xl" style={{ background: twoFaMethod === "email" ? "#eff6ff" : "#f5f3ff", border: `1px solid ${twoFaMethod === "email" ? "#bfdbfe" : "#ddd6fe"}` }}>
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: twoFaMethod === "email" ? "#dbeafe" : "#ede9fe" }}>
                     {twoFaMethod === "email"
-                      ? <Mail className="w-4.5 h-4.5" style={{ color: "#2563eb" }} />
-                      : <Smartphone className="w-4.5 h-4.5" style={{ color: "#7c3aed" }} />}
+                      ? <Mail className="w-4 h-4" style={{ color: "#2563eb" }} />
+                      : <Smartphone className="w-4 h-4" style={{ color: "#7c3aed" }} />}
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: twoFaMethod === "email" ? "#1d4ed8" : "#6d28d9" }}>
@@ -464,7 +503,7 @@ export default function Login() {
             {/* Bottom */}
             <div className="mt-10 pt-6 border-t flex items-center justify-between" style={{ borderColor: "#e8e0d6" }}>
               <p className="text-xs" style={{ color: "#b0bdb5" }}>
-                © 2025 Vanilla ERP · SEVAN Madagascar
+                © {new Date().getFullYear()} {branding.companyName}
               </p>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
