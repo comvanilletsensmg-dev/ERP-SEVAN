@@ -1,0 +1,200 @@
+Tu es un développeur full-stack senior expert UI/UX ERP enterprise et dashboards analytiques.
+
+Objectif :
+Transformer le dashboard SUPER ADMIN en centre de pilotage ERP intelligent ultra premium.
+
+Stack :
+- React
+- Tailwind
+- Shadcn UI
+- Recharts
+- Framer Motion
+- Node.js
+- Prisma
+- PostgreSQL
+
+IMPORTANT :
+Le dashboard doit ressembler à un ERP enterprise moderne :
+- dynamique
+- temps réel
+- interactif
+- analytique
+- intelligent
+
+---------------------------------------------------
+1. KPIs GLOBAUX
+---------------------------------------------------
+
+Afficher :
+
+- stock total
+- ventes
+- trésorerie
+- masse salariale
+- fournisseurs
+- clients
+- paiements attente
+- factures attente
+
+---------------------------------------------------
+2. ALERTES CRITIQUES
+---------------------------------------------------
+
+Créer centre alertes :
+
+- lots risque
+- humidité anormale
+- stock faible
+- retards paiement
+- erreurs ERP
+
+---------------------------------------------------
+3. CASHFLOW TEMPS RÉEL
+---------------------------------------------------
+
+Afficher :
+
+- banques
+- mobile money
+- prévisions 30 jours
+
+---------------------------------------------------
+4. EXPORT & LOGISTIQUE
+---------------------------------------------------
+
+Afficher :
+
+- commandes export
+- AWB
+- préparation
+- packing
+- shipping
+
+---------------------------------------------------
+5. IA INSIGHTS
+---------------------------------------------------
+
+Créer widget IA :
+
+- risques
+- prévisions
+- anomalies
+- pertes élevées
+
+---------------------------------------------------
+6. ACTIVITÉ UTILISATEURS
+---------------------------------------------------
+
+Afficher :
+
+- connexions
+- validations
+- suppressions
+- modifications
+
+---------------------------------------------------
+7. WORKFLOWS
+---------------------------------------------------
+
+Afficher :
+
+- achats attente
+- factures attente
+- congés attente
+- paiements attente
+
+---------------------------------------------------
+8. ANALYTICS
+---------------------------------------------------
+
+Créer graphiques interactifs :
+
+- ventes
+- achats
+- pertes
+- RH
+- export
+
+---------------------------------------------------
+9. DASHBOARD RH
+---------------------------------------------------
+
+Afficher :
+
+- présents
+- absents
+- congés
+- retards
+
+---------------------------------------------------
+10. CENTRE SÉCURITÉ
+---------------------------------------------------
+
+Afficher :
+
+- connexions suspectes
+- échecs login
+- sessions actives
+
+---------------------------------------------------
+11. TÂCHES RAPIDES
+---------------------------------------------------
+
+Boutons :
+
+- nouvel achat
+- nouvelle facture
+- nouveau fournisseur
+- nouvel employé
+
+---------------------------------------------------
+12. PERSONNALISATION
+---------------------------------------------------
+
+Permettre :
+
+- déplacer widgets
+- masquer widgets
+- sauvegarder disposition
+
+---------------------------------------------------
+13. EXPORTS
+---------------------------------------------------
+
+Exporter :
+
+- PDF exécutif
+- Excel KPI
+
+---------------------------------------------------
+14. UI/UX
+---------------------------------------------------
+
+Ajouter :
+
+- animations Framer Motion
+- skeleton loaders
+- hover effects
+- dark mode
+- responsive complet
+
+---------------------------------------------------
+15. LIVRABLE
+---------------------------------------------------
+
+Créer un dashboard ERP enterprise :
+
+- ultra professionnel
+- analytique
+- intelligent
+- moderne
+- interactif
+
+Commence par :
+
+1. redesign KPI cards
+2. centre alertes
+3. analytics interactifs
+4. cashflow temps réel
+5. IA insights
+6. dashboard responsive

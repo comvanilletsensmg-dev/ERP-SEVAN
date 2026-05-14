@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable, payrollTable, bonusesTable, accountsTable, journalLinesTable, accountingInvoicesTable, bankTransactionsTable, stockMovementsTable } from "@workspace/db";
-import { sql, count, sum, eq, and, gte, lt, desc } from "drizzle-orm";
+import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable, payrollTable, bonusesTable, accountsTable, journalLinesTable, accountingInvoicesTable, bankTransactionsTable, stockMovementsTable, exportOrdersTable } from "@workspace/db";
+import { sql, count, sum, eq, and, gte, lt, desc, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { loadUser } from "../middlewares/roles";
 
@@ -16,6 +16,31 @@ async function getLogisticsData() {
   const lotStatus = await db.select({ status: lotsTable.status, count: count(), totalKg: sum(lotsTable.weightCurrent) }).from(lotsTable).groupBy(lotsTable.status);
   const recentMovements = await db.select().from(stockMovementsTable).orderBy(desc(stockMovementsTable.createdAt)).limit(5);
 
+  // Risk lots
+  const [highRiskLots] = await db.select({ count: count() }).from(lotsTable).where(eq(lotsTable.riskLevel, "HIGH"));
+  const [medRiskLots]  = await db.select({ count: count() }).from(lotsTable).where(eq(lotsTable.riskLevel, "MEDIUM"));
+  const [highHumidityLots] = await db.select({ count: count() }).from(lotsTable).where(sql`${lotsTable.humidity} > 38`);
+
+  // Pending purchases (valide status)
+  const [pendingPurchases] = await db.select({ count: count() }).from(purchasesTable).where(eq(purchasesTable.status, "valide"));
+
+  // Export orders by status
+  const exportByStatus = await db.select({ status: exportOrdersTable.status, count: count() }).from(exportOrdersTable).groupBy(exportOrdersTable.status);
+  const [totalExport] = await db.select({ count: count() }).from(exportOrdersTable).where(ne(exportOrdersTable.status, "delivered"));
+
+  // Monthly purchases trend (last 6 months)
+  const monthlyPurchases = await db.execute(sql`
+    SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YY') AS label,
+           EXTRACT(MONTH FROM created_at) AS month_num,
+           EXTRACT(YEAR FROM created_at) AS year_num,
+           COALESCE(SUM(total_amount), 0) AS total,
+           COUNT(*) AS nb
+    FROM purchases
+    WHERE created_at >= NOW() - INTERVAL '6 months'
+    GROUP BY DATE_TRUNC('month', created_at), month_num, year_num
+    ORDER BY year_num, month_num
+  `);
+
   return {
     totalStockKg: Number(stockResult?.total ?? 0),
     totalSalesUsd: Number(salesResult?.total ?? 0),
@@ -25,6 +50,13 @@ async function getLogisticsData() {
     clientsCount: Number(clientCount?.count ?? 0),
     lotStatusBreakdown: lotStatus.map(r => ({ status: r.status, count: Number(r.count), totalKg: Number(r.totalKg ?? 0) })),
     recentMovements: recentMovements.map(m => ({ ...m, createdAt: m.createdAt.toISOString() })),
+    highRiskLots: Number(highRiskLots?.count ?? 0),
+    mediumRiskLots: Number(medRiskLots?.count ?? 0),
+    highHumidityLots: Number(highHumidityLots?.count ?? 0),
+    pendingPurchases: Number(pendingPurchases?.count ?? 0),
+    exportOrdersByStatus: exportByStatus.map(r => ({ status: r.status, count: Number(r.count) })),
+    activeExportOrders: Number(totalExport?.count ?? 0),
+    monthlyPurchasesTrend: (monthlyPurchases.rows as any[]).map(r => ({ label: r.label, total: Number(r.total), nb: Number(r.nb) })),
   };
 }
 
