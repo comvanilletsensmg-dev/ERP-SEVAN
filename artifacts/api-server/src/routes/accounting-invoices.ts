@@ -6,6 +6,7 @@ import { requireRole } from "../middlewares/roles";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer } from "../lib/crypto";
 import { z } from "zod/v4";
 
 const uploadsDir = path.join(process.cwd(), "uploads", "invoices");
@@ -247,12 +248,22 @@ router.post("/invoices/upload", requireAuth, upload.single("file"), async (req, 
   let ocrText    = "";
   let ocrFields: Record<string, string | null> = {};
 
-  // PDF text extraction
+  // Read raw bytes for OCR BEFORE encrypting
+  const rawInvoiceBytes = fs.readFileSync(req.file.path);
+  // Encrypt at rest
+  try {
+    fs.writeFileSync(req.file.path, encryptBuffer(rawInvoiceBytes));
+    req.log.info({ file: req.file.filename }, "Invoice file encrypted at rest");
+  } catch (e) {
+    req.log.warn({ err: e }, "Invoice encryption failed — storing unencrypted");
+  }
+
+  // PDF text extraction (using raw bytes captured before encryption)
   if (req.file.mimetype === "application/pdf") {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfParse = ((await import("pdf-parse")) as any).default ?? (await import("pdf-parse"));
-      const buffer   = fs.readFileSync(req.file.path);
+      const buffer   = rawInvoiceBytes;
       const data     = await pdfParse(buffer);
       ocrText        = data.text ?? "";
     } catch (_e) {
@@ -312,12 +323,22 @@ router.post("/invoices/upload", requireAuth, upload.single("file"), async (req, 
   });
 });
 
-// Serve uploaded invoice files
-router.get("/uploads/invoices/:filename", (req, res): void => {
-  const filename = String(req.params.filename);
+// Serve uploaded invoice files (decrypt on fly)
+router.get("/uploads/invoices/:filename", requireAuth, (req, res): void => {
+  const filename = String(req.params.filename).replace(/[^a-zA-Z0-9._-]/g, "");
   const filepath = path.join(uploadsDir, filename);
   if (!fs.existsSync(filepath)) { res.status(404).json({ error: "File not found" }); return; }
-  res.sendFile(filepath);
+  try {
+    const raw = fs.readFileSync(filepath);
+    const buf = isEncryptedBuffer(raw) ? decryptBuffer(raw) : raw;
+    const ext = path.extname(filename).toLowerCase();
+    const mime = ext === ".pdf" ? "application/pdf" : ext === ".png" ? "image/png" : "image/jpeg";
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.send(buf);
+  } catch {
+    res.status(500).json({ error: "Erreur de déchiffrement" });
+  }
 });
 
 // ─── DELETE /invoices/:id (SUPER_ADMIN only, soft delete) ────────────────────

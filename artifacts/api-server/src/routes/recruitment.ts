@@ -6,6 +6,8 @@ import fs from "fs";
 import { z } from "zod/v4";
 import { db, candidatesTable, employeesTable, onboardingTasksTable } from "@workspace/db";
 import { loadUser } from "../middlewares/roles";
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer } from "../lib/crypto";
+import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -240,6 +242,17 @@ router.post("/recruitment/upload-cv", loadUser, upload.single("cv"), async (req,
   const ext = path.extname(req.file.originalname).toLowerCase();
   const cvUrl = `/api/uploads/cv/${req.file.filename}`;
 
+  // Read raw bytes for PDF parsing BEFORE encrypting
+  const rawBytes = fs.readFileSync(req.file.path);
+
+  // Encrypt file at rest
+  try {
+    fs.writeFileSync(req.file.path, encryptBuffer(rawBytes));
+    req.log.info({ file: req.file.filename }, "CV encrypted at rest");
+  } catch (e) {
+    req.log.warn({ err: e }, "CV encryption failed — storing unencrypted");
+  }
+
   let parsed = { firstName: undefined as string | undefined, lastName: undefined as string | undefined,
     email: undefined as string | undefined, phone: undefined as string | undefined,
     skills: [] as string[], experience: undefined as string | undefined,
@@ -247,13 +260,10 @@ router.post("/recruitment/upload-cv", loadUser, upload.single("cv"), async (req,
 
   try {
     if (ext === ".pdf") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfParse = ((await import("pdf-parse")) as any).default ?? (await import("pdf-parse"));
-      const data = await pdfParse(fs.readFileSync(req.file.path));
+      const data = await pdfParse(rawBytes);
       parsed = await parseCvText(data.text) as typeof parsed;
     } else {
-      // Image: return URL only, no OCR (would need tesseract)
       req.log.info("CV image uploaded — OCR non disponible pour les images");
     }
   } catch (e) {
@@ -261,6 +271,24 @@ router.post("/recruitment/upload-cv", loadUser, upload.single("cv"), async (req,
   }
 
   res.json({ cvUrl, ...parsed });
+});
+
+// ── GET /api/uploads/cv/:filename — decrypt on serve ─────────────────────────
+router.get("/uploads/cv/:filename", requireAuth, (req, res): void => {
+  const filename = String(req.params.filename).replace(/[^a-zA-Z0-9._-]/g, "");
+  const filePath = path.join(cvDir, filename);
+  if (!fs.existsSync(filePath)) { res.status(404).send("Not found"); return; }
+  try {
+    const raw = fs.readFileSync(filePath);
+    const buf = isEncryptedBuffer(raw) ? decryptBuffer(raw) : raw;
+    const ext = path.extname(filename).toLowerCase();
+    const mime = ext === ".pdf" ? "application/pdf" : ext === ".png" ? "image/png" : "image/jpeg";
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.send(buf);
+  } catch {
+    res.status(500).send("Erreur de déchiffrement");
+  }
 });
 
 // ── POST /api/recruitment/candidates/:id/hire ────────────────────────────────

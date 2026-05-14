@@ -2,16 +2,19 @@ import { useState } from "react";
 import { Link } from "wouter";
 import {
   Shield, ShieldAlert, ShieldCheck, AlertTriangle, Users, Lock, Unlock,
-  Activity, Globe, Clock, Eye, Edit, Trash2, Download, Plus, CheckCircle2,
+  Activity, Globe, Clock, Eye, Trash2, Download, Plus, CheckCircle2,
   XCircle, MonitorDot, Wifi, WifiOff, ChevronRight, KeyRound, Ban,
-  RefreshCw, UserX, BarChart2, LogIn,
+  RefreshCw, UserX, LogIn, Smartphone, QrCode, HardDrive, Database,
+  Mail, ToggleLeft, ToggleRight, FileArchive, Info,
 } from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface LoginEntry { id: string; userId: string; userName: string; userEmail: string; ip: string | null; userAgent: string | null; success: boolean; createdAt: string }
 interface UserStatus { id: string; name: string; email: string; role: string; status: string; isActive: boolean; failedAttempts: number; lastLoginAt: string | null; lockedAt: string | null; isOnline: boolean }
 interface RolePerm { id: string; role: string; module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean; canExport: boolean }
 interface SuspiciousIp { ip: string; count: number }
+interface TwoFaUser { id: string; name: string; email: string; role: string; twoFactorEnabled: boolean; twoFactorMethod: string | null }
+interface BackupFile { filename: string; size: number; createdAt: string }
 
 interface SecurityData {
   score: number; scoreLabel: string;
@@ -27,7 +30,7 @@ interface SecurityData {
   allUsers: UserStatus[];
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const ROLE_FR: Record<string, string> = {
   SUPER_ADMIN: "Super Admin", ADMIN: "Admin", DG: "DG", DGA: "DGA",
   ACCOUNTANT: "Comptable", LOGISTICS_MANAGER: "Logistique",
@@ -41,6 +44,7 @@ const ROLE_COLOR: Record<string, string> = {
   BUSINESS_DEVELOPER: "bg-sky-100 text-sky-700", DSI: "bg-indigo-100 text-indigo-700",
 };
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+const fmtSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} Ko` : `${(b / 1024 / 1024).toFixed(1)} Mo`;
 const timeAgo = (d: string) => {
   const diff = Date.now() - new Date(d).getTime();
   if (diff < 60_000) return "À l'instant";
@@ -57,7 +61,7 @@ const parseAgent = (ua: string | null) => {
   return "Navigateur";
 };
 
-// ─── Score Gauge ─────────────────────────────────────────────────────────────
+// ─── Score Gauge ──────────────────────────────────────────────────────────────
 function ScoreGauge({ score, label }: { score: number; label: string }) {
   const color = score >= 80 ? "text-emerald-500" : score >= 60 ? "text-amber-500" : "text-red-500";
   const ring = score >= 80 ? "border-emerald-400" : score >= 60 ? "border-amber-400" : "border-red-400";
@@ -78,7 +82,7 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
   );
 }
 
-// ─── Stat Card ───────────────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, iconBg, iconColor, urgent }: {
   label: string; value: string | number; icon: any; iconBg: string; iconColor: string; urgent?: boolean;
 }) {
@@ -93,50 +97,167 @@ function StatCard({ label, value, icon: Icon, iconBg, iconColor, urgent }: {
   );
 }
 
-// ─── Permission Cell ─────────────────────────────────────────────────────────
+// ─── Permission Cell ──────────────────────────────────────────────────────────
 function PermCell({ value }: { value: boolean }) {
   return value
     ? <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-emerald-100"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /></span>
     : <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-gray-100"><XCircle className="w-3.5 h-3.5 text-gray-300" /></span>;
 }
 
+// ─── 2FA Setup Modal ──────────────────────────────────────────────────────────
+function TwoFaSetupModal({
+  qrCode, secret, onVerify, onCancel, loading, error,
+}: {
+  qrCode: string; secret: string;
+  onVerify: (code: string) => void; onCancel: () => void;
+  loading: boolean; error: string | null;
+}) {
+  const [code, setCode] = useState("");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+        <div className="text-center">
+          <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <QrCode className="w-5 h-5 text-violet-600" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Configuration 2FA</h2>
+          <p className="text-xs text-gray-500 mt-1">Scanne ce QR code avec Google Authenticator ou Authy</p>
+        </div>
+        <div className="flex justify-center">
+          <img src={qrCode} alt="QR Code 2FA" className="w-40 h-40 rounded-xl border border-gray-200" />
+        </div>
+        <div className="bg-gray-50 rounded-xl p-3 text-center">
+          <p className="text-xs text-gray-500 mb-1">Clé manuelle</p>
+          <p className="font-mono text-sm font-bold text-gray-800 tracking-widest break-all">{secret}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-700">Saisis le code généré pour confirmer</p>
+          <input type="text" inputMode="numeric" maxLength={6} placeholder="000000"
+            value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="w-full text-center text-2xl font-mono tracking-[0.5em] border border-gray-200 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-violet-400" />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50">Annuler</button>
+          <button onClick={() => onVerify(code)} disabled={loading || code.length < 6}
+            className="flex-1 px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 disabled:opacity-50">
+            {loading ? "Vérification…" : "Activer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SecurityDashboard({
-  data, onUnlock, onRevokeSession,
+  data, twoFaStatus, backups, myTwoFa,
+  onUnlock, onRevokeSession,
+  onSetup2fa, onEnable2fa, onDisable2fa,
+  onCreateBackup, onDeleteBackup,
 }: {
   data: SecurityData;
+  twoFaStatus: TwoFaUser[];
+  backups: BackupFile[];
+  myTwoFa: { enabled: boolean; method: string | null };
   onUnlock: (userId: string) => Promise<void>;
   onRevokeSession: (userId: string) => Promise<void>;
+  onSetup2fa: () => Promise<{ secret: string; qrCode: string } | null>;
+  onEnable2fa: (code: string) => Promise<boolean>;
+  onDisable2fa: (code: string) => Promise<boolean>;
+  onCreateBackup: () => Promise<{ success: boolean; filename?: string; error?: string }>;
+  onDeleteBackup: (filename: string) => Promise<void>;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "logins" | "users" | "permissions">("overview");
+  type Tab = "overview" | "logins" | "users" | "permissions" | "2fa" | "backups";
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [unlocking, setUnlocking] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
 
-  const totalThreats = data.lockedUsers.length + data.suspiciousIps.length + data.adminNoRecentLogin.length;
+  // 2FA states
+  const [setupData, setSetupData] = useState<{ secret: string; qrCode: string } | null>(null);
+  const [setup2faLoading, setSetup2faLoading] = useState(false);
+  const [setup2faError, setSetup2faError] = useState<string | null>(null);
+  const [disableCode, setDisableCode] = useState("");
+  const [disableLoading, setDisableLoading] = useState(false);
+  const [disableError, setDisableError] = useState<string | null>(null);
+  const [twoFaMsg, setTwoFaMsg] = useState<string | null>(null);
 
-  // Group role permissions by module
+  // Backup states
+  const [backupCreating, setBackupCreating] = useState(false);
+  const [backupMsg, setBackupMsg] = useState<string | null>(null);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
+
+  const totalThreats = data.lockedUsers.length + data.suspiciousIps.length + data.adminNoRecentLogin.length;
   const moduleSet = [...new Set(data.rolePermissions.map(p => p.module))].sort();
   const roleSet   = [...new Set(data.rolePermissions.map(p => p.role))].sort();
+  const twoFaEnabled = twoFaStatus.filter(u => u.twoFactorEnabled).length;
 
   const handleUnlock = async (userId: string) => {
     setUnlocking(userId);
     try { await onUnlock(userId); } finally { setUnlocking(null); }
   };
-
   const handleRevoke = async (userId: string) => {
     setRevoking(userId);
     try { await onRevokeSession(userId); } finally { setRevoking(null); }
   };
 
+  // ── 2FA handlers ──
+  const handleSetup2fa = async () => {
+    setSetup2faLoading(true); setSetup2faError(null);
+    const d = await onSetup2fa();
+    setSetup2faLoading(false);
+    if (d) setSetupData(d);
+  };
+  const handleEnable2fa = async (code: string) => {
+    setSetup2faLoading(true); setSetup2faError(null);
+    const ok = await onEnable2fa(code);
+    setSetup2faLoading(false);
+    if (ok) { setSetupData(null); setTwoFaMsg("✅ 2FA activée avec succès !"); }
+    else setSetup2faError("Code invalide. Réessaie.");
+  };
+  const handleDisable2fa = async () => {
+    setDisableLoading(true); setDisableError(null);
+    const ok = await onDisable2fa(disableCode);
+    setDisableLoading(false);
+    if (ok) { setDisableCode(""); setTwoFaMsg("2FA désactivée."); }
+    else setDisableError("Code invalide.");
+  };
+
+  // ── Backup handlers ──
+  const handleCreateBackup = async () => {
+    setBackupCreating(true); setBackupMsg(null);
+    const r = await onCreateBackup();
+    setBackupCreating(false);
+    setBackupMsg(r.success ? `✅ Backup créé : ${r.filename}` : `❌ Erreur : ${r.error}`);
+    setTimeout(() => setBackupMsg(null), 5000);
+  };
+  const handleDeleteBackup = async (filename: string) => {
+    if (!confirm(`Supprimer le backup "${filename}" ?`)) return;
+    setDeletingFile(filename);
+    await onDeleteBackup(filename);
+    setDeletingFile(null);
+  };
+
   const TABS = [
-    { key: "overview",     label: "Vue d'ensemble",    icon: Activity },
-    { key: "logins",       label: "Historique accès",  icon: LogIn },
-    { key: "users",        label: "Utilisateurs",       icon: Users },
-    { key: "permissions",  label: "Permissions rôles",  icon: KeyRound },
+    { key: "overview",    label: "Vue d'ensemble",   icon: Activity },
+    { key: "logins",      label: "Historique accès",  icon: LogIn },
+    { key: "users",       label: "Utilisateurs",       icon: Users },
+    { key: "permissions", label: "Permissions",        icon: KeyRound },
+    { key: "2fa",         label: "Double auth",        icon: Smartphone },
+    { key: "backups",     label: "Sauvegardes",        icon: HardDrive },
   ] as const;
 
   return (
     <div className="space-y-6">
+      {setupData && (
+        <TwoFaSetupModal
+          qrCode={setupData.qrCode} secret={setupData.secret}
+          onVerify={handleEnable2fa}
+          onCancel={() => setSetupData(null)}
+          loading={setup2faLoading}
+          error={setup2faError}
+        />
+      )}
 
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-6 text-white">
@@ -152,6 +273,9 @@ export default function SecurityDashboard({
           <div className="flex flex-wrap gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 border border-blue-500/40 rounded-lg text-xs font-medium text-blue-300">
               <Wifi className="w-3.5 h-3.5" /> {data.activeSessionCount} session{data.activeSessionCount > 1 ? "s" : ""} active{data.activeSessionCount > 1 ? "s" : ""}
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/20 border border-violet-500/40 rounded-lg text-xs font-medium text-violet-300">
+              <Smartphone className="w-3.5 h-3.5" /> {twoFaEnabled}/{twoFaStatus.length} 2FA
             </div>
             {totalThreats > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/40 rounded-lg text-xs font-medium text-red-300 animate-pulse">
@@ -207,12 +331,12 @@ export default function SecurityDashboard({
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {TABS.map(t => {
           const Icon = t.icon;
           return (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               <Icon className="w-4 h-4" />{t.label}
             </button>
           );
@@ -223,8 +347,6 @@ export default function SecurityDashboard({
       {activeTab === "overview" && (
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-            {/* Score */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center">
               <ScoreGauge score={data.score} label={data.scoreLabel} />
               <div className="w-full mt-4 space-y-2 text-xs">
@@ -233,6 +355,7 @@ export default function SecurityDashboard({
                   { label: "IP suspectes",             value: data.suspiciousIps.length,       bad: data.suspiciousIps.length > 0 },
                   { label: "Admins inactifs 30j",      value: data.adminNoRecentLogin.length,  bad: data.adminNoRecentLogin.length > 0 },
                   { label: "Tentatives échouées 24h",  value: data.failedLast24h,              bad: data.failedLast24h > 3 },
+                  { label: "Utilisateurs avec 2FA",    value: `${twoFaEnabled}/${twoFaStatus.length}`, bad: twoFaEnabled < twoFaStatus.length },
                 ].map(r => (
                   <div key={r.label} className="flex justify-between items-center py-1 border-b border-gray-50">
                     <span className="text-gray-500">{r.label}</span>
@@ -241,15 +364,11 @@ export default function SecurityDashboard({
                 ))}
               </div>
             </div>
-
-            {/* Stats */}
             <div className="md:col-span-2 grid grid-cols-2 gap-3">
-              <StatCard label="Sessions actives"     value={data.activeSessionCount} icon={Wifi}       iconBg="bg-blue-50"    iconColor="text-blue-600" />
+              <StatCard label="Sessions actives"     value={data.activeSessionCount} icon={Wifi}        iconBg="bg-blue-50"    iconColor="text-blue-600" />
               <StatCard label="Connexions (24h)"     value={data.successLast24h}     icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-              <StatCard label="Échecs (24h)"         value={data.failedLast24h}      icon={XCircle}    iconBg="bg-red-50"     iconColor="text-red-500"   urgent={data.failedLast24h > 0} />
-              <StatCard label="Utilisateurs actifs"  value={data.activeUsers}        icon={Users}      iconBg="bg-violet-50"  iconColor="text-violet-600" />
-
-              {/* Recent logins mini */}
+              <StatCard label="Échecs (24h)"         value={data.failedLast24h}      icon={XCircle}     iconBg="bg-red-50"     iconColor="text-red-500"   urgent={data.failedLast24h > 0} />
+              <StatCard label="Avec 2FA activée"     value={twoFaEnabled}            icon={Smartphone}  iconBg="bg-violet-50"  iconColor="text-violet-600" />
               <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
                 <h3 className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">Dernières connexions</h3>
                 <div className="space-y-2">
@@ -417,11 +536,8 @@ export default function SecurityDashboard({
                       <div className="flex flex-col items-center gap-1">
                         <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${ROLE_COLOR[r] ?? "bg-gray-100 text-gray-600"}`}>{ROLE_FR[r] ?? r}</span>
                         <div className="flex gap-0.5 text-gray-300 text-xs">
-                          <span title="Voir">V</span>
-                          <span title="Créer">C</span>
-                          <span title="Modifier">M</span>
-                          <span title="Supprimer">S</span>
-                          <span title="Exporter">E</span>
+                          <span title="Voir">V</span><span title="Créer">C</span>
+                          <span title="Modifier">M</span><span title="Supprimer">S</span><span title="Exporter">E</span>
                         </div>
                       </div>
                     </th>
@@ -438,11 +554,8 @@ export default function SecurityDashboard({
                       return (
                         <td key={role} className="py-2.5 px-2">
                           <div className="flex gap-0.5 justify-center">
-                            <PermCell value={p.canView} />
-                            <PermCell value={p.canCreate} />
-                            <PermCell value={p.canEdit} />
-                            <PermCell value={p.canDelete} />
-                            <PermCell value={p.canExport} />
+                            <PermCell value={p.canView} /><PermCell value={p.canCreate} />
+                            <PermCell value={p.canEdit} /><PermCell value={p.canDelete} /><PermCell value={p.canExport} />
                           </div>
                         </td>
                       );
@@ -457,12 +570,212 @@ export default function SecurityDashboard({
             <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5 text-gray-300" /> Refusé</span>
             <span className="ml-2 italic">V=Voir C=Créer M=Modifier S=Supprimer E=Exporter</span>
           </div>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3">
             <Link href="/admin/users">
               <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 cursor-pointer transition-colors">
                 <Users className="w-3.5 h-3.5" /> Gérer les utilisateurs
               </div>
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ══ TAB: DOUBLE AUTH ══ */}
+      {activeTab === "2fa" && (
+        <div className="space-y-5">
+          {twoFaMsg && (
+            <div className={`rounded-xl px-4 py-3 text-sm font-semibold ${twoFaMsg.startsWith("✅") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-amber-50 border border-amber-200 text-amber-700"}`}>
+              {twoFaMsg}
+            </div>
+          )}
+
+          {/* My 2FA Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                <Smartphone className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Ma double authentification</h3>
+                <p className="text-xs text-gray-500">Configuration pour ton compte</p>
+              </div>
+              <div className="ml-auto">
+                {myTwoFa.enabled
+                  ? <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-700"><ToggleRight className="w-4 h-4" /> Activée</span>
+                  : <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-full text-xs font-bold text-gray-500"><ToggleLeft className="w-4 h-4" /> Désactivée</span>}
+              </div>
+            </div>
+
+            {!myTwoFa.enabled ? (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3">
+                  <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700">La 2FA ajoute une couche de sécurité supplémentaire. À chaque connexion, un code temporaire (TOTP) généré par une app comme <strong>Google Authenticator</strong> ou <strong>Authy</strong> sera requis.</p>
+                </div>
+                <button onClick={handleSetup2fa} disabled={setup2faLoading}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                  {setup2faLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                  Configurer la 2FA
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-700">
+                    <p className="font-semibold">2FA active via {myTwoFa.method === "email" ? "email OTP" : "TOTP (Authenticator app)"}</p>
+                    <p className="mt-0.5">Ton compte est protégé. Un code est requis à chaque connexion.</p>
+                  </div>
+                </div>
+                <div className="border border-red-200 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-red-700">Désactiver la 2FA</p>
+                  <p className="text-xs text-gray-500">Entre un code valide de ton application pour confirmer la désactivation.</p>
+                  <div className="flex gap-2">
+                    <input type="text" inputMode="numeric" maxLength={6} placeholder="Code TOTP"
+                      value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="flex-1 text-center font-mono border border-gray-200 rounded-lg py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" />
+                    <button onClick={handleDisable2fa} disabled={disableLoading || disableCode.length < 6}
+                      className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">
+                      {disableLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Désactiver"}
+                    </button>
+                  </div>
+                  {disableError && <p className="text-xs text-red-600">{disableError}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* All users 2FA status */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-800">État 2FA — tous les utilisateurs</h3>
+              <span className="text-xs text-gray-400">{twoFaEnabled}/{twoFaStatus.length} protégés</span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-5">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Couverture 2FA</span>
+                <span className="font-bold">{twoFaStatus.length ? Math.round(twoFaEnabled / twoFaStatus.length * 100) : 0}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-violet-500 rounded-full transition-all"
+                  style={{ width: `${twoFaStatus.length ? (twoFaEnabled / twoFaStatus.length) * 100 : 0}%` }} />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-semibold text-gray-400 border-b border-gray-100">
+                    <th className="pb-2 pr-4">Utilisateur</th>
+                    <th className="pb-2 pr-4">Rôle</th>
+                    <th className="pb-2 pr-4">2FA</th>
+                    <th className="pb-2">Méthode</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {twoFaStatus.map(u => (
+                    <tr key={u.id} className="hover:bg-gray-50/50">
+                      <td className="py-2.5 pr-4">
+                        <p className="font-semibold text-gray-800 text-xs">{u.name}</p>
+                        <p className="text-gray-400 text-xs">{u.email}</p>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLOR[u.role] ?? "bg-gray-100 text-gray-600"}`}>{ROLE_FR[u.role] ?? u.role}</span>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {u.twoFactorEnabled
+                          ? <span className="flex items-center gap-1 text-xs text-emerald-600 font-bold"><ShieldCheck className="w-3.5 h-3.5" /> Activée</span>
+                          : <span className="flex items-center gap-1 text-xs text-gray-400"><ShieldAlert className="w-3.5 h-3.5" /> Désactivée</span>}
+                      </td>
+                      <td className="py-2.5 text-xs text-gray-500">
+                        {u.twoFactorEnabled
+                          ? (u.twoFactorMethod === "email"
+                            ? <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-blue-400" /> Email OTP</span>
+                            : <span className="flex items-center gap-1"><Smartphone className="w-3.5 h-3.5 text-violet-400" /> Authenticator</span>)
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ TAB: BACKUPS ══ */}
+      {activeTab === "backups" && (
+        <div className="space-y-5">
+          {/* Backup action panel */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Database className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Sauvegarde de la base de données</h3>
+                <p className="text-xs text-gray-500">Dump PostgreSQL complet (.sql) — stocké localement dans /backups/</p>
+              </div>
+              <button onClick={handleCreateBackup} disabled={backupCreating}
+                className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {backupCreating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {backupCreating ? "Création…" : "Nouveau backup"}
+              </button>
+            </div>
+            {backupMsg && (
+              <div className={`rounded-xl px-4 py-2.5 text-xs font-semibold ${backupMsg.startsWith("✅") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                {backupMsg}
+              </div>
+            )}
+
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2 mt-4">
+              <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">Les backups sont des dumps SQL bruts non chiffrés. Pour la production, prévoir un stockage externe sécurisé (S3, SFTP) et planifier des sauvegardes automatiques via cron.</p>
+            </div>
+          </div>
+
+          {/* Backup list */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-800">Backups disponibles</h3>
+              <span className="text-xs text-gray-400">{backups.length} fichier{backups.length > 1 ? "s" : ""}</span>
+            </div>
+            {backups.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <FileArchive className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Aucun backup disponible</p>
+                <p className="text-xs mt-1">Crée ton premier backup en cliquant sur "Nouveau backup"</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {backups.map(b => (
+                  <div key={b.filename} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <HardDrive className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate">{b.filename}</p>
+                        <p className="text-xs text-gray-400">{fmtSize(b.size)} · {fmtDate(b.createdAt)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0 ml-3">
+                      <a href={`/api/admin/backup/download/${encodeURIComponent(b.filename)}`}
+                        download={b.filename}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        <Download className="w-3.5 h-3.5" /> Télécharger
+                      </a>
+                      <button onClick={() => handleDeleteBackup(b.filename)} disabled={deletingFile === b.filename}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-xs font-semibold rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors">
+                        {deletingFile === b.filename ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

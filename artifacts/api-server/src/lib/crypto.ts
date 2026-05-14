@@ -34,3 +34,31 @@ export function decryptIfNeeded(text: string | null | undefined): string | null 
   if (!text) return null;
   try { return decrypt(text); } catch { return text; }
 }
+
+// ─── File (Buffer) encryption ─────────────────────────────────────────────────
+export function encryptBuffer(buf: Buffer): Buffer {
+  const key = getKey();
+  const iv = randomBytes(16);
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(buf), cipher.final()]);
+  // Format: [4-byte iv-len][iv][encrypted]
+  const ivLenBuf = Buffer.allocUnsafe(4);
+  ivLenBuf.writeUInt32BE(iv.length, 0);
+  return Buffer.concat([ivLenBuf, iv, encrypted]);
+}
+
+export function decryptBuffer(buf: Buffer): Buffer {
+  const key = getKey();
+  const ivLen = buf.readUInt32BE(0);
+  const iv = buf.slice(4, 4 + ivLen);
+  const data = buf.slice(4 + ivLen);
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  return Buffer.concat([decipher.update(data), decipher.final()]);
+}
+
+/** Returns true if the buffer looks like our encrypted format (magic header). */
+export function isEncryptedBuffer(buf: Buffer): boolean {
+  if (buf.length < 4) return false;
+  const ivLen = buf.readUInt32BE(0);
+  return ivLen === 16 && buf.length > 4 + ivLen;
+}

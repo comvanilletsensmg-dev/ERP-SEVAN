@@ -11,6 +11,7 @@ import { eq, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer } from "../lib/crypto";
 import {
   db,
   accountingInvoicesTable,
@@ -98,6 +99,12 @@ router.post(
       res.status(400).json({ error: "Aucun fichier reçu" });
       return;
     }
+    // Encrypt at rest
+    try {
+      const raw = fs.readFileSync(req.file.path);
+      fs.writeFileSync(req.file.path, encryptBuffer(raw));
+      (req as any).log?.info({ file: req.file.filename }, "Payment proof encrypted at rest");
+    } catch { /* store unencrypted on failure */ }
     const proofUrl = `/api/uploads/payments/${req.file.filename}`;
     res.json({ proofUrl, filename: req.file.originalname, size: req.file.size });
   },
@@ -254,15 +261,22 @@ router.post(
   },
 );
 
-// ── Serve uploaded payment proofs ─────────────────────────────────────────────
-import { createReadStream, statSync } from "fs";
-
-router.get("/uploads/payments/:filename", (req, res) => {
-  const filePath = path.join(paymentsDir, req.params.filename);
+// ── Serve uploaded payment proofs (decrypt on fly) ────────────────────────────
+router.get("/uploads/payments/:filename", requireAuth, (req, res): void => {
+  const filename = String(req.params.filename).replace(/[^a-zA-Z0-9._-]/g, "");
+  const filePath = path.join(paymentsDir, filename);
   if (!fs.existsSync(filePath)) { res.status(404).send("Not found"); return; }
-  const stat = statSync(filePath);
-  res.setHeader("Content-Length", stat.size);
-  createReadStream(filePath).pipe(res);
+  try {
+    const raw = fs.readFileSync(filePath);
+    const buf = isEncryptedBuffer(raw) ? decryptBuffer(raw) : raw;
+    const ext = path.extname(filename).toLowerCase();
+    const mime = ext === ".pdf" ? "application/pdf" : ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.send(buf);
+  } catch {
+    res.status(500).send("Erreur de déchiffrement");
+  }
 });
 
 export default router;
