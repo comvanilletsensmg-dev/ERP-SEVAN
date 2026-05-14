@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: sevan_erp
+      POSTGRES_USER: sevan
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sevan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-server:
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sevan:${DB_PASSWORD}@postgres:5432/sevan_erp
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: 8080
+
+  frontend:
+    build:
+      context: .
+      dockerfile: artifacts/vanilla-erp/Dockerfile
+    restart: always
+    depends_on:
+      - api-server
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
