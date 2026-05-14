@@ -1,0 +1,214 @@
+Tu es un développeur full-stack senior expert ERP enterprise, BI analytics, supply chain et gouvernance d’entreprise.
+
+Objectif :
+Créer un module ADMINISTRATION ultra professionnel visible uniquement par :
+- SUPER_ADMIN
+- ADMIN
+
+Le module doit devenir le centre de gouvernance stratégique de l’ERP.
+
+Stack :
+- React
+- Tailwind
+- Shadcn UI
+- Recharts
+- Framer Motion
+- Node.js
+- Prisma
+- PostgreSQL
+
+IMPORTANT :
+Créer un système enterprise :
+- analytique
+- intelligent
+- orienté export vanille
+- temps réel
+- ultra moderne
+
+---------------------------------------------------
+1. RESTRICTIONS ACCÈS
+---------------------------------------------------
+
+Autoriser uniquement :
+
+- SUPER_ADMIN
+- ADMIN
+
+-----------------------------------
+
+Bloquer :
+
+- RH
+- comptable
+- commercial
+- logistique
+
+---------------------------------------------------
+2. DASHBOARD EXÉCUTIF
+---------------------------------------------------
+
+Afficher KPI :
+
+- CA export
+- trésorerie
+- marge nette
+- pertes
+- stock global
+- dettes fournisseurs
+- rendement lots
+
+---------------------------------------------------
+3. WORKFLOWS VALIDATION
+---------------------------------------------------
+
+Créer système workflows :
+
+Achats :
+Demande → Validation → Approbation
+
+Paiements :
+Comptable → Admin
+
+Congés :
+RH → Validation
+
+Export :
+Préparation → Contrôle → Validation
+
+---------------------------------------------------
+4. PILOTAGE EXPORT
+---------------------------------------------------
+
+Afficher :
+
+- commandes export
+- AWB
+- packing
+- shipping
+- documents export
+
+-----------------------------------
+
+Créer timeline export.
+
+---------------------------------------------------
+5. BI AVANCÉE VANILLE
+---------------------------------------------------
+
+Créer analytics :
+
+- rendement lots
+- pertes
+- humidité
+- rentabilité clients
+- rentabilité fournisseurs
+- coûts export
+
+---------------------------------------------------
+6. IA INSIGHTS
+---------------------------------------------------
+
+Détecter :
+
+- risques
+- pertes anormales
+- humidité élevée
+- baisse rentabilité
+
+---------------------------------------------------
+7. TÂCHES QUOTIDIENNES
+---------------------------------------------------
+
+Créer tableau tâches :
+
+- à faire
+- en cours
+- terminé
+- bloqué
+
+-----------------------------------
+
+Affecter :
+
+- utilisateur
+- priorité
+- département
+
+---------------------------------------------------
+8. KPI TEMPS RÉEL
+---------------------------------------------------
+
+Afficher :
+
+- achats jour
+- export jour
+- paiements jour
+- lots traités
+- pertes jour
+
+---------------------------------------------------
+9. CALENDRIER GLOBAL
+---------------------------------------------------
+
+Afficher :
+
+- exportations
+- validations
+- paiements
+- congés
+
+---------------------------------------------------
+10. NOTIFICATIONS
+---------------------------------------------------
+
+Créer centre notifications :
+
+- workflows attente
+- alertes stock
+- export urgent
+- paiements retard
+
+---------------------------------------------------
+11. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- PDF exécutif
+- Excel KPI
+- rapports direction
+
+---------------------------------------------------
+12. UI/UX PREMIUM
+---------------------------------------------------
+
+Ajouter :
+
+- animations
+- widgets dynamiques
+- charts interactifs
+- dark mode
+- responsive
+- timeline export
+- heatmaps
+
+---------------------------------------------------
+13. LIVRABLE
+---------------------------------------------------
+
+Créer un module administration enterprise :
+
+- gouvernance ERP
+- BI avancée
+- pilotage export
+- workflows intelligents
+- KPI temps réel
+
+Commence par :
+
+1. restrictions rôles
+2. dashboard exécutif
+3. workflows validation
+4. pilotage export
+5. BI avancée
+6. tâches quotidiennes

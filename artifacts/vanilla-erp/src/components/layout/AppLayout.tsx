@@ -73,9 +73,10 @@ const operationsNav = [
 ];
 
 const adminNav = [
-  { label: "Utilisateurs",    href: "/admin/users",        icon: ShieldCheck },
-  { label: "Config. ERP",     href: "/settings/platform",  icon: Settings },
-  { label: "Config. Société", href: "/settings/company",   icon: Building2 },
+  { label: "Centre de gouvernance", href: "/admin/dashboard",    icon: LayoutDashboard },
+  { label: "Utilisateurs",          href: "/admin/users",        icon: ShieldCheck },
+  { label: "Config. ERP",           href: "/settings/platform",  icon: Settings },
+  { label: "Config. Société",       href: "/settings/company",   icon: Building2 },
 ];
 
 const EXACT_MATCH_PATHS = ["/dashboard", "/accounting", "/accounting/finance", "/accounting/closing"];

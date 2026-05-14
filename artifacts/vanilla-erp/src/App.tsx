@@ -39,6 +39,7 @@ import AccountingReports from "@/pages/accounting/Reports";
 import FinancialDashboard from "@/pages/accounting/FinancialDashboard";
 import ClosingPage from "@/pages/accounting/ClosingPage";
 import UsersAdmin from "@/pages/admin/Users";
+import ExecutiveDashboardPage from "@/pages/admin/ExecutiveDashboardPage";
 import CompanySettings from "@/pages/settings/Company";
 import PlatformSettings from "@/pages/settings/Platform";
 import LogisticsDashboardPage from "@/pages/logistics/LogisticsDashboardPage";
@@ -139,6 +140,7 @@ function Router() {
       <Route path="/accounting/reports" component={() => <ProtectedRoute component={AccountingReports} />} />
       <Route path="/accounting/finance" component={() => <ProtectedRoute component={FinancialDashboard} />} />
       <Route path="/accounting/closing" component={() => <ProtectedRoute component={ClosingPage} />} />
+      <Route path="/admin/dashboard" component={() => <ProtectedRoute component={ExecutiveDashboardPage} />} />
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
       <Route path="/settings/company" component={() => <ProtectedRoute component={CompanySettings} />} />
       <Route path="/settings/platform" component={() => <ProtectedRoute component={PlatformSettings} />} />
