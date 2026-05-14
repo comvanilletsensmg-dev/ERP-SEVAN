@@ -50,6 +50,14 @@ router.post("/login", async (req, res): Promise<void> => {
   await db.update(usersTable).set({ lastLoginAt: new Date(), failedAttempts: 0 }).where(eq(usersTable.id, user.id));
   await recordLogin(user.id, ip, ua, true);
 
+  // If 2FA is enabled, put session in pending state
+  if ((user as any).twoFactorEnabled && (user as any).twoFactorSecret) {
+    (req.session as any).pending2faUserId = user.id;
+    logger.info({ userId: user.id }, "2FA required for login");
+    res.json({ requires2fa: true, method: (user as any).twoFactorMethod ?? "totp" });
+    return;
+  }
+
   req.session!.userId = user.id;
   logger.info({ userId: user.id }, "User logged in");
 

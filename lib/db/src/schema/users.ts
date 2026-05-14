@@ -15,6 +15,9 @@ export const usersTable = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   failedAttempts: integer("failed_attempts").notNull().default(0),
   lockedAt: timestamp("locked_at"),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorMethod: text("two_factor_method"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

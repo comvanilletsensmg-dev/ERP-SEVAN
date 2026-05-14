@@ -59,6 +59,8 @@ import tiersRouter from "./tiers";
 import bankReconciliationRouter from "./bank-reconciliation";
 import adminExecutiveRouter from "./admin-executive";
 import securityRouter from "./security";
+import auth2faRouter from "./auth-2fa";
+import backupRouter from "./backup";
 
 const router: IRouter = Router();
 
@@ -125,5 +127,7 @@ router.use(tiersRouter);
 router.use(bankReconciliationRouter);
 router.use(adminExecutiveRouter);
 router.use(securityRouter);
+router.use(auth2faRouter);
+router.use(backupRouter);
 
 export default router;
