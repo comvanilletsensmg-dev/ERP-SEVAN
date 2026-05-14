@@ -58,6 +58,7 @@ import invoicePaymentsRouter from "./invoice-payments";
 import tiersRouter from "./tiers";
 import bankReconciliationRouter from "./bank-reconciliation";
 import adminExecutiveRouter from "./admin-executive";
+import securityRouter from "./security";
 
 const router: IRouter = Router();
 
@@ -123,5 +124,6 @@ router.use(tiersRouter);
 // bank-reconciliation: new endpoints alongside existing accounting-bank
 router.use(bankReconciliationRouter);
 router.use(adminExecutiveRouter);
+router.use(securityRouter);
 
 export default router;

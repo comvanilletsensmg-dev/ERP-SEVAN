@@ -74,6 +74,7 @@ const operationsNav = [
 
 const adminNav = [
   { label: "Centre de gouvernance", href: "/admin/dashboard",    icon: LayoutDashboard },
+  { label: "Security Center",       href: "/admin/security",     icon: ShieldAlert },
   { label: "Utilisateurs",          href: "/admin/users",        icon: ShieldCheck },
   { label: "Config. ERP",           href: "/settings/platform",  icon: Settings },
   { label: "Config. Société",       href: "/settings/company",   icon: Building2 },

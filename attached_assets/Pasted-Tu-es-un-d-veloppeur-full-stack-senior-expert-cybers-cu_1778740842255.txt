@@ -1,0 +1,193 @@
+Tu es un développeur full-stack senior expert cybersécurité ERP enterprise.
+
+Objectif :
+Créer un module SÉCURITÉ AVANCÉE pour l’ERP.
+
+Stack :
+- React
+- Tailwind
+- Node.js
+- Prisma
+- PostgreSQL
+- JWT
+- bcrypt
+- OTP
+
+IMPORTANT :
+Créer un véritable Security Center ERP enterprise.
+
+---------------------------------------------------
+1. AUTHENTIFICATION AVANCÉE
+---------------------------------------------------
+
+Ajouter :
+
+- mot de passe fort
+- verrouillage compte
+- timeout session
+- expiration session
+
+---------------------------------------------------
+2. DOUBLE AUTHENTIFICATION
+---------------------------------------------------
+
+Ajouter 2FA :
+
+- Google Authenticator
+- Email OTP
+
+Obligatoire :
+- SUPER_ADMIN
+- ADMIN
+- COMPTABLE
+
+---------------------------------------------------
+3. AUDIT LOGS
+---------------------------------------------------
+
+Enregistrer :
+
+- connexions
+- suppressions
+- modifications
+- exports
+- validations
+
+Afficher :
+
+- utilisateur
+- module
+- IP
+- date
+- ancienne valeur
+- nouvelle valeur
+
+---------------------------------------------------
+4. SESSIONS ACTIVES
+---------------------------------------------------
+
+Afficher :
+
+- appareil
+- IP
+- navigateur
+- pays
+
+Permettre :
+- déconnexion session
+
+---------------------------------------------------
+5. RESTRICTIONS IP
+---------------------------------------------------
+
+Permettre :
+
+- whitelist IP
+- blacklist IP
+- restrictions pays
+
+---------------------------------------------------
+6. ACTIVITÉ SUSPECTE
+---------------------------------------------------
+
+Détecter :
+
+- exports massifs
+- suppressions massives
+- tentatives login répétées
+
+Créer alertes temps réel.
+
+---------------------------------------------------
+7. PERMISSIONS AVANCÉES
+---------------------------------------------------
+
+Créer permissions fines :
+
+- voir
+- créer
+- modifier
+- supprimer
+- exporter
+- valider
+
+Par module ERP.
+
+---------------------------------------------------
+8. CORBEILLE SÉCURISÉE
+---------------------------------------------------
+
+Ne jamais supprimer définitivement directement.
+
+Créer :
+- restauration
+- historique suppression
+
+---------------------------------------------------
+9. BACKUPS
+---------------------------------------------------
+
+Créer :
+
+- sauvegardes automatiques
+- restauration
+- backups cloud/local
+
+---------------------------------------------------
+10. CHIFFREMENT
+---------------------------------------------------
+
+Chiffrer :
+
+- documents RH
+- pièces jointes
+- factures
+- contrats
+
+---------------------------------------------------
+11. DASHBOARD SÉCURITÉ
+---------------------------------------------------
+
+Afficher :
+
+- score sécurité
+- alertes
+- utilisateurs actifs
+- menaces détectées
+
+---------------------------------------------------
+12. NOTIFICATIONS
+---------------------------------------------------
+
+Notifier :
+
+- nouvelles connexions
+- suppressions
+- activités suspectes
+
+---------------------------------------------------
+13. UI/UX
+---------------------------------------------------
+
+Créer UI moderne :
+
+- responsive
+- dark mode
+- widgets sécurité
+- couleurs alertes
+- analytics sécurité
+
+---------------------------------------------------
+14. LIVRABLE
+---------------------------------------------------
+
+Créer un véritable Security Center ERP enterprise sécurisé et moderne.
+
+Commence par :
+
+1. audit logs
+2. 2FA
+3. dashboard sécurité
+4. permissions avancées
+5. sessions actives
+6. sauvegardes
