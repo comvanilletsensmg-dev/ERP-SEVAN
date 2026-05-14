@@ -322,9 +322,12 @@ const LOGIN_PRESETS = [
   { name: "Chêne",       bg: "#1a0f06", primary: "#3b2a14", accent: "#d97706" },
 ];
 
-function LoginTab({ values, onChange }: {
+function LoginTab({ values, onChange, onSave, saving, changedCount }: {
   values: SettingsMap;
   onChange: (key: string, val: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  changedCount: number;
 }) {
   const bg        = values["login_bg_color"]      || "#0a1f12";
   const primary   = values["login_primary_color"] || "#1a3c2a";
@@ -334,16 +337,10 @@ function LoginTab({ values, onChange }: {
   const tagline   = values["login_tagline"]       || "";
   const badge     = values["login_badge"]         || "Madagascar · Bourbon Vanilla";
   const copyright = values["login_copyright"]     || "Vanilla ERP";
-  const prop1 = parseProp(values["login_prop_1"] || "");
-  const prop2 = parseProp(values["login_prop_2"] || "");
-  const prop3 = parseProp(values["login_prop_3"] || "");
-  const logoUrl = values["logo_url"] || "";
   const companyName = values["erp_name"] || "ERP";
 
   return (
-    <div className="grid grid-cols-[1fr_288px] gap-8 items-start">
-      {/* ── Fields ── */}
-      <div className="space-y-8">
+    <div className="space-y-8">
 
         {/* Colors */}
         <div className="space-y-4">
@@ -435,83 +432,19 @@ function LoginTab({ values, onChange }: {
             </div>
           ))}
         </div>
-      </div>
 
-      {/* ── Live preview ── */}
-      <div className="sticky top-4 space-y-3">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aperçu en direct</p>
-        {/* Miniature login */}
-        <div className="rounded-xl overflow-hidden shadow-md border border-gray-200" style={{ transform: "scale(1)", transformOrigin: "top left" }}>
-          <div className="flex" style={{ height: "460px" }}>
-            {/* Left */}
-            <div className="flex flex-col p-4 relative overflow-hidden"
-              style={{ background: `linear-gradient(145deg, ${bg} 0%, ${primary} 100%)`, width: "55%", flexShrink: 0 }}>
-              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M20 20h4v4h-4v-4zm0-20h4v4h-4v-4zM0 20h4v4H0v-4z'/%3E%3C/g%3E%3C/svg%3E")` }} />
-              {/* Top row */}
-              <div className="flex items-center gap-2 mb-3 relative">
-                {logoUrl
-                  ? <img src={logoUrl} alt="logo" className="w-6 h-6 object-contain rounded" onError={e => (e.currentTarget.style.display = "none")} />
-                  : <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white" style={{ background: accent }}>{companyName.charAt(0)}</div>
-                }
-                <div>
-                  <p className="font-semibold text-white" style={{ fontSize: "9px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{companyName}</p>
-                  <p style={{ fontSize: "7px", color: accent, opacity: 0.8 }}>Enterprise Platform</p>
-                </div>
-              </div>
-              {/* Badge */}
-              <div className="mb-2 relative">
-                <span className="px-1.5 py-0.5 rounded-full" style={{ fontSize: "7px", fontWeight: 600, color: accent, border: `1px solid ${accent}50`, background: `${accent}15`, letterSpacing: "0.1em" }}>{badge}</span>
-              </div>
-              {/* Headline */}
-              <div className="flex-1 relative">
-                <p className="text-white font-light" style={{ fontSize: "13px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>
-                  {hl1}<br />
-                  <span style={{ color: accent, fontStyle: "italic" }}>{companyName}</span><br />
-                  {hl2}
-                </p>
-                <p className="mt-2" style={{ fontSize: "7px", color: "#d4e8da", opacity: 0.5, lineHeight: 1.5 }}>
-                  {tagline.slice(0, 90)}{tagline.length > 90 ? "…" : ""}
-                </p>
-                <div className="mt-3 space-y-1.5">
-                  {[prop1, prop2, prop3].map((p, i) => p.title ? (
-                    <div key={i} className="flex items-center gap-1">
-                      <span style={{ fontSize: "9px" }}>{p.emoji}</span>
-                      <p style={{ fontSize: "7px", color: "rgba(255,255,255,0.65)" }}>{p.title}</p>
-                    </div>
-                  ) : null)}
-                </div>
-              </div>
-              {/* Bottom badges */}
-              <div className="flex items-center gap-2 pt-2 border-t relative" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-                {["ISO 27001", "SOC 2"].map(b => (
-                  <div key={b} className="flex items-center gap-1">
-                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                    <span style={{ fontSize: "6px", color: "#d4e8da", opacity: 0.4 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Right */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4" style={{ background: "#faf6ef" }}>
-              <div className="w-full" style={{ maxWidth: "120px" }}>
-                <p className="font-semibold mb-3" style={{ fontSize: "10px", color: "#0f2318", letterSpacing: "-0.01em", fontFamily: "Georgia, serif" }}>Connexion sécurisée</p>
-                <p className="mb-4" style={{ fontSize: "7px", color: "#7a8c82" }}>Accès réservé aux utilisateurs autorisés</p>
-                <div className="space-y-1.5">
-                  <div className="w-full h-6 rounded-lg border" style={{ background: "#fff", borderColor: "#e0d8cc" }} />
-                  <div className="w-full h-6 rounded-lg border" style={{ background: "#fff", borderColor: "#e0d8cc" }} />
-                  <div className="w-full h-7 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primary}, ${primary}cc)`, boxShadow: `0 4px 12px ${primary}60` }}>
-                    <span className="text-white" style={{ fontSize: "7px", fontWeight: 600, letterSpacing: "0.05em" }}>Accéder à la plateforme</span>
-                  </div>
-                </div>
-                <p className="mt-4 text-center" style={{ fontSize: "6px", color: "#b0bdb5" }}>
-                  © {new Date().getFullYear()} {copyright}
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Save button */}
+        <div className="flex items-center justify-end pt-6 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || changedCount === 0}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors shadow-sm"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Sauvegarde…" : changedCount > 0 ? `Sauvegarder (${changedCount})` : "Sauvegarder"}
+          </button>
         </div>
-        <p className="text-[10px] text-gray-400 text-center">Aperçu temps réel — le nom vient du Branding.</p>
-      </div>
     </div>
   );
 }
@@ -1100,7 +1033,13 @@ export default function PlatformSettingsPage() {
 
           {/* Login page customization tab */}
           {isLoginTab && (
-            <LoginTab values={values} onChange={handleChange} />
+            <LoginTab
+              values={values}
+              onChange={handleChange}
+              onSave={handleSave}
+              saving={saving}
+              changedCount={changedKeys.length}
+            />
           )}
 
           {!isBrandingTab && !isLoginTab && (
@@ -1142,7 +1081,7 @@ export default function PlatformSettingsPage() {
           )}
 
           {/* Action buttons */}
-          {(tabSettings.length > 0 || isLegalTab || isSystemTab || isBrandingTab || isLoginTab) && (
+          {(tabSettings.length > 0 || isLegalTab || isSystemTab || isBrandingTab) && !isLoginTab && (
             <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
               {confirmingReset ? (
                 <div className="flex items-center gap-2">
