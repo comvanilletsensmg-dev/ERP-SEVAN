@@ -154,6 +154,12 @@ async function getAccountingData() {
   };
 }
 
+// Dedicated logistics dashboard endpoint (accessible to all authenticated users)
+router.get("/dashboard/logistics", requireAuth, async (req, res): Promise<void> => {
+  const data = await getLogisticsData();
+  res.json(data);
+});
+
 // Single role-based dashboard endpoint
 router.get("/dashboard/me", requireAuth, loadUser, async (req, res): Promise<void> => {
   const role = req.currentUser!.role;

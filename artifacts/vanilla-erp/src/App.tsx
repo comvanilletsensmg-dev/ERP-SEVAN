@@ -41,6 +41,7 @@ import ClosingPage from "@/pages/accounting/ClosingPage";
 import UsersAdmin from "@/pages/admin/Users";
 import CompanySettings from "@/pages/settings/Company";
 import PlatformSettings from "@/pages/settings/Platform";
+import LogisticsDashboardPage from "@/pages/logistics/LogisticsDashboardPage";
 import LogisticsIntelligence from "@/pages/logistics/Intelligence";
 import LogisticsImport from "@/pages/logistics/ImportLots";
 import LogisticsImportProducts from "@/pages/logistics/ImportProducts";
@@ -141,6 +142,7 @@ function Router() {
       <Route path="/admin/users" component={() => <ProtectedRoute component={UsersAdmin} />} />
       <Route path="/settings/company" component={() => <ProtectedRoute component={CompanySettings} />} />
       <Route path="/settings/platform" component={() => <ProtectedRoute component={PlatformSettings} />} />
+      <Route path="/logistics/dashboard" component={() => <ProtectedRoute component={LogisticsDashboardPage} />} />
       <Route path="/logistics/intelligence" component={() => <ProtectedRoute component={LogisticsIntelligence} />} />
       <Route path="/logistics/import" component={() => <ProtectedRoute component={LogisticsImport} />} />
       <Route path="/logistics/import-products" component={() => <ProtectedRoute component={LogisticsImportProducts} />} />

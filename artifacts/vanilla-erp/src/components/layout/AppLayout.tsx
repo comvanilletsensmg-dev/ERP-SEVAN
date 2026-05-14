@@ -15,6 +15,7 @@ import {
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
 const logisticsNav = [
+  { label: "Dashboard Logistique", href: "/logistics/dashboard",       icon: LayoutDashboard },
   { label: "Planning & Export",   href: "/logistics/planning",        icon: Workflow },
   { label: "Fournisseurs",        href: "/suppliers",                 icon: Users },
   { label: "Achats",              href: "/purchases",                 icon: ShoppingCart },
