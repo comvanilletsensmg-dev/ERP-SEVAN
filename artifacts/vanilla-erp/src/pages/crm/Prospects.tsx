@@ -57,7 +57,7 @@ const CERTS = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const parseTags = (s: string) => { try { return JSON.parse(s || "[]"); } catch { return []; } };
+const parseTags = (s: unknown): string[] => { if (Array.isArray(s)) return s; try { const p = JSON.parse((s as string) || "[]"); return Array.isArray(p) ? p : []; } catch { return []; } };
 const scoreIcon = (s: number) => s >= 80 ? "🔥" : s >= 60 ? "🌡️" : "❄️";
 const scoreColor = (s: number) => s >= 80 ? "text-red-600" : s >= 60 ? "text-amber-600" : "text-sky-500";
 
