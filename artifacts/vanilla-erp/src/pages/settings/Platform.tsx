@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2, MapPin, FileText, DollarSign, Palette, Settings,
-  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft, Globe, ImagePlus,
+  Save, Loader2, Upload, ExternalLink, RefreshCw, Mail, Bell, ToggleLeft, Globe, ImagePlus, Monitor,
 } from "lucide-react";
 import { COUNTRY_OPTIONS, getCountryConfig } from "@/config/countries";
 
@@ -32,6 +32,7 @@ const TABS = [
   { key: "notifications", label: "Notifications", icon: Bell },
   { key: "features",      label: "Fonctionnalités", icon: ToggleLeft },
   { key: "system",        label: "Système",       icon: Settings },
+  { key: "login",         label: "Connexion",     icon: Monitor },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -295,6 +296,222 @@ function SettingField({ setting, value, onChange, onUpload, uploading }: {
       ) : (
         <input type="text" value={value} onChange={e => onChange(setting.settingKey, e.target.value)} className={inputCls} />
       )}
+    </div>
+  );
+}
+
+// ─── Login tab ────────────────────────────────────────────────────────────────
+const LOGIN_KEYS = new Set([
+  "login_bg_color", "login_primary_color", "login_accent_color",
+  "login_headline_1", "login_headline_2", "login_tagline",
+  "login_badge", "login_copyright",
+  "login_prop_1", "login_prop_2", "login_prop_3",
+]);
+
+function parseProp(val: string): { emoji: string; title: string; desc: string } {
+  const [emoji = "", title = "", desc = ""] = (val || "").split("|");
+  return { emoji, title, desc };
+}
+
+const LOGIN_PRESETS = [
+  { name: "Vanille",     bg: "#0a1f12", primary: "#1a3c2a", accent: "#c4973a" },
+  { name: "Nuit bleue",  bg: "#030b18", primary: "#0f2744", accent: "#3b82f6" },
+  { name: "Bordeaux",    bg: "#1a0306", primary: "#3b0a14", accent: "#dc2626" },
+  { name: "Ardoise",     bg: "#0f172a", primary: "#1e293b", accent: "#94a3b8" },
+  { name: "Améthyste",   bg: "#0f0a1a", primary: "#2d1f4e", accent: "#8b5cf6" },
+  { name: "Chêne",       bg: "#1a0f06", primary: "#3b2a14", accent: "#d97706" },
+];
+
+function LoginTab({ values, onChange }: {
+  values: SettingsMap;
+  onChange: (key: string, val: string) => void;
+}) {
+  const bg        = values["login_bg_color"]      || "#0a1f12";
+  const primary   = values["login_primary_color"] || "#1a3c2a";
+  const accent    = values["login_accent_color"]  || "#c4973a";
+  const hl1       = values["login_headline_1"]    || "Gérez votre";
+  const hl2       = values["login_headline_2"]    || "depuis un seul écran.";
+  const tagline   = values["login_tagline"]       || "";
+  const badge     = values["login_badge"]         || "Madagascar · Bourbon Vanilla";
+  const copyright = values["login_copyright"]     || "Vanilla ERP";
+  const prop1 = parseProp(values["login_prop_1"] || "");
+  const prop2 = parseProp(values["login_prop_2"] || "");
+  const prop3 = parseProp(values["login_prop_3"] || "");
+  const logoUrl = values["logo_url"] || "";
+  const companyName = values["erp_name"] || "ERP";
+
+  return (
+    <div className="grid grid-cols-[1fr_288px] gap-8 items-start">
+      {/* ── Fields ── */}
+      <div className="space-y-8">
+
+        {/* Colors */}
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Couleurs du panneau gauche</p>
+            <p className="text-xs text-gray-400 mt-0.5">Trois couleurs définissent l'ambiance du panneau de gauche</p>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { key: "login_bg_color",      label: "Fond sombre (haut)",     val: bg },
+              { key: "login_primary_color", label: "Fond principal (bas)",    val: primary },
+              { key: "login_accent_color",  label: "Accent / Dorée",          val: accent },
+            ].map(f => (
+              <div key={f.key} className="space-y-1.5">
+                <p className="text-xs font-medium text-gray-600">{f.label}</p>
+                <ColorField value={f.val} onChange={v => onChange(f.key, v)} />
+              </div>
+            ))}
+          </div>
+          {/* Presets */}
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Palettes prédéfinies</p>
+            <div className="flex flex-wrap gap-2">
+              {LOGIN_PRESETS.map(p => (
+                <button key={p.name} type="button"
+                  onClick={() => { onChange("login_bg_color", p.bg); onChange("login_primary_color", p.primary); onChange("login_accent_color", p.accent); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-200 rounded-lg hover:border-emerald-400 transition text-xs font-medium text-gray-600">
+                  <span className="flex gap-0.5">
+                    <span className="w-3.5 h-3.5 rounded-sm inline-block" style={{ background: p.bg }} />
+                    <span className="w-3.5 h-3.5 rounded-sm inline-block" style={{ background: p.primary }} />
+                    <span className="w-3.5 h-3.5 rounded-sm inline-block" style={{ background: p.accent }} />
+                  </span>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Texts */}
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-gray-800">Textes</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-gray-600">Accroche — ligne 1</p>
+              <p className="text-xs text-gray-400">Avant le nom de l'entreprise mis en valeur</p>
+              <input type="text" value={hl1} onChange={e => onChange("login_headline_1", e.target.value)}
+                className={inputCls} placeholder="Gérez votre" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-gray-600">Accroche — ligne 3</p>
+              <p className="text-xs text-gray-400">Après le nom mis en valeur</p>
+              <input type="text" value={hl2} onChange={e => onChange("login_headline_2", e.target.value)}
+                className={inputCls} placeholder="depuis un seul écran." />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-gray-600">Badge géographique</p>
+            <input type="text" value={badge} onChange={e => onChange("login_badge", e.target.value)}
+              className={inputCls} placeholder="Madagascar · Bourbon Vanilla" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-gray-600">Sous-titre descriptif</p>
+            <textarea value={tagline} onChange={e => onChange("login_tagline", e.target.value)}
+              className={`${inputCls} resize-none`} rows={3} placeholder="Plateforme ERP complète…" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-gray-600">Texte copyright</p>
+            <p className="text-xs text-gray-400">Affiché en bas du formulaire — "© {new Date().getFullYear()} [votre texte]"</p>
+            <input type="text" value={copyright} onChange={e => onChange("login_copyright", e.target.value)}
+              className={inputCls} placeholder={companyName} />
+          </div>
+        </div>
+
+        {/* Value props */}
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Arguments de valeur</p>
+            <p className="text-xs text-gray-400 mt-0.5">Format : <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[11px]">emoji|Titre|Description courte</code></p>
+          </div>
+          {(["login_prop_1", "login_prop_2", "login_prop_3"] as const).map((k, i) => (
+            <div key={k} className="space-y-1">
+              <p className="text-xs font-medium text-gray-600">Argument {i + 1}</p>
+              <input type="text" value={values[k] || ""}
+                onChange={e => onChange(k, e.target.value)}
+                className={`${inputCls} font-mono text-xs`}
+                placeholder={["🌿|Traçabilité complète|Du champ au client, chaque lot suivi", "📊|Pilotage en temps réel|Dashboards financiers unifiés", "🔒|Sécurité enterprise|RBAC, 2FA, audit complet"][i]}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Live preview ── */}
+      <div className="sticky top-4 space-y-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aperçu en direct</p>
+        {/* Miniature login */}
+        <div className="rounded-xl overflow-hidden shadow-md border border-gray-200" style={{ transform: "scale(1)", transformOrigin: "top left" }}>
+          <div className="flex" style={{ height: "460px" }}>
+            {/* Left */}
+            <div className="flex flex-col p-4 relative overflow-hidden"
+              style={{ background: `linear-gradient(145deg, ${bg} 0%, ${primary} 100%)`, width: "55%", flexShrink: 0 }}>
+              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M20 20h4v4h-4v-4zm0-20h4v4h-4v-4zM0 20h4v4H0v-4z'/%3E%3C/g%3E%3C/svg%3E")` }} />
+              {/* Top row */}
+              <div className="flex items-center gap-2 mb-3 relative">
+                {logoUrl
+                  ? <img src={logoUrl} alt="logo" className="w-6 h-6 object-contain rounded" onError={e => (e.currentTarget.style.display = "none")} />
+                  : <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white" style={{ background: accent }}>{companyName.charAt(0)}</div>
+                }
+                <div>
+                  <p className="font-semibold text-white" style={{ fontSize: "9px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{companyName}</p>
+                  <p style={{ fontSize: "7px", color: accent, opacity: 0.8 }}>Enterprise Platform</p>
+                </div>
+              </div>
+              {/* Badge */}
+              <div className="mb-2 relative">
+                <span className="px-1.5 py-0.5 rounded-full" style={{ fontSize: "7px", fontWeight: 600, color: accent, border: `1px solid ${accent}50`, background: `${accent}15`, letterSpacing: "0.1em" }}>{badge}</span>
+              </div>
+              {/* Headline */}
+              <div className="flex-1 relative">
+                <p className="text-white font-light" style={{ fontSize: "13px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+                  {hl1}<br />
+                  <span style={{ color: accent, fontStyle: "italic" }}>{companyName}</span><br />
+                  {hl2}
+                </p>
+                <p className="mt-2" style={{ fontSize: "7px", color: "#d4e8da", opacity: 0.5, lineHeight: 1.5 }}>
+                  {tagline.slice(0, 90)}{tagline.length > 90 ? "…" : ""}
+                </p>
+                <div className="mt-3 space-y-1.5">
+                  {[prop1, prop2, prop3].map((p, i) => p.title ? (
+                    <div key={i} className="flex items-center gap-1">
+                      <span style={{ fontSize: "9px" }}>{p.emoji}</span>
+                      <p style={{ fontSize: "7px", color: "rgba(255,255,255,0.65)" }}>{p.title}</p>
+                    </div>
+                  ) : null)}
+                </div>
+              </div>
+              {/* Bottom badges */}
+              <div className="flex items-center gap-2 pt-2 border-t relative" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                {["ISO 27001", "SOC 2"].map(b => (
+                  <div key={b} className="flex items-center gap-1">
+                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
+                    <span style={{ fontSize: "6px", color: "#d4e8da", opacity: 0.4 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Right */}
+            <div className="flex-1 flex flex-col items-center justify-center p-4" style={{ background: "#faf6ef" }}>
+              <div className="w-full" style={{ maxWidth: "120px" }}>
+                <p className="font-semibold mb-3" style={{ fontSize: "10px", color: "#0f2318", letterSpacing: "-0.01em", fontFamily: "Georgia, serif" }}>Connexion sécurisée</p>
+                <p className="mb-4" style={{ fontSize: "7px", color: "#7a8c82" }}>Accès réservé aux utilisateurs autorisés</p>
+                <div className="space-y-1.5">
+                  <div className="w-full h-6 rounded-lg border" style={{ background: "#fff", borderColor: "#e0d8cc" }} />
+                  <div className="w-full h-6 rounded-lg border" style={{ background: "#fff", borderColor: "#e0d8cc" }} />
+                  <div className="w-full h-7 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primary}, ${primary}cc)`, boxShadow: `0 4px 12px ${primary}60` }}>
+                    <span className="text-white" style={{ fontSize: "7px", fontWeight: 600, letterSpacing: "0.05em" }}>Accéder à la plateforme</span>
+                  </div>
+                </div>
+                <p className="mt-4 text-center" style={{ fontSize: "6px", color: "#b0bdb5" }}>
+                  © {new Date().getFullYear()} {copyright}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-400 text-center">Aperçu temps réel — le nom vient du Branding.</p>
+      </div>
     </div>
   );
 }
@@ -748,19 +965,22 @@ export default function PlatformSettingsPage() {
   const isLegalTab    = activeTab === "legal";
   const isSystemTab   = activeTab === "system";
   const isBrandingTab = activeTab === "branding";
+  const isLoginTab    = activeTab === "login";
   const tabSettings = allSettings.filter(s =>
     s.category === activeTab &&
     !HIDDEN_KEYS.has(s.settingKey) &&
     !(isLegalTab    && ALL_FISCAL_KEYS.has(s.settingKey)) &&
     !(isSystemTab   && SYSTEM_HIDDEN_KEYS.has(s.settingKey)) &&
-    !(isBrandingTab && BRANDING_KEYS.has(s.settingKey))
+    !(isBrandingTab && BRANDING_KEYS.has(s.settingKey)) &&
+    !(isLoginTab    && LOGIN_KEYS.has(s.settingKey))
   );
 
   // Find changed keys in this tab only (+ special sub-tab keys)
-  const fiscalKeys      = isLegalTab    ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)] : [];
-  const systemExtraKeys = isSystemTab   ? ["country_mode"] : [];
+  const fiscalKeys        = isLegalTab    ? ["tax_region", ...Object.values(TAX_FIELDS).flat().map(f => f.key)] : [];
+  const systemExtraKeys   = isSystemTab   ? ["country_mode"] : [];
   const brandingExtraKeys = isBrandingTab ? Array.from(BRANDING_KEYS) : [];
-  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys, ...systemExtraKeys, ...brandingExtraKeys];
+  const loginExtraKeys    = isLoginTab    ? Array.from(LOGIN_KEYS) : [];
+  const allTrackedKeys = [...tabSettings.map(s => s.settingKey), ...fiscalKeys, ...systemExtraKeys, ...brandingExtraKeys, ...loginExtraKeys];
   const changedKeys = allTrackedKeys.filter(k => values[k] !== originalValues[k]);
 
   const handleSave = async () => {
@@ -878,7 +1098,12 @@ export default function PlatformSettingsPage() {
             />
           )}
 
-          {!isBrandingTab && (
+          {/* Login page customization tab */}
+          {isLoginTab && (
+            <LoginTab values={values} onChange={handleChange} />
+          )}
+
+          {!isBrandingTab && !isLoginTab && (
           <div className="space-y-6">
             {/* Country mode — System tab */}
             {isSystemTab && (
@@ -917,7 +1142,7 @@ export default function PlatformSettingsPage() {
           )}
 
           {/* Action buttons */}
-          {(tabSettings.length > 0 || isLegalTab || isSystemTab || isBrandingTab) && (
+          {(tabSettings.length > 0 || isLegalTab || isSystemTab || isBrandingTab || isLoginTab) && (
             <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
               {confirmingReset ? (
                 <div className="flex items-center gap-2">

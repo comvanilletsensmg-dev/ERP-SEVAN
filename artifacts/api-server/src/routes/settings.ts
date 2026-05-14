@@ -9,9 +9,9 @@ import { Router, type IRouter } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { db, companySettingsTable } from "@workspace/db";
+import { db, companySettingsTable, platformSettingsTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requireRole, ROLES } from "../middlewares/roles";
 import { logger } from "../lib/logger";
@@ -58,13 +58,44 @@ const SettingsSchema = z.object({
 
 // GET /api/public/branding — no auth required (used by login page)
 router.get("/public/branding", async (_req, res): Promise<void> => {
-  const [row] = await db.select({
+  const [company] = await db.select({
     companyName: companySettingsTable.companyName,
     logoUrl: companySettingsTable.logoUrl,
   }).from(companySettingsTable).limit(1);
+
+  const loginKeys = [
+    "login_bg_color", "login_primary_color", "login_accent_color",
+    "login_headline_1", "login_headline_2", "login_tagline",
+    "login_badge", "login_copyright",
+    "login_prop_1", "login_prop_2", "login_prop_3",
+  ];
+
+  const { platformSettingsTable } = await import("@workspace/db");
+  const { inArray } = await import("drizzle-orm");
+  const rows = await db.select({
+    key: platformSettingsTable.settingKey,
+    val: platformSettingsTable.settingValue,
+  }).from(platformSettingsTable).where(inArray(platformSettingsTable.settingKey, loginKeys));
+
+  const loginMap: Record<string, string> = {};
+  for (const r of rows) loginMap[r.key] = r.val ?? "";
+
   res.json({
-    companyName: row?.companyName ?? "Vanilla ERP",
-    logoUrl: row?.logoUrl ?? null,
+    companyName: company?.companyName ?? "Vanilla ERP",
+    logoUrl: company?.logoUrl ?? null,
+    login: {
+      bgColor:       loginMap["login_bg_color"]      || "#0a1f12",
+      primaryColor:  loginMap["login_primary_color"]  || "#1a3c2a",
+      accentColor:   loginMap["login_accent_color"]   || "#c4973a",
+      headline1:     loginMap["login_headline_1"]     || "Gérez votre",
+      headline2:     loginMap["login_headline_2"]     || "depuis un seul écran.",
+      tagline:       loginMap["login_tagline"]        || "",
+      badge:         loginMap["login_badge"]          || "Madagascar · Bourbon Vanilla",
+      copyright:     loginMap["login_copyright"]      || "Vanilla ERP",
+      prop1:         loginMap["login_prop_1"]         || "🌿|Traçabilité complète|Du champ au client, chaque lot suivi",
+      prop2:         loginMap["login_prop_2"]         || "📊|Pilotage en temps réel|Dashboards financiers et logistiques unifiés",
+      prop3:         loginMap["login_prop_3"]         || "🔒|Sécurité enterprise|RBAC granulaire, 2FA, audit complet",
+    },
   });
 });
 
