@@ -21,7 +21,7 @@ interface Prospect {
   convertedToClientId?: string;
 }
 
-const parseTags = (s: string) => { try { return JSON.parse(s || "[]"); } catch { return []; } };
+const parseTags = (s: unknown): string[] => { if (Array.isArray(s)) return s; try { const p = JSON.parse((s as string) || "[]"); return Array.isArray(p) ? p : []; } catch { return []; } };
 
 const SOURCE_LABELS: Record<string, string> = {
   manuel: "Manuel", kompass: "Kompass", salon_sial: "Salon SIAL",

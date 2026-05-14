@@ -75,8 +75,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
   industriel: "Industriel", artisan: "Artisan", autre: "Autre",
 };
 
-function parseTags(raw: string): string[] {
-  try { return JSON.parse(raw) ?? []; } catch { return []; }
+function parseTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw;
+  try { const p = JSON.parse((raw as string) || "[]"); return Array.isArray(p) ? p : []; } catch { return []; }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
