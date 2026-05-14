@@ -97,6 +97,19 @@ export default function SecurityDashboardPage() {
     await refetchBackups();
   };
 
+  const handleUploadBackup = async (file: File): Promise<{ success: boolean; filename?: string; error?: string }> => {
+    const form = new FormData();
+    form.append("backup", file);
+    const r = await fetch("/api/admin/backup/upload", {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    const json = await r.json();
+    if (r.ok) await refetchBackups();
+    return json;
+  };
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center gap-3 text-muted-foreground">
@@ -136,6 +149,7 @@ export default function SecurityDashboardPage() {
         onDisable2fa={handleDisable2fa}
         onCreateBackup={handleCreateBackup}
         onDeleteBackup={handleDeleteBackup}
+        onUploadBackup={handleUploadBackup}
       />
     </div>
   );

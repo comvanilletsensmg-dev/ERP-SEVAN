@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 import {
   Shield, ShieldAlert, ShieldCheck, AlertTriangle, Users, Lock, Unlock,
-  Activity, Globe, Clock, Eye, Trash2, Download, Plus, CheckCircle2,
+  Activity, Trash2, Download, Plus, CheckCircle2,
   XCircle, MonitorDot, Wifi, WifiOff, ChevronRight, KeyRound, Ban,
   RefreshCw, UserX, LogIn, Smartphone, QrCode, HardDrive, Database,
-  Mail, ToggleLeft, ToggleRight, FileArchive, Info,
+  Mail, ToggleLeft, ToggleRight, FileArchive, Info, Upload, Clock,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ export default function SecurityDashboard({
   data, twoFaStatus, backups, myTwoFa,
   onUnlock, onRevokeSession,
   onSetup2fa, onEnable2fa, onDisable2fa,
-  onCreateBackup, onDeleteBackup,
+  onCreateBackup, onDeleteBackup, onUploadBackup,
 }: {
   data: SecurityData;
   twoFaStatus: TwoFaUser[];
@@ -167,6 +167,7 @@ export default function SecurityDashboard({
   onDisable2fa: (code: string) => Promise<boolean>;
   onCreateBackup: () => Promise<{ success: boolean; filename?: string; error?: string }>;
   onDeleteBackup: (filename: string) => Promise<void>;
+  onUploadBackup: (file: File) => Promise<{ success: boolean; filename?: string; error?: string }>;
 }) {
   type Tab = "overview" | "logins" | "users" | "permissions" | "2fa" | "backups";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -186,6 +187,10 @@ export default function SecurityDashboard({
   const [backupCreating, setBackupCreating] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const [uploadingBackup, setUploadingBackup] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const totalThreats = data.lockedUsers.length + data.suspiciousIps.length + data.adminNoRecentLogin.length;
   const moduleSet = [...new Set(data.rolePermissions.map(p => p.module))].sort();
@@ -224,6 +229,18 @@ export default function SecurityDashboard({
   };
 
   // ── Backup handlers ──
+  const handleUploadBackup = async (file: File) => {
+    if (!file.name.endsWith(".zip")) { setUploadMsg("❌ Seuls les fichiers .zip sont acceptés"); return; }
+    setUploadingBackup(true); setUploadMsg(null);
+    const r = await onUploadBackup(file);
+    setUploadingBackup(false);
+    setUploadMsg(r.success ? `✅ Backup importé : ${r.filename}` : `❌ ${r.error}`);
+  };
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleUploadBackup(file);
+  };
   const handleCreateBackup = async () => {
     setBackupCreating(true); setBackupMsg(null);
     const r = await onCreateBackup();
@@ -708,15 +725,24 @@ export default function SecurityDashboard({
       {/* ══ TAB: BACKUPS ══ */}
       {activeTab === "backups" && (
         <div className="space-y-5">
-          {/* Backup action panel */}
+
+          {/* Access restriction banner */}
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <Shield className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+            <p className="text-xs text-indigo-700 font-semibold">
+              Accès réservé — DSI &amp; Super Admin uniquement. Les backups sont au format ZIP et contiennent un dump SQL complet + métadonnées.
+            </p>
+          </div>
+
+          {/* Create backup panel */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                 <Database className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-800">Sauvegarde de la base de données</h3>
-                <p className="text-xs text-gray-500">Dump PostgreSQL complet (.sql) — stocké localement dans /backups/</p>
+                <h3 className="text-sm font-bold text-gray-800">Créer un backup</h3>
+                <p className="text-xs text-gray-500">Dump PostgreSQL complet → fichier <span className="font-mono bg-gray-100 px-1 rounded">.zip</span> dans /backups/</p>
               </div>
               <button onClick={handleCreateBackup} disabled={backupCreating}
                 className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
@@ -729,10 +755,65 @@ export default function SecurityDashboard({
                 {backupMsg}
               </div>
             )}
-
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2 mt-4">
               <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">Les backups sont des dumps SQL bruts non chiffrés. Pour la production, prévoir un stockage externe sécurisé (S3, SFTP) et planifier des sauvegardes automatiques via cron.</p>
+              <p className="text-xs text-amber-700">Le ZIP contient le dump SQL + un fichier <span className="font-mono">metadata.json</span>. Pour la production, prévoir un stockage externe sécurisé (S3, SFTP) avec des sauvegardes automatiques via cron.</p>
+            </div>
+          </div>
+
+          {/* Upload / Restore panel */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                <Upload className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Importer un backup ZIP</h3>
+                <p className="text-xs text-gray-500">Glisse-dépose ou sélectionne un fichier <span className="font-mono bg-gray-100 px-1 rounded">.zip</span> contenant un dump SQL</p>
+              </div>
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleFileDrop}
+              onClick={() => uploadInputRef.current?.click()}
+              className={`cursor-pointer border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-colors ${
+                dragOver
+                  ? "border-violet-400 bg-violet-50"
+                  : "border-gray-200 hover:border-violet-300 hover:bg-violet-50/30"
+              }`}
+            >
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept=".zip,application/zip"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) { handleUploadBackup(f); e.target.value = ""; } }}
+              />
+              {uploadingBackup ? (
+                <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+              ) : (
+                <FileArchive className={`w-10 h-10 ${dragOver ? "text-violet-500" : "text-gray-300"}`} />
+              )}
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-600">
+                  {uploadingBackup ? "Import en cours…" : "Glisse un fichier ZIP ici"}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">ou clique pour parcourir · max 200 MB</p>
+              </div>
+            </div>
+
+            {uploadMsg && (
+              <div className={`mt-3 rounded-xl px-4 py-2.5 text-xs font-semibold ${uploadMsg.startsWith("✅") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                {uploadMsg}
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2 mt-4">
+              <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700">L'import vérifie que le ZIP contient un fichier <span className="font-mono">.sql</span> valide et l'enregistre dans /backups/. La restauration effective se fait via <span className="font-mono">psql</span> en ligne de commande.</p>
             </div>
           </div>
 
@@ -746,7 +827,7 @@ export default function SecurityDashboard({
               <div className="text-center py-10 text-gray-400">
                 <FileArchive className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Aucun backup disponible</p>
-                <p className="text-xs mt-1">Crée ton premier backup en cliquant sur "Nouveau backup"</p>
+                <p className="text-xs mt-1">Crée ton premier backup ou importe un ZIP existant</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -754,18 +835,22 @@ export default function SecurityDashboard({
                   <div key={b.filename} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <HardDrive className="w-4 h-4 text-blue-600" />
+                        <FileArchive className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-gray-800 truncate">{b.filename}</p>
-                        <p className="text-xs text-gray-400">{fmtSize(b.size)} · {fmtDate(b.createdAt)}</p>
+                        <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                          <HardDrive className="w-3 h-3" />{fmtSize(b.size)}
+                          <span className="text-gray-300">·</span>
+                          <Clock className="w-3 h-3" />{fmtDate(b.createdAt)}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0 ml-3">
                       <a href={`/api/admin/backup/download/${encodeURIComponent(b.filename)}`}
                         download={b.filename}
                         className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                        <Download className="w-3.5 h-3.5" /> Télécharger
+                        <Download className="w-3.5 h-3.5" /> ZIP
                       </a>
                       <button onClick={() => handleDeleteBackup(b.filename)} disabled={deletingFile === b.filename}
                         className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-xs font-semibold rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors">

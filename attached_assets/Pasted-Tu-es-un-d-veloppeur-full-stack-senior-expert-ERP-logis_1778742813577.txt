@@ -1,0 +1,212 @@
+Tu es un développeur full-stack senior expert ERP logistique, immobilisations et gestion de stock interne.
+
+Objectif :
+Créer un module STOCK CONSOMMABLES & ÉQUIPEMENTS ultra professionnel dans la partie LOGISTIQUE.
+
+Le système doit gérer :
+- consommables opérationnels
+- matériels bureau
+- matériels informatiques
+- équipements cuisine
+- immobilisations
+- mobiliers
+
+Stack :
+- React
+- Tailwind
+- Shadcn UI
+- Node.js
+- Prisma
+- PostgreSQL
+
+---------------------------------------------------
+1. MENU LOGISTIQUE
+---------------------------------------------------
+
+Créer nouvel onglet :
+
+Stock Consommables & Équipements
+
+---------------------------------------------------
+2. DASHBOARD
+---------------------------------------------------
+
+Afficher KPI :
+
+- stock total
+- consommables critiques
+- matériels actifs
+- immobilisations
+- valeur stock
+
+---------------------------------------------------
+3. CATÉGORIES
+---------------------------------------------------
+
+Créer catégories :
+
+- OPÉRATION
+- BUREAU
+- INFORMATIQUE
+- CUISINE
+- IMMOBILISATION
+- MOBILIER
+- ENTRETIEN
+
+---------------------------------------------------
+4. STOCK CONSOMMABLES
+---------------------------------------------------
+
+Pour chaque article :
+
+- référence
+- catégorie
+- quantité
+- unité
+- seuil minimum
+- emplacement
+- valeur stock
+
+---------------------------------------------------
+5. LIAISON OPÉRATIONS
+---------------------------------------------------
+
+Quand opération utilise :
+
+- cartons
+- sachets
+- papier paraffiné
+
+Déduire automatiquement du stock.
+
+---------------------------------------------------
+6. IMMOBILISATIONS
+---------------------------------------------------
+
+Si matériel durable :
+
+Créer automatiquement immobilisation.
+
+---------------------------------------------------
+7. ATTRIBUTION EMPLOYÉS
+---------------------------------------------------
+
+Permettre attribution :
+
+- ordinateur
+- téléphone
+- mobilier
+
+Afficher :
+
+- employé
+- département
+- date attribution
+- état
+
+---------------------------------------------------
+8. DEMANDES INTERNES
+---------------------------------------------------
+
+Créer workflow :
+
+Demande
+→ Validation
+→ Sortie stock
+
+---------------------------------------------------
+9. MAINTENANCE
+---------------------------------------------------
+
+Suivre :
+
+- imprimantes
+- climatiseurs
+- PC
+
+Afficher :
+
+- garantie
+- maintenance
+- état
+
+---------------------------------------------------
+10. INVENTAIRES
+---------------------------------------------------
+
+Créer :
+
+- inventaire réel
+- écarts
+- régularisations
+
+---------------------------------------------------
+11. FOURNISSEURS
+---------------------------------------------------
+
+Lier :
+
+- fournisseurs bureau
+- fournisseurs informatique
+- fournisseurs consommables
+
+---------------------------------------------------
+12. ALERTES
+---------------------------------------------------
+
+Afficher :
+
+- stock faible
+- rupture
+- panne matériel
+
+---------------------------------------------------
+13. IA PRÉVISIONS
+---------------------------------------------------
+
+Détecter :
+
+- ruptures futures
+- consommation anormale
+
+---------------------------------------------------
+14. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- Excel
+- PDF
+- inventaires
+
+---------------------------------------------------
+15. PERMISSIONS
+---------------------------------------------------
+
+Responsable logistique :
+accès total
+
+DSI :
+matériels IT
+
+RH :
+attributions employés
+
+---------------------------------------------------
+16. LIVRABLE
+---------------------------------------------------
+
+Créer un système ERP professionnel de gestion :
+- consommables
+- équipements
+- immobilisations
+- matériels internes
+
+Commence par :
+
+1. Prisma ConsumableStock
+2. dashboard consommables
+3. liaison opérations
+4. attribution matériels
+5. maintenance équipements
+6. inventaires
