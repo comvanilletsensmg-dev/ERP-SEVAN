@@ -61,6 +61,7 @@ import adminExecutiveRouter from "./admin-executive";
 import securityRouter from "./security";
 import auth2faRouter from "./auth-2fa";
 import backupRouter from "./backup";
+import equipmentStockRouter from "./equipment-stock";
 
 const router: IRouter = Router();
 
@@ -129,5 +130,6 @@ router.use(adminExecutiveRouter);
 router.use(securityRouter);
 router.use(auth2faRouter);
 router.use(backupRouter);
+router.use(equipmentStockRouter);
 
 export default router;

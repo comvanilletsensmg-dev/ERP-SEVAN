@@ -43,3 +43,4 @@ export * from "./planning";
 export * from "./operations";
 export * from "./invoice_payments";
 export * from "./asset_maintenance";
+export * from "./equipment_stock";

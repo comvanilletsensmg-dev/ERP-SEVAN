@@ -67,6 +67,7 @@ import OperationDashboard from "@/pages/operations/OperationDashboard";
 import OperationReport from "@/pages/operations/OperationReport";
 import OperationHistory from "@/pages/operations/OperationHistory";
 import ConsumablesPage from "@/pages/operations/Consumables";
+import EquipmentStock from "@/pages/logistics/EquipmentStock";
 
 const queryClient = new QueryClient();
 
@@ -178,6 +179,7 @@ function Router() {
       <Route path="/operations/report"      component={() => <ProtectedRoute component={OperationReport} />} />
       <Route path="/operations/history"     component={() => <ProtectedRoute component={OperationHistory} />} />
       <Route path="/operations/consumables" component={() => <ProtectedRoute component={ConsumablesPage} />} />
+      <Route path="/logistics/stock" component={() => <ProtectedRoute component={EquipmentStock} />} />
       <Route component={NotFound} />
     </Switch>
   );

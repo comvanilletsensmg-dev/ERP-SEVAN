@@ -10,7 +10,7 @@ import {
   ClipboardList, MessageSquare, Banknote, Award, UserPlus, FileText,
   Building2, Landmark, BarChart3, Layers, ShieldCheck, Cpu, BellRing, Mail,
   Target, Activity, AlertTriangle, Upload, Workflow, ShieldAlert, Brain, Settings,
-  Factory, LockKeyhole,
+  Factory, LockKeyhole, Boxes,
 } from "lucide-react";
 import { canAccess, ROLE_LABELS } from "@/lib/permissions";
 
@@ -27,6 +27,7 @@ const logisticsNav = [
   { label: "Intelligence IA",       href: "/logistics/intelligence",      icon: Cpu },
   { label: "Import Produits",       href: "/logistics/import-products",   icon: Upload },
   { label: "Catalogue Produits",    href: "/catalogue",                    icon: Package },
+  { label: "Stock & Équipements",   href: "/logistics/stock",              icon: Boxes },
 ];
 
 const accountingNav = [
