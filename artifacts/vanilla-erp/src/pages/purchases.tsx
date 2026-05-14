@@ -121,7 +121,7 @@ function useVanillaCatalog() {
   return useQuery<any[]>({
     queryKey: ["vanilla-catalog"],
     queryFn: () => api("/products").then((p: any[]) =>
-      p.filter(x => ["gousses","poudre","extrait de vanille","pate de vanille","pâte de vanille"].includes((x.category ?? "").toLowerCase()))
+      p.filter(x => ["gousses","poudre","extrait de vanille","pate de vanille","pâte de vanille","pates de vanille","pâtes de vanille"].includes((x.category ?? "").toLowerCase()))
     ),
   });
 }
@@ -279,7 +279,7 @@ function PurchaseForm({ suppliers, onClose, onSuccess }: { suppliers: any[]; onC
       GOUSSE:       ["gousses"],
       POUDRE:       ["poudre"],
       EXTRAIT:      ["extrait de vanille"],
-      PATE_VANILLE: ["pâte de vanille", "pate de vanille"],
+      PATE_VANILLE: ["pâte de vanille", "pate de vanille", "pates de vanille", "pâtes de vanille"],
     };
     const cats = typeToCategory[form.productType] ?? [];
     return cats.includes((p.category ?? "").toLowerCase());
