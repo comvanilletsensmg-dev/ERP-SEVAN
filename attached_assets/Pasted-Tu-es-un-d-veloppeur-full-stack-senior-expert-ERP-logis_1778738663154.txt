@@ -1,0 +1,203 @@
+Tu es un développeur full-stack senior expert ERP logistique, supply chain et dashboards industriels.
+
+Objectif :
+Créer un dashboard LOGISTIQUE ultra professionnel temps réel connecté à :
+- lots
+- stock
+- export
+- achats
+- fournisseurs
+- consommables
+- opérations
+
+Stack :
+- React
+- Tailwind
+- Shadcn UI
+- Recharts
+- Framer Motion
+- Node.js
+- Prisma
+- PostgreSQL
+
+IMPORTANT :
+Le dashboard doit être :
+- moderne
+- ultra lisible
+- temps réel
+- orienté opérations terrain
+- performant
+
+---------------------------------------------------
+1. KPI LOGISTIQUES
+---------------------------------------------------
+
+Afficher :
+
+- stock total
+- stock exportable
+- lots actifs
+- lots à risque
+- consommables critiques
+
+---------------------------------------------------
+2. SUIVI LOTS
+---------------------------------------------------
+
+Afficher :
+
+- curing
+- phénolé
+- prêt export
+- moisissure
+- exporté
+
+---------------------------------------------------
+3. ALERTES LOGISTIQUES
+---------------------------------------------------
+
+Créer centre alertes :
+
+- humidité élevée
+- stock faible
+- pertes anormales
+- rupture consommables
+
+---------------------------------------------------
+4. DASHBOARD EXPORT
+---------------------------------------------------
+
+Afficher :
+
+- commandes export
+- packing
+- AWB
+- shipping
+
+---------------------------------------------------
+5. PERTES & RENDEMENT
+---------------------------------------------------
+
+Afficher :
+
+- pertes/kg
+- rendement lots
+- top pertes
+
+---------------------------------------------------
+6. CONSOMMABLES
+---------------------------------------------------
+
+Afficher :
+
+- cartons
+- sachets sous-vide
+- papier paraffiné
+- stock critique
+
+---------------------------------------------------
+7. FOURNISSEURS
+---------------------------------------------------
+
+Afficher :
+
+- achats récents
+- qualité fournisseurs
+- délais livraison
+
+---------------------------------------------------
+8. MOUVEMENTS STOCK
+---------------------------------------------------
+
+Timeline temps réel :
+
+- IN
+- OUT
+- LOSS
+- TRANSFER
+
+---------------------------------------------------
+9. ACTIVITÉ OPÉRATION
+---------------------------------------------------
+
+Afficher :
+
+- agents actifs
+- préparations
+- tâches retard
+
+---------------------------------------------------
+10. IA LOGISTIQUE
+---------------------------------------------------
+
+Détecter :
+
+- risques moisissure
+- pertes anormales
+- saturation stockage
+- rupture consommables
+
+---------------------------------------------------
+11. ANALYTICS
+---------------------------------------------------
+
+Créer graphiques :
+
+- stock
+- pertes
+- export
+- fournisseurs
+
+---------------------------------------------------
+12. PLANNING
+---------------------------------------------------
+
+Afficher :
+
+- expéditions
+- inventaires
+- traitements
+
+---------------------------------------------------
+13. EXPORTS
+---------------------------------------------------
+
+Créer exports :
+
+- PDF
+- Excel
+- rapports stock
+
+---------------------------------------------------
+14. UI/UX
+---------------------------------------------------
+
+Ajouter :
+
+- animations
+- skeleton loaders
+- responsive
+- dark mode
+- timelines
+- badges statuts
+
+---------------------------------------------------
+15. LIVRABLE
+---------------------------------------------------
+
+Créer un dashboard logistique ERP premium :
+
+- temps réel
+- ultra moderne
+- analytique
+- intelligent
+- connecté à tous les modules logistiques
+
+Commence par :
+
+1. redesign dashboard logistique
+2. KPI temps réel
+3. alertes logistiques
+4. dashboard export
+5. IA logistique
+6. analytics interactifs

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable, payrollTable, bonusesTable, accountsTable, journalLinesTable, accountingInvoicesTable, bankTransactionsTable, stockMovementsTable, exportOrdersTable } from "@workspace/db";
-import { sql, count, sum, eq, and, gte, lt, desc, ne } from "drizzle-orm";
+import { db, suppliersTable, clientsTable, lotsTable, salesTable, purchasesTable, employeesTable, leavesTable, attendanceTable, hrRequestsTable, payrollTable, bonusesTable, accountsTable, journalLinesTable, accountingInvoicesTable, bankTransactionsTable, stockMovementsTable, exportOrdersTable, consumablesTable, productionTasksTable } from "@workspace/db";
+import { sql, count, sum, eq, and, gte, lt, desc, ne, lte, asc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { loadUser } from "../middlewares/roles";
 
@@ -57,6 +57,45 @@ async function getLogisticsData() {
     exportOrdersByStatus: exportByStatus.map(r => ({ status: r.status, count: Number(r.count) })),
     activeExportOrders: Number(totalExport?.count ?? 0),
     monthlyPurchasesTrend: (monthlyPurchases.rows as any[]).map(r => ({ label: r.label, total: Number(r.total), nb: Number(r.nb) })),
+
+    // Consumables
+    consumables: (await db.select().from(consumablesTable).orderBy(asc(consumablesTable.name))).map(c => ({
+      id: c.id, name: c.name, unit: c.unit, stock: Number(c.stock), minStock: Number(c.minStock),
+      isCritical: Number(c.stock) <= Number(c.minStock),
+    })),
+    criticalConsumablesCount: Number((await db.select({ count: count() }).from(consumablesTable).where(sql`${consumablesTable.stock} <= ${consumablesTable.minStock}`))[0]?.count ?? 0),
+
+    // Export orders with details (latest 8)
+    exportOrdersList: (await db.select().from(exportOrdersTable).orderBy(desc(exportOrdersTable.createdAt)).limit(8)).map(e => ({
+      id: e.id, reference: e.reference, clientName: e.clientName, quantityKg: Number(e.quantityKg ?? 0),
+      status: e.status, priority: e.priority, deadline: e.deadline, destination: e.destination,
+      createdAt: e.createdAt.toISOString(),
+    })),
+
+    // Recent purchases with supplier name
+    recentPurchasesList: ((await db.execute(sql`
+      SELECT p.id, p.total_amount, p.weight, p.humidity, p.status, p.created_at, p.reference,
+             s.name AS supplier_name, s.region, s.score
+      FROM purchases p
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
+      ORDER BY p.created_at DESC LIMIT 6
+    `)).rows as any[]).map(r => ({
+      id: r.id, totalAmount: Number(r.total_amount ?? 0), weight: Number(r.weight ?? 0),
+      humidity: Number(r.humidity ?? 0), status: r.status, reference: r.reference,
+      supplierName: r.supplier_name, region: r.region, score: Number(r.score ?? 0),
+      createdAt: String(r.created_at ?? ""),
+    })),
+
+    // Active lots with details (latest 10)
+    lotsList: (await db.select().from(lotsTable).where(ne(lotsTable.status, "sold")).orderBy(desc(lotsTable.createdAt)).limit(10)).map(l => ({
+      id: l.id, code: l.code, status: l.status, weightInitial: Number(l.weightInitial ?? 0),
+      weightCurrent: Number(l.weightCurrent ?? 0), humidity: Number(l.humidity ?? 0),
+      riskLevel: l.riskLevel, riskScore: Number(l.riskScore ?? 0), grade: l.grade,
+      warehouse: l.warehouse, region: l.region, createdAt: l.createdAt.toISOString(),
+    })),
+
+    // Production tasks by status
+    productionTaskStats: (await db.select({ status: productionTasksTable.status, count: count() }).from(productionTasksTable).groupBy(productionTasksTable.status)).map(r => ({ status: r.status, count: Number(r.count) })),
   };
 }
 
