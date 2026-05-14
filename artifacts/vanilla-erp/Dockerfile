@@ -8,8 +8,8 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY lib/ ./lib/
 COPY artifacts/vanilla-erp/ ./artifacts/vanilla-erp/
 
-RUN sed -i 's/case "\$npm_config_user_agent".*//g' package.json || true
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --unsafe-perm
+RUN pnpm approve-builds --all 2>/dev/null || true
 RUN pnpm --filter @workspace/vanilla-erp run build
 
 FROM nginx:alpine
