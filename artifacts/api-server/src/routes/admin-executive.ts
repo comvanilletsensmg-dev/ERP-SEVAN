@@ -101,7 +101,7 @@ router.get("/admin/executive", requireAuth, loadUser, requireAdmin, async (req, 
            COALESCE(SUM(CASE WHEN a.type = 'revenue' THEN jl.credit - jl.debit ELSE 0 END), 0) AS revenue,
            COALESCE(SUM(CASE WHEN a.type = 'expense' THEN jl.debit - jl.credit ELSE 0 END), 0) AS charges
     FROM journal_entries je
-    JOIN journal_lines jl ON jl.journal_entry_id = je.id
+    JOIN journal_lines jl ON jl.entry_id = je.id
     JOIN accounts a ON a.id = jl.account_id
     WHERE je.date >= NOW() - INTERVAL '6 months'
       AND je.status = 'validated'

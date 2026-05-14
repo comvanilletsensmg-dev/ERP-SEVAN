@@ -24,11 +24,19 @@ export default function ExecutiveDashboardPage() {
   }
 
   if (error || !data) {
+    const msg = error instanceof Error ? error.message : "Erreur inattendue";
+    const isForbidden = msg.includes("403") || msg.includes("refus");
     return (
       <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <p className="text-red-700 font-semibold text-sm">Accès restreint</p>
-          <p className="text-red-500 text-xs mt-1">Ce module est réservé aux administrateurs (SUPER_ADMIN, ADMIN, DG, DGA).</p>
+        <div className={`border rounded-xl p-6 text-center ${isForbidden ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"}`}>
+          <p className={`font-semibold text-sm ${isForbidden ? "text-red-700" : "text-amber-700"}`}>
+            {isForbidden ? "Accès restreint" : "Erreur de chargement"}
+          </p>
+          <p className={`text-xs mt-1 ${isForbidden ? "text-red-500" : "text-amber-600"}`}>
+            {isForbidden
+              ? "Ce module est réservé aux administrateurs (SUPER_ADMIN, ADMIN, DG, DGA)."
+              : `Impossible de charger les données : ${msg}`}
+          </p>
         </div>
       </div>
     );
