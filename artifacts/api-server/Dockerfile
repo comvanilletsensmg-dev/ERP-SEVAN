@@ -8,7 +8,7 @@ COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 
 # Install deps
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.confirmModulesPurge=false
 
 # Build
 RUN pnpm --filter @workspace/api-server run build
