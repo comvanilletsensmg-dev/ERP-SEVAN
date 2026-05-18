@@ -19,7 +19,8 @@ COPY lib/api-client-react/package.json ./lib/api-client-react/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 
 # Install all dependencies
-RUN pnpm install --frozen-lockfile && pnpm approve-builds esbuild
+RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
+RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
 
 # Copy source files
 COPY lib/ ./lib/
