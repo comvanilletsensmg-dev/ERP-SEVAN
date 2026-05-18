@@ -39,7 +39,7 @@ COPY --from=builder /app/artifacts/api-server/dist ./dist
 COPY --from=builder /app/lib/db/src ./lib/db/src
 
 # Installer uniquement les packages nécessaires pour les migrations
-RUN npm install --no-save drizzle-kit@0.31.10 drizzle-orm@0.45.2 drizzle-zod@0.8.3 pg@8.20.0 zod@3.24.0
+RUN npm install --no-save --legacy-peer-deps drizzle-kit@0.31.10 drizzle-orm@0.45.2 drizzle-zod@0.8.3 pg@8.20.0 zod@3.25.0
 
 # Générer le fichier de config drizzle en CJS
 RUN echo "module.exports = { schema: './lib/db/src/schema/index.ts', dialect: 'postgresql', dbCredentials: { url: process.env.DATABASE_URL } };" > ./drizzle.config.cjs
