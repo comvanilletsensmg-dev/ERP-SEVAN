@@ -9,7 +9,11 @@
   },
   "private": true,
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "rollup", "@tailwindcss/oxide"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@rollup/rollup-linux-x64-musl",
+      "@tailwindcss/oxide-linux-x64-musl"
+    ]
   },
   "devDependencies": {
     "typescript": "~5.9.2",
