@@ -1,60 +1,54 @@
 # ============================================================
 # ERP SEVAN - API Server (Express + Node.js 24)
 # ============================================================
-
+ 
 # --- Stage 1: Builder ---
 FROM node:24-alpine AS builder
-
-# Install pnpm
+ 
 RUN corepack enable && corepack prepare pnpm@latest --activate
-
+ 
 WORKDIR /app
-
-# Copy workspace manifests first (layer cache optimization)
+ 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
 COPY lib/api-client-react/package.json ./lib/api-client-react/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
-
-# Install all dependencies
+ 
 RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
-
-# Copy source files
+ 
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY tsconfig*.json ./
-
-# Build the API server (esbuild bundles everything to dist/index.mjs)
+ 
 WORKDIR /app/artifacts/api-server
 RUN pnpm run build
-
+ 
 # --- Stage 2: Production image ---
 FROM node:24-alpine AS production
-
+ 
 RUN apk add --no-cache dumb-init
-
+ 
 WORKDIR /app
-
-# Copy compiled bundle
+ 
+# Copy compiled API bundle
 COPY --from=builder /app/artifacts/api-server/dist ./dist
-
-# Copy drizzle migration files
+ 
+# Copy drizzle schema files
 COPY --from=builder /app/lib/db/src ./lib/db/src
-COPY --from=builder /app/lib/db/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/node_modules ./node_modules
-
+ 
 # Create uploads directory
 RUN mkdir -p uploads
-
-# Non-root user for security
+ 
+# Non-root user
 RUN addgroup -S sevan && adduser -S sevan -G sevan
 RUN chown -R sevan:sevan /app
 USER sevan
-
+ 
 EXPOSE 8080
-
-# startup.sh : migrations puis démarrage API
+ 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --config ./drizzle.config.ts --force && node --enable-source-maps ./dist/index.mjs"]
+# Utilise les flags CLI directs de drizzle-kit (pas de fichier config TS)
+CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --schema=./lib/db/src/schema/index.ts --dialect=postgresql --url=$DATABASE_URL --force && node --enable-source-maps ./dist/index.mjs"]
