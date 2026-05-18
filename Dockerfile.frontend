@@ -16,8 +16,8 @@ COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
 COPY artifacts/vanilla-erp/package.json ./artifacts/vanilla-erp/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
+# Install dependencies + packages natifs manquants sur Alpine
+RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild; npm install --no-save @rollup/rollup-linux-x64-musl
 
 # Copy source
 COPY lib/ ./lib/
@@ -25,7 +25,7 @@ COPY artifacts/vanilla-erp/ ./artifacts/vanilla-erp/
 
 # Build Vite static files
 WORKDIR /app/artifacts/vanilla-erp
-RUN pnpm rebuild rollup && PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm run build
+RUN PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm run build
 
 # --- Stage 2: Nginx serving ---
 FROM nginx:alpine AS production
