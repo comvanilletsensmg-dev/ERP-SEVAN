@@ -57,4 +57,4 @@ EXPOSE 8080
 
 # startup.sh : migrations puis démarrage API
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "node_modules/.bin/drizzle-kit push --config ./drizzle.config.ts && node --enable-source-maps ./dist/index.mjs"]
+CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --config ./drizzle.config.ts --force && node --enable-source-maps ./dist/index.mjs"]
