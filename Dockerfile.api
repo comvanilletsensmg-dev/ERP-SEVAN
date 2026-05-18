@@ -22,9 +22,6 @@ COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY tsconfig*.json ./
 
-# Générer un drizzle.config.js (CommonJS, pas TypeScript)
-RUN echo "module.exports = { schema: './lib/db/src/schema/index.ts', dialect: 'postgresql', dbCredentials: { url: process.env.DATABASE_URL } };" > /app/drizzle.config.cjs
-
 WORKDIR /app/artifacts/api-server
 RUN pnpm run build
 
@@ -38,10 +35,14 @@ WORKDIR /app
 # Copy compiled API bundle
 COPY --from=builder /app/artifacts/api-server/dist ./dist
 
-# Copy drizzle schema + config CJS
+# Copy drizzle schema files
 COPY --from=builder /app/lib/db/src ./lib/db/src
-COPY --from=builder /app/drizzle.config.cjs ./drizzle.config.cjs
-COPY --from=builder /app/node_modules ./node_modules
+
+# Installer uniquement les packages nécessaires pour les migrations
+RUN npm install --no-save drizzle-kit@0.31.10 drizzle-orm@0.45.2 pg@8.20.0
+
+# Générer le fichier de config drizzle en CJS
+RUN echo "module.exports = { schema: './lib/db/src/schema/index.ts', dialect: 'postgresql', dbCredentials: { url: process.env.DATABASE_URL } };" > ./drizzle.config.cjs
 
 # Create uploads directory
 RUN mkdir -p uploads
@@ -54,4 +55,4 @@ USER sevan
 EXPOSE 8080
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --config=./drizzle.config.cjs --force && node --enable-source-maps ./dist/index.mjs"]
+CMD ["sh", "-c", "./node_modules/.bin/drizzle-kit push --config=./drizzle.config.cjs --force && node --enable-source-maps ./dist/index.mjs"]
