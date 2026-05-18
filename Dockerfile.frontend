@@ -25,7 +25,7 @@ COPY artifacts/vanilla-erp/ ./artifacts/vanilla-erp/
 
 # Build Vite static files
 WORKDIR /app/artifacts/vanilla-erp
-RUN PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm run build
+RUN pnpm rebuild rollup && PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm run build
 
 # --- Stage 2: Nginx serving ---
 FROM nginx:alpine AS production
