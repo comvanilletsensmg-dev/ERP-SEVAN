@@ -1,54 +1,57 @@
 # ============================================================
 # ERP SEVAN - API Server (Express + Node.js 24)
 # ============================================================
- 
+
 # --- Stage 1: Builder ---
 FROM node:24-alpine AS builder
- 
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
- 
+
 WORKDIR /app
- 
+
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
 COPY lib/api-client-react/package.json ./lib/api-client-react/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
- 
+
 RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
- 
+
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY tsconfig*.json ./
- 
+
+# Générer un drizzle.config.js (CommonJS, pas TypeScript)
+RUN echo "module.exports = { schema: './lib/db/src/schema/index.ts', dialect: 'postgresql', dbCredentials: { url: process.env.DATABASE_URL } };" > /app/drizzle.config.cjs
+
 WORKDIR /app/artifacts/api-server
 RUN pnpm run build
- 
+
 # --- Stage 2: Production image ---
 FROM node:24-alpine AS production
- 
+
 RUN apk add --no-cache dumb-init
- 
+
 WORKDIR /app
- 
+
 # Copy compiled API bundle
 COPY --from=builder /app/artifacts/api-server/dist ./dist
- 
-# Copy drizzle schema files
+
+# Copy drizzle schema + config CJS
 COPY --from=builder /app/lib/db/src ./lib/db/src
+COPY --from=builder /app/drizzle.config.cjs ./drizzle.config.cjs
 COPY --from=builder /app/node_modules ./node_modules
- 
+
 # Create uploads directory
 RUN mkdir -p uploads
- 
+
 # Non-root user
 RUN addgroup -S sevan && adduser -S sevan -G sevan
 RUN chown -R sevan:sevan /app
 USER sevan
- 
+
 EXPOSE 8080
- 
+
 ENTRYPOINT ["dumb-init", "--"]
-# Utilise les flags CLI directs de drizzle-kit (pas de fichier config TS)
-CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --schema=./lib/db/src/schema/index.ts --dialect=postgresql --url=$DATABASE_URL --force && node --enable-source-maps ./dist/index.mjs"]
+CMD ["sh", "-c", "npx drizzle-kit@0.31.10 push --config=./drizzle.config.cjs --force && node --enable-source-maps ./dist/index.mjs"]
