@@ -1,0 +1,59 @@
+# ============================================================
+# ERP SEVAN - API Server (Express + Node.js 24)
+# ============================================================
+
+# --- Stage 1: Builder ---
+FROM node:24-alpine AS builder
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy workspace manifests first (layer cache optimization)
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source files
+COPY lib/ ./lib/
+COPY artifacts/api-server/ ./artifacts/api-server/
+COPY tsconfig*.json ./
+
+# Build the API server (esbuild bundles everything to dist/index.mjs)
+WORKDIR /app/artifacts/api-server
+RUN pnpm run build
+
+# --- Stage 2: Production image ---
+FROM node:24-alpine AS production
+
+RUN apk add --no-cache dumb-init
+
+WORKDIR /app
+
+# Copy only the compiled bundle
+COPY --from=builder /app/artifacts/api-server/dist ./dist
+
+# Create uploads directory for file storage
+RUN mkdir -p uploads
+
+# Non-root user for security
+RUN addgroup -S sevan && adduser -S sevan -G sevan
+RUN chown -R sevan:sevan /app
+USER sevan
+
+EXPOSE 8080
+
+# Required environment variables (set in Coolify):
+# DATABASE_URL=postgresql://user:pass@host:5432/dbname
+# SESSION_SECRET=your-strong-random-secret
+# PORT=8080
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
