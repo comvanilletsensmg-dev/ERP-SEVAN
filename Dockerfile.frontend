@@ -2,8 +2,8 @@
 # ERP SEVAN - Frontend (React + Vite → Nginx)
 # ============================================================
 
-# --- Stage 1: Builder ---
-FROM node:24-alpine AS builder
+# --- Stage 1: Builder (Debian, pas Alpine) ---
+FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -16,8 +16,8 @@ COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
 COPY artifacts/vanilla-erp/package.json ./artifacts/vanilla-erp/
 
-# Install dependencies + packages natifs manquants sur Alpine
-RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild; npm install --no-save @rollup/rollup-linux-x64-musl
+# Install dependencies (glibc, pas de problème musl)
+RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
 
 # Copy source
 COPY lib/ ./lib/
