@@ -2,28 +2,25 @@
 # ERP SEVAN - Frontend (React + Vite → Nginx)
 # ============================================================
 
-# --- Stage 1: Builder (Debian, pas Alpine) ---
+# --- Stage 1: Builder ---
 FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy workspace manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY tsconfig*.json ./
 COPY lib/api-client-react/package.json ./lib/api-client-react/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
 COPY artifacts/vanilla-erp/package.json ./artifacts/vanilla-erp/
 
-# Install dependencies (glibc, pas de problème musl)
 RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
 
-# Copy source
 COPY lib/ ./lib/
 COPY artifacts/vanilla-erp/ ./artifacts/vanilla-erp/
 
-# Build Vite static files
 WORKDIR /app/artifacts/vanilla-erp
 RUN PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm run build
 
@@ -52,14 +49,4 @@ RUN printf 'server {\n\
         proxy_set_header X-Real-IP $remote_addr;\n\
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\
         proxy_set_header X-Forwarded-Proto $scheme;\n\
-        proxy_set_header Cookie $http_cookie;\n\
-        proxy_pass_header Set-Cookie;\n\
-    }\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/erp-sevan.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+        proxy_set_header Cookie $http_cookie;\
