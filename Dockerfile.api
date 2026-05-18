@@ -37,10 +37,15 @@ RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
-# Copy only the compiled bundle
+# Copy compiled bundle
 COPY --from=builder /app/artifacts/api-server/dist ./dist
 
-# Create uploads directory for file storage
+# Copy drizzle migration files
+COPY --from=builder /app/lib/db/src ./lib/db/src
+COPY --from=builder /app/lib/db/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/node_modules ./node_modules
+
+# Create uploads directory
 RUN mkdir -p uploads
 
 # Non-root user for security
@@ -50,10 +55,6 @@ USER sevan
 
 EXPOSE 8080
 
-# Required environment variables (set in Coolify):
-# DATABASE_URL=postgresql://user:pass@host:5432/dbname
-# SESSION_SECRET=your-strong-random-secret
-# PORT=8080
-
+# startup.sh : migrations puis démarrage API
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
+CMD ["sh", "-c", "node_modules/.bin/drizzle-kit push --config ./drizzle.config.ts && node --enable-source-maps ./dist/index.mjs"]
