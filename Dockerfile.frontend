@@ -17,7 +17,7 @@ COPY lib/api-spec/package.json ./lib/api-spec/
 COPY artifacts/vanilla-erp/package.json ./artifacts/vanilla-erp/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile; pnpm rebuild esbuild
 
 # Copy source
 COPY lib/ ./lib/
