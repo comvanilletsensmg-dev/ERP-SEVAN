@@ -1,18 +1,20 @@
-FROM node:24-alpine
+FROM node:24-alpine AS builder
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-# Copier workspace config
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json ./
 COPY lib/ ./lib/
-COPY artifacts/api-server/ ./artifacts/api-server/
+COPY artifacts/vanilla-erp/ ./artifacts/vanilla-erp/
 
-# Install deps
-RUN pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+RUN pnpm config set auto-install-peers true
+RUN pnpm install --frozen-lockfile --ignore-build-scripts
+RUN pnpm rebuild esbuild
+RUN pnpm --filter @workspace/vanilla-erp run build
 
-# Build
-RUN pnpm --filter @workspace/api-server run build
-
-WORKDIR /app/artifacts/api-server
-EXPOSE 8080
-CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
+FROM nginx:alpine
+COPY --from=builder /app/artifacts/vanilla-erp/dist /usr/share/nginx/html
+COPY artifacts/vanilla-erp/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
